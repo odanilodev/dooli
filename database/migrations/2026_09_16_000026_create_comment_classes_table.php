@@ -1,0 +1,29 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('comment_classes', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('company_id')->constrained('companies');
+            $table->text('content');
+            $table->foreignId('class_id')->constrained('classes');
+            $table->foreignId('module_id')->constrained('modules');
+            $table->foreignId('product_id')->constrained('products');
+            $table->foreignId('team_id')->constrained('teams');
+            $table->foreignId('user_id')->constrained('users');
+            $table->string('image')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('comment_classes');
+    }
+};
