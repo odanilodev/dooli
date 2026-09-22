@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/coupons"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "code": "POSTMAN10",
+        "type": "percent",
+        "value": 10,
+        "status": "active",
+        "usage_limit": 100,
+        "per_user_limit": 1,
+        "min_order_amount": 0,
+        "store_product_ids": [
+            {{store_product_id}}
+        ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('coupon_id', j.data.id); }
+    language: text/javascript
+order: 2000

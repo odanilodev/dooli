@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/certificate-users"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && Array.isArray(j.data) && j.data.length) { pm.collectionVariables.set('certificate_user_id', j.data[0].id); if (j.data[0].code) { pm.collectionVariables.set('certificate_code', j.data[0].code); } }
+    language: text/javascript
+order: 1000

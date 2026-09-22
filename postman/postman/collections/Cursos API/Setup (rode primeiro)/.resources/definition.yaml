@@ -1,0 +1,3 @@
+$kind: collection
+description: "Rode estas duas requisições primeiro: elas preenchem os tokens de admin e aluno usados no resto da collection."
+order: 1000

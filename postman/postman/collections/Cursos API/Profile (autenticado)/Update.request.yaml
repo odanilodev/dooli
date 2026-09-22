@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/me/profile"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Administrador",
+        "phone": "+55 11 90000-0000",
+        "city": "São Paulo"
+    }
+order: 2000

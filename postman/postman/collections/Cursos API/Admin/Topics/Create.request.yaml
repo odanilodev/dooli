@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/topics"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Tópico de Teste",
+        "module_id": {{module_id}},
+        "sort_order": 0,
+        "status": "active"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('topic_id', j.data.id); }
+    language: text/javascript
+order: 2000

@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/gateways"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Gateway de Teste",
+        "code": "manual",
+        "status": "active",
+        "credentials": {
+            "webhook_secret": "dev-manual-secret"
+        },
+        "settings": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('gateway_id', j.data.id); }
+    language: text/javascript
+order: 2000

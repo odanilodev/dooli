@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/modules/{{module_id}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Módulo de Teste (editado)"
+    }
+order: 4000

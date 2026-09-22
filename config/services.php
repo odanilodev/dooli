@@ -35,4 +35,23 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Payment gateways
+    |--------------------------------------------------------------------------
+    |
+    | Webhook secrets are mandatory in production. When a secret is not
+    | configured the adapter rejects every webhook (fail closed) instead of
+    | trusting unsigned payloads.
+    |
+    */
+
+    'mercadopago' => [
+        'webhook_secret' => env('MERCADOPAGO_WEBHOOK_SECRET'),
+    ],
+
+    'manual' => [
+        'webhook_secret' => env('MANUAL_WEBHOOK_SECRET'),
+    ],
+
 ];

@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/banners/{{banner_id}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Banner de Teste (editado)"
+    }
+order: 4000

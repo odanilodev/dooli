@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/users/{{user_id}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Usuário de Teste (editado)",
+        "city": "Rio de Janeiro"
+    }
+order: 4000

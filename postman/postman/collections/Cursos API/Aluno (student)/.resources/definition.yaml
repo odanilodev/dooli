@@ -1,0 +1,3 @@
+$kind: collection
+description: "Área do aluno: usa {{student_token}}."
+order: 5000

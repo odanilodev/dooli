@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/topics/{{topic_id}}/lessons/reorder"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "ids": [
+            {{lesson_id}}
+        ]
+    }
+order: 6000

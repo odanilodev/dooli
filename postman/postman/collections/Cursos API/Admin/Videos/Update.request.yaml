@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/videos/{{video_id}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "title": "Vídeo de Teste (editado)"
+    }
+order: 4000

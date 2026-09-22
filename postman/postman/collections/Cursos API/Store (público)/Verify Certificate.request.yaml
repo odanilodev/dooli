@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/certificates/{{certificate_code}}/verify"
+method: GET
+headers:
+  X-Company: "{{company_id}}"
+auth:
+  type: noauth
+order: 3000

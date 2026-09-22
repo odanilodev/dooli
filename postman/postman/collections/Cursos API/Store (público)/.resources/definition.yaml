@@ -1,0 +1,3 @@
+$kind: collection
+description: "Rotas públicas: exigem o header X-Company."
+order: 4000

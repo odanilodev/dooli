@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/certificates"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Certificado de Teste",
+        "title": "Certificado de Conclusão",
+        "course_id": {{course_id}},
+        "grade": 100,
+        "version": "1.0",
+        "time": 10
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('certificate_id', j.data.id); }
+    language: text/javascript
+order: 2000

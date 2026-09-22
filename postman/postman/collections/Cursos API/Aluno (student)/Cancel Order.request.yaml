@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/me/orders/{{order_id}}/cancel"
+method: POST
+auth:
+  type: bearer
+  credentials:
+    token: "{{student_token}}"
+order: 14000

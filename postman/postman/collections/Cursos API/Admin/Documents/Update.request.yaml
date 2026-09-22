@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/documents/{{document_id}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "path": "documents/teste-2.pdf"
+    }
+order: 4000

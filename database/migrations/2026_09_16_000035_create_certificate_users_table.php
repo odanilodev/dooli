@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained('companies');
             $table->foreignId('user_id')->constrained('users');
             $table->foreignId('team_id')->constrained('teams');
-            $table->unsignedInteger('classes_count')->default(0);
+            $table->unsignedInteger('lessons_count')->default(0);
             $table->foreignId('certificate_id')->constrained('certificates');
             $table->timestamp('created_at')->useCurrent();
         });

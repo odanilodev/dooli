@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/modules"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Módulo de Teste",
+        "description": "Criado pelo Postman",
+        "status": "active"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('module_id', j.data.id); }
+    language: text/javascript
+order: 2000

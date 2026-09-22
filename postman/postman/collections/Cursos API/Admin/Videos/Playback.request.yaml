@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/videos/{{video_id}}/playback"
+method: GET
+order: 6000

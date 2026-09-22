@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/me/orders"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "items": [
+            {
+                "store_product_id": {{store_product_id}},
+                "quantity": 1
+            }
+        ],
+        "coupon_code": "{{coupon_code}}"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{student_token}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('order_id', j.data.id); }
+    language: text/javascript
+order: 12000

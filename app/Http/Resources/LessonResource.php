@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class LessonResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'description' => $this->description,
+            'content' => $this->content,
+            'topic_id' => $this->topic_id,
+            'status' => $this->status,
+            'sort_order' => $this->sort_order,
+            'published_at' => $this->published_at?->toIso8601String(),
+            'webinar_link' => $this->webinar_link,
+            'video' => new VideoResource($this->whenLoaded('video')),
+            'document' => new DocumentResource($this->whenLoaded('document')),
+            'attachments' => AttachmentResource::collection($this->whenLoaded('attachments')),
+            'created_at' => $this->created_at?->toIso8601String(),
+        ];
+    }
+}

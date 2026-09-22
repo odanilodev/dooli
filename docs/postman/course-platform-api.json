@@ -1,0 +1,4349 @@
+{
+    "info": {
+        "name": "Cursos API",
+        "description": "Collection completa da API de cursos (Laravel 13 + Sanctum). Rode 'Setup (rode primeiro)' para autenticar. Todas as requisições enviam Accept: application/json. Variáveis são preenchidas automaticamente pelos testes das requisições.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });"
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000",
+            "type": "string"
+        },
+        {
+            "key": "company_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "admin_email",
+            "value": "admin@cursos.test",
+            "type": "string"
+        },
+        {
+            "key": "admin_password",
+            "value": "password",
+            "type": "string"
+        },
+        {
+            "key": "student_email",
+            "value": "aluno@cursos.test",
+            "type": "string"
+        },
+        {
+            "key": "student_password",
+            "value": "password",
+            "type": "string"
+        },
+        {
+            "key": "admin_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "student_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "course_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "module_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "topic_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "lesson_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "team_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "user_id",
+            "value": "2",
+            "type": "string"
+        },
+        {
+            "key": "user_type_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "coupon_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "coupon_code",
+            "value": "BEMVINDO10",
+            "type": "string"
+        },
+        {
+            "key": "store_product_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "store_product_slug",
+            "value": "curso-de-php",
+            "type": "string"
+        },
+        {
+            "key": "gateway_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "gateway_code",
+            "value": "manual",
+            "type": "string"
+        },
+        {
+            "key": "webhook_secret",
+            "value": "dev-manual-secret",
+            "type": "string"
+        },
+        {
+            "key": "certificate_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "certificate_user_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "certificate_code",
+            "value": "DEMO-CERT-0001",
+            "type": "string"
+        },
+        {
+            "key": "order_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "payment_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "notification_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "comment_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "rating_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "video_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "document_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "attachment_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "banner_id",
+            "value": "1",
+            "type": "string"
+        },
+        {
+            "key": "reset_token",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{admin_token}}",
+                "type": "string"
+            }
+        ]
+    },
+    "item": [
+        {
+            "name": "Setup (rode primeiro)",
+            "item": [
+                {
+                    "name": "1. Login (admin)",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{admin_email}}\",\n    \"password\": \"{{admin_password}}\",\n    \"device_name\": \"postman\"\n}"
+                        },
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "description": "Autentica como administrador e preenche {{admin_token}}."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const j = pm.response.json();",
+                                    "if (j && j.data && j.data.token) { pm.collectionVariables.set('admin_token', j.data.token); }",
+                                    "if (j && j.data && j.data.user && j.data.user.company_id) { pm.collectionVariables.set('company_id', j.data.user.company_id); }",
+                                    "pm.test('login ok', () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "2. Login (aluno)",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{student_email}}\",\n    \"password\": \"{{student_password}}\",\n    \"device_name\": \"postman\"\n}"
+                        },
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "description": "Autentica como aluno e preenche {{student_token}}."
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const j = pm.response.json();",
+                                    "if (j && j.data && j.data.token) { pm.collectionVariables.set('student_token', j.data.token); }",
+                                    "pm.test('login ok', () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ],
+            "description": "Rode estas duas requisições primeiro: elas preenchem os tokens de admin e aluno usados no resto da collection."
+        },
+        {
+            "name": "Auth",
+            "item": [
+                {
+                    "name": "Me",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/me",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "me"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/logout",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "logout"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Logout All",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/logout-all",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "logout-all"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Forgot Password",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/forgot-password",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "forgot-password"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{student_email}}\"\n}"
+                        },
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "description": "Sempre retorna 200 (sem enumeração). O token chega por e-mail."
+                    }
+                },
+                {
+                    "name": "Reset Password",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/auth/reset-password",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "reset-password"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"token\": \"{{reset_token}}\",\n    \"email\": \"{{student_email}}\",\n    \"password\": \"new-password-123\",\n    \"password_confirmation\": \"new-password-123\"\n}"
+                        },
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Profile (autenticado)",
+            "item": [
+                {
+                    "name": "Show",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/profile",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "profile"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update",
+                    "request": {
+                        "method": "PUT",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/profile",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "profile"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Administrador\",\n    \"phone\": \"+55 11 90000-0000\",\n    \"city\": \"São Paulo\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Change Password",
+                    "request": {
+                        "method": "PUT",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/password",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "password"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"current_password\": \"password\",\n    \"password\": \"new-password-123\",\n    \"password_confirmation\": \"new-password-123\"\n}"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Store (público)",
+            "item": [
+                {
+                    "name": "List Products",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/store/products?search=&page=1&per_page=20",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "store",
+                                "products"
+                            ],
+                            "query": [
+                                {
+                                    "key": "search",
+                                    "value": "",
+                                    "disabled": false
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "1",
+                                    "disabled": false
+                                },
+                                {
+                                    "key": "per_page",
+                                    "value": "20",
+                                    "disabled": false
+                                }
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "X-Company",
+                                "value": "{{company_id}}"
+                            }
+                        ],
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const j = pm.response.json();",
+                                    "if (j && Array.isArray(j.data) && j.data.length) { pm.collectionVariables.set('store_product_id', j.data[0].id); pm.collectionVariables.set('store_product_slug', j.data[0].slug); }"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show Product",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/store/products/{{store_product_slug}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "store",
+                                "products",
+                                "{{store_product_slug}}"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "X-Company",
+                                "value": "{{company_id}}"
+                            }
+                        ],
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    }
+                },
+                {
+                    "name": "Verify Certificate",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/certificates/{{certificate_code}}/verify",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "certificates",
+                                "{{certificate_code}}",
+                                "verify"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "X-Company",
+                                "value": "{{company_id}}"
+                            }
+                        ],
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    }
+                }
+            ],
+            "description": "Rotas públicas: exigem o header X-Company."
+        },
+        {
+            "name": "Aluno (student)",
+            "item": [
+                {
+                    "name": "My Courses",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/courses",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "courses"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const j = pm.response.json();",
+                                    "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('course_id', j.data[0].id); }"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "My Course",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/courses/{{course_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "courses",
+                                "{{course_id}}"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "My Progress",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/courses/{{course_id}}/progress?team_id={{team_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "courses",
+                                "{{course_id}}",
+                                "progress"
+                            ],
+                            "query": [
+                                {
+                                    "key": "team_id",
+                                    "value": "{{team_id}}",
+                                    "disabled": false
+                                }
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "My Timeline",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/courses/{{course_id}}/timeline?team_id={{team_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "courses",
+                                "{{course_id}}",
+                                "timeline"
+                            ],
+                            "query": [
+                                {
+                                    "key": "team_id",
+                                    "value": "{{team_id}}",
+                                    "disabled": false
+                                }
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Complete Lesson",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/progress/complete",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "progress",
+                                "complete"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"lesson_id\": {{lesson_id}},\n    \"course_id\": {{course_id}},\n    \"team_id\": {{team_id}},\n    \"module_id\": {{module_id}}\n}"
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "My Certificates",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/certificates",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "certificates"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const j = pm.response.json();",
+                                    "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('certificate_user_id', j.data[0].id); }"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Generate Certificate",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/certificates/generate",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "certificates",
+                                "generate"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"course_id\": {{course_id}},\n    \"team_id\": {{team_id}}\n}"
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "My Notifications",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/notifications",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "notifications"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const j = pm.response.json();",
+                                    "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('notification_id', j.data[0].id); }"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Mark All Read",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/notifications/read-all",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "notifications",
+                                "read-all"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Read Notification",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/notifications/{{notification_id}}/read",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "notifications",
+                                "{{notification_id}}",
+                                "read"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "My Orders",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/orders",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "orders"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const j = pm.response.json();",
+                                    "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('order_id', j.data[0].id); }"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Order",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/orders",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "orders"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"items\": [\n        {\n            \"store_product_id\": {{store_product_id}},\n            \"quantity\": 1\n        }\n    ],\n    \"coupon_code\": \"{{coupon_code}}\"\n}"
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const j = pm.response.json();",
+                                    "if (j && j.data && j.data.id) { pm.collectionVariables.set('order_id', j.data.id); }"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show Order",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/orders/{{order_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "orders",
+                                "{{order_id}}"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Cancel Order",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/me/orders/{{order_id}}/cancel",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "me",
+                                "orders",
+                                "{{order_id}}",
+                                "cancel"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List Comments",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/comments?lesson_id={{lesson_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "comments"
+                            ],
+                            "query": [
+                                {
+                                    "key": "lesson_id",
+                                    "value": "{{lesson_id}}",
+                                    "disabled": false
+                                }
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const j = pm.response.json();",
+                                    "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('comment_id', j.data[0].id); }"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Comment",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/comments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "comments"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"content\": \"Ótima aula!\",\n    \"lesson_id\": {{lesson_id}},\n    \"module_id\": {{module_id}},\n    \"course_id\": {{course_id}},\n    \"team_id\": {{team_id}}\n}"
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const j = pm.response.json();",
+                                    "if (j && j.data && j.data.id) { pm.collectionVariables.set('comment_id', j.data.id); }"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List Ratings",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/ratings?lesson_id={{lesson_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "ratings"
+                            ],
+                            "query": [
+                                {
+                                    "key": "lesson_id",
+                                    "value": "{{lesson_id}}",
+                                    "disabled": false
+                                }
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const j = pm.response.json();",
+                                    "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('rating_id', j.data[0].id); }"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Rating",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/ratings",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "ratings"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"rating\": 5,\n    \"lesson_id\": {{lesson_id}},\n    \"module_id\": {{module_id}},\n    \"course_id\": {{course_id}},\n    \"team_id\": {{team_id}}\n}"
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{student_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const j = pm.response.json();",
+                                    "if (j && j.data && j.data.id) { pm.collectionVariables.set('rating_id', j.data.id); }"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ],
+            "description": "Área do aluno: usa {{student_token}}."
+        },
+        {
+            "name": "Admin",
+            "item": [
+                {
+                    "name": "Courses",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/courses?page=1&per_page=20",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "courses"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "page",
+                                            "value": "1",
+                                            "disabled": false
+                                        },
+                                        {
+                                            "key": "per_page",
+                                            "value": "20",
+                                            "disabled": false
+                                        }
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('course_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/courses",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "courses"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Curso de Teste\",\n    \"description\": \"Criado pelo Postman\",\n    \"status\": \"active\",\n    \"sort_order\": 0\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('course_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/courses/{{course_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "courses",
+                                        "{{course_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/courses/{{course_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "courses",
+                                        "{{course_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Curso de Teste (editado)\",\n    \"status\": \"active\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/courses/{{course_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "courses",
+                                        "{{course_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Publish",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/courses/{{course_id}}/publish",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "courses",
+                                        "{{course_id}}",
+                                        "publish"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Unpublish",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/courses/{{course_id}}/unpublish",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "courses",
+                                        "{{course_id}}",
+                                        "unpublish"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Attach Module",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/courses/{{course_id}}/modules",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "courses",
+                                        "{{course_id}}",
+                                        "modules"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"module_id\": {{module_id}},\n    \"sort_order\": 0\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Detach Module",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/courses/{{course_id}}/modules/{{module_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "courses",
+                                        "{{course_id}}",
+                                        "modules",
+                                        "{{module_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Reorder Modules",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/courses/{{course_id}}/modules/reorder",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "courses",
+                                        "{{course_id}}",
+                                        "modules",
+                                        "reorder"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"ids\": [\n        {{module_id}}\n    ]\n}"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Modules",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/modules",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "modules"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('module_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/modules",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "modules"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Módulo de Teste\",\n    \"description\": \"Criado pelo Postman\",\n    \"status\": \"active\"\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('module_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/modules/{{module_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "modules",
+                                        "{{module_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/modules/{{module_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "modules",
+                                        "{{module_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Módulo de Teste (editado)\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/modules/{{module_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "modules",
+                                        "{{module_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Reorder Topics",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/modules/{{module_id}}/topics/reorder",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "modules",
+                                        "{{module_id}}",
+                                        "topics",
+                                        "reorder"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"ids\": [\n        {{topic_id}}\n    ]\n}"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Topics",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/topics",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "topics"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('topic_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/topics",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "topics"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Tópico de Teste\",\n    \"module_id\": {{module_id}},\n    \"sort_order\": 0,\n    \"status\": \"active\"\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('topic_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/topics/{{topic_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "topics",
+                                        "{{topic_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/topics/{{topic_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "topics",
+                                        "{{topic_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Tópico de Teste (editado)\",\n    \"module_id\": {{module_id}}\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/topics/{{topic_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "topics",
+                                        "{{topic_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Reorder Lessons",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/topics/{{topic_id}}/lessons/reorder",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "topics",
+                                        "{{topic_id}}",
+                                        "lessons",
+                                        "reorder"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"ids\": [\n        {{lesson_id}}\n    ]\n}"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Lessons",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/lessons",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "lessons"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('lesson_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/lessons",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "lessons"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Aula de Teste\",\n    \"topic_id\": {{topic_id}},\n    \"description\": \"Criada pelo Postman\",\n    \"content\": \"<p>Conteúdo</p>\",\n    \"video_id\": {{video_id}},\n    \"document_id\": {{document_id}},\n    \"published_at\": \"2026-01-01 00:00:00\",\n    \"attachment_ids\": [\n        {{attachment_id}}\n    ]\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('lesson_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/lessons/{{lesson_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "lessons",
+                                        "{{lesson_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/lessons/{{lesson_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "lessons",
+                                        "{{lesson_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Aula de Teste (editada)\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/lessons/{{lesson_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "lessons",
+                                        "{{lesson_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Publish",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/lessons/{{lesson_id}}/publish",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "lessons",
+                                        "{{lesson_id}}",
+                                        "publish"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Unpublish",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/lessons/{{lesson_id}}/unpublish",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "lessons",
+                                        "{{lesson_id}}",
+                                        "unpublish"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Teams",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/teams",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "teams"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('team_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/teams",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "teams"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Turma de Teste\",\n    \"status\": \"active\",\n    \"sort_order\": 0,\n    \"course_ids\": [\n        {{course_id}}\n    ]\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('team_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/teams/{{team_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "teams",
+                                        "{{team_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/teams/{{team_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "teams",
+                                        "{{team_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Turma de Teste (editada)\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/teams/{{team_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "teams",
+                                        "{{team_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Students",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/teams/{{team_id}}/students",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "teams",
+                                        "{{team_id}}",
+                                        "students"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Add Student",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/teams/{{team_id}}/students",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "teams",
+                                        "{{team_id}}",
+                                        "students"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"user_id\": {{user_id}}\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Remove Student",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/teams/{{team_id}}/students/{{user_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "teams",
+                                        "{{team_id}}",
+                                        "students",
+                                        "{{user_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Courses",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/teams/{{team_id}}/courses",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "teams",
+                                        "{{team_id}}",
+                                        "courses"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Attach Course",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/teams/{{team_id}}/courses",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "teams",
+                                        "{{team_id}}",
+                                        "courses"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"course_id\": {{course_id}}\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Detach Course",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/teams/{{team_id}}/courses/{{course_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "teams",
+                                        "{{team_id}}",
+                                        "courses",
+                                        "{{course_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Users",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/users",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "users"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('user_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/users",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "users"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Usuário de Teste\",\n    \"username\": \"usuario_teste\",\n    \"email\": \"usuario.teste@cursos.test\",\n    \"password\": \"password\",\n    \"user_type_id\": {{user_type_id}},\n    \"status\": \"active\"\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('user_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/users/{{user_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "users",
+                                        "{{user_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/users/{{user_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "users",
+                                        "{{user_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Usuário de Teste (editado)\",\n    \"city\": \"Rio de Janeiro\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/users/{{user_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "users",
+                                        "{{user_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "User Types",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/user-types",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "user-types"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('user_type_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/user-types",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "user-types"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Tipo de Teste\",\n    \"status\": \"active\",\n    \"permission_menu\": []\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('user_type_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/user-types/{{user_type_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "user-types",
+                                        "{{user_type_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/user-types/{{user_type_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "user-types",
+                                        "{{user_type_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Tipo de Teste (editado)\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/user-types/{{user_type_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "user-types",
+                                        "{{user_type_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Coupons",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/coupons",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "coupons"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('coupon_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/coupons",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "coupons"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"code\": \"POSTMAN10\",\n    \"type\": \"percent\",\n    \"value\": 10,\n    \"status\": \"active\",\n    \"usage_limit\": 100,\n    \"per_user_limit\": 1,\n    \"min_order_amount\": 0,\n    \"store_product_ids\": [\n        {{store_product_id}}\n    ]\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('coupon_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/coupons/{{coupon_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "coupons",
+                                        "{{coupon_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/coupons/{{coupon_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "coupons",
+                                        "{{coupon_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"value\": 15\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/coupons/{{coupon_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "coupons",
+                                        "{{coupon_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Store Products",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/store-products",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "store-products"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length) { pm.collectionVariables.set('store_product_id', j.data[0].id); pm.collectionVariables.set('store_product_slug', j.data[0].slug); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/store-products",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "store-products"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"course_id\": {{course_id}},\n    \"title\": \"Produto de Teste\",\n    \"slug\": \"produto-de-teste\",\n    \"description\": \"Criado pelo Postman\",\n    \"price\": 199.9,\n    \"sale\": 149.9,\n    \"status\": \"active\",\n    \"team_ids\": [\n        {{team_id}}\n    ]\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('store_product_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/store-products/{{store_product_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "store-products",
+                                        "{{store_product_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/store-products/{{store_product_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "store-products",
+                                        "{{store_product_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"title\": \"Produto de Teste (editado)\",\n    \"price\": 179.9\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/store-products/{{store_product_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "store-products",
+                                        "{{store_product_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Gateways",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/gateways",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "gateways"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('gateway_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/gateways",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "gateways"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Gateway de Teste\",\n    \"code\": \"manual\",\n    \"status\": \"active\",\n    \"credentials\": {\n        \"webhook_secret\": \"dev-manual-secret\"\n    },\n    \"settings\": []\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('gateway_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/gateways/{{gateway_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "gateways",
+                                        "{{gateway_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/gateways/{{gateway_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "gateways",
+                                        "{{gateway_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Gateway de Teste (editado)\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/gateways/{{gateway_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "gateways",
+                                        "{{gateway_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Videos",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/videos",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "videos"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('video_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/videos",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "videos"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"title\": \"Vídeo de Teste\",\n    \"link\": \"https://videos.test/demo\",\n    \"player\": \"external\",\n    \"code\": \"VID-TESTE\",\n    \"time\": 300,\n    \"status\": \"active\"\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('video_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/videos/{{video_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "videos",
+                                        "{{video_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/videos/{{video_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "videos",
+                                        "{{video_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"title\": \"Vídeo de Teste (editado)\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/videos/{{video_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "videos",
+                                        "{{video_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Playback",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/videos/{{video_id}}/playback",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "videos",
+                                        "{{video_id}}",
+                                        "playback"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Documents",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/documents",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "documents"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('document_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/documents",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "documents"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"path\": \"documents/teste.pdf\",\n    \"status\": \"active\"\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('document_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/documents/{{document_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "documents",
+                                        "{{document_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/documents/{{document_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "documents",
+                                        "{{document_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"path\": \"documents/teste-2.pdf\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/documents/{{document_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "documents",
+                                        "{{document_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Attachments",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/attachments",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "attachments"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('attachment_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/attachments",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "attachments"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"path\": \"attachments/teste.zip\",\n    \"status\": \"active\"\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('attachment_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/attachments/{{attachment_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "attachments",
+                                        "{{attachment_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/attachments/{{attachment_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "attachments",
+                                        "{{attachment_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"path\": \"attachments/teste-2.zip\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/attachments/{{attachment_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "attachments",
+                                        "{{attachment_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Banners",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/banners",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "banners"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('banner_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/banners",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "banners"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Banner de Teste\",\n    \"path\": \"banners/teste.jpg\",\n    \"link\": \"/store\",\n    \"sort_order\": 0,\n    \"status\": \"active\"\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('banner_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/banners/{{banner_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "banners",
+                                        "{{banner_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/banners/{{banner_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "banners",
+                                        "{{banner_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Banner de Teste (editado)\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/banners/{{banner_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "banners",
+                                        "{{banner_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Certificates",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/certificates",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "certificates"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('certificate_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/certificates",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "certificates"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"name\": \"Certificado de Teste\",\n    \"title\": \"Certificado de Conclusão\",\n    \"course_id\": {{course_id}},\n    \"grade\": 100,\n    \"version\": \"1.0\",\n    \"time\": 10\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('certificate_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/certificates/{{certificate_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "certificates",
+                                        "{{certificate_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update",
+                            "request": {
+                                "method": "PUT",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/certificates/{{certificate_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "certificates",
+                                        "{{certificate_id}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"title\": \"Certificado (editado)\"\n}"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Delete",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/certificates/{{certificate_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "certificates",
+                                        "{{certificate_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Certificate Users (emitidos)",
+                    "item": [
+                        {
+                            "name": "Issued (list)",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/certificate-users",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "certificate-users"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length) { pm.collectionVariables.set('certificate_user_id', j.data[0].id); if (j.data[0].code) { pm.collectionVariables.set('certificate_code', j.data[0].code); } }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Revoke",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/certificate-users/{{certificate_user_id}}/revoke",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "certificate-users",
+                                        "{{certificate_user_id}}",
+                                        "revoke"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"reason\": \"Teste do Postman\"\n}"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Orders",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/orders",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "orders"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('order_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/orders/{{order_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "orders",
+                                        "{{order_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Payments",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/payments",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "payments"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('payment_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/payments",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "payments"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"order_id\": {{order_id}},\n    \"gateway_id\": {{gateway_id}},\n    \"method\": \"pix\",\n    \"amount\": 199.9,\n    \"metadata\": []\n}"
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && j.data && j.data.id) { pm.collectionVariables.set('payment_id', j.data.id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/payments/{{payment_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "payments",
+                                        "{{payment_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Refund",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/payments/{{payment_id}}/refund",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "payments",
+                                        "{{payment_id}}",
+                                        "refund"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"amount\": 10,\n    \"reason\": \"Teste do Postman\"\n}"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Moderação",
+                    "item": [
+                        {
+                            "name": "Comments",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/comments",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "comments"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('comment_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Delete Comment",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/comments/{{comment_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "comments",
+                                        "{{comment_id}}"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "name": "Ratings",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/ratings",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "ratings"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('rating_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Delete Rating",
+                            "request": {
+                                "method": "DELETE",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/ratings/{{rating_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "ratings",
+                                        "{{rating_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Auditoria",
+                    "item": [
+                        {
+                            "name": "Datalogs",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/datalogs?module=&action=&user_id=",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "datalogs"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "module",
+                                            "value": "",
+                                            "disabled": false
+                                        },
+                                        {
+                                            "key": "action",
+                                            "value": "",
+                                            "disabled": false
+                                        },
+                                        {
+                                            "key": "user_id",
+                                            "value": "",
+                                            "disabled": false
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Notifications",
+                    "item": [
+                        {
+                            "name": "List",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/notifications",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "notifications"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "const j = pm.response.json();",
+                                            "if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('notification_id', j.data[0].id); }"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Show",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{base_url}}/api/v1/admin/notifications/{{notification_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "admin",
+                                        "notifications",
+                                        "{{notification_id}}"
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+            ],
+            "description": "Área administrativa: usa {{admin_token}} (herdado da collection)."
+        },
+        {
+            "name": "Webhooks",
+            "item": [
+                {
+                    "name": "Payment Webhook (manual)",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/webhooks/payments/{{gateway_code}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "webhooks",
+                                "payments",
+                                "{{gateway_code}}"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Company",
+                                "value": "{{company_id}}"
+                            },
+                            {
+                                "key": "X-Webhook-Secret",
+                                "value": "{{webhook_secret}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"event_id\": \"evt-postman-1\",\n    \"event\": \"payment.updated\",\n    \"status\": \"paid\",\n    \"transaction_id\": \"MANUAL-DEMO-0002\"\n}"
+                        },
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "description": "Header X-Webhook-Secret deve bater com MANUAL_WEBHOOK_SECRET do .env."
+                    }
+                }
+            ],
+            "description": "Webhooks exigem X-Company e a assinatura (X-Webhook-Secret)."
+        }
+    ]
+}

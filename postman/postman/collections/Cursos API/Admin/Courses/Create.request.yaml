@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/courses"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Curso de Teste",
+        "description": "Criado pelo Postman",
+        "status": "active",
+        "sort_order": 0
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('course_id', j.data.id); }
+    language: text/javascript
+order: 2000

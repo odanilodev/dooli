@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/me/orders"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{student_token}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('order_id', j.data[0].id); }
+    language: text/javascript
+order: 11000

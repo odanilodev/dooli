@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/teams/{{team_id}}/students"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "user_id": {{user_id}}
+    }
+order: 7000

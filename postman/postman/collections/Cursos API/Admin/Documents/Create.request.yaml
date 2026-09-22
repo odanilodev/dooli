@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/documents"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "path": "documents/teste.pdf",
+        "status": "active"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('document_id', j.data.id); }
+    language: text/javascript
+order: 2000

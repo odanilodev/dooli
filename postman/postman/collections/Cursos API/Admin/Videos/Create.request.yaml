@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/videos"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "title": "Vídeo de Teste",
+        "link": "https://videos.test/demo",
+        "player": "external",
+        "code": "VID-TESTE",
+        "time": 300,
+        "status": "active"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('video_id', j.data.id); }
+    language: text/javascript
+order: 2000

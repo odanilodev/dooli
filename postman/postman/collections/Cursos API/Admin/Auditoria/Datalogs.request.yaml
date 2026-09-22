@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/datalogs?module=&action=&user_id="
+method: GET
+queryParams:
+  module: ""
+  action: ""
+  user_id: ""
+order: 1000

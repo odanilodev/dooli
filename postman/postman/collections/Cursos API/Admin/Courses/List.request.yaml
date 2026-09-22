@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/courses?page=1&per_page=20"
+method: GET
+queryParams:
+  page: "1"
+  per_page: "20"
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && Array.isArray(j.data) && j.data.length && j.data[0].id) { pm.collectionVariables.set('course_id', j.data[0].id); }
+    language: text/javascript
+order: 1000

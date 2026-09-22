@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/courses/{{course_id}}/modules"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "module_id": {{module_id}},
+        "sort_order": 0
+    }
+order: 8000

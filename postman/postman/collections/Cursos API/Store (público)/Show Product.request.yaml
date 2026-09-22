@@ -1,0 +1,8 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/store/products/{{store_product_slug}}"
+method: GET
+headers:
+  X-Company: "{{company_id}}"
+auth:
+  type: noauth
+order: 2000

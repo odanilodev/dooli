@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/store-products"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && Array.isArray(j.data) && j.data.length) { pm.collectionVariables.set('store_product_id', j.data[0].id); pm.collectionVariables.set('store_product_slug', j.data[0].slug); }
+    language: text/javascript
+order: 1000

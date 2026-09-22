@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('store_products', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('product_id')->constrained('products');
+            $table->foreignId('course_id')->constrained('courses');
             $table->foreignId('company_id')->constrained('companies');
             $table->string('title');
             $table->string('image')->nullable();

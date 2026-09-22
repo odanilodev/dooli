@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/topics/{{topic_id}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Tópico de Teste (editado)",
+        "module_id": {{module_id}}
+    }
+order: 4000

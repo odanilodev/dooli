@@ -1,0 +1,47 @@
+<?php
+
+namespace App\Models;
+
+use App\Concerns\BelongsToCompany;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+#[Fillable(['company_id', 'rating', 'lesson_id', 'module_id', 'course_id', 'team_id', 'user_id', 'image'])]
+class Rating extends Model
+{
+    use BelongsToCompany, HasFactory;
+
+    protected function casts(): array
+    {
+        return [
+            'rating' => 'decimal:2',
+        ];
+    }
+
+    public function lesson(): BelongsTo
+    {
+        return $this->belongsTo(Lesson::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function module(): BelongsTo
+    {
+        return $this->belongsTo(Module::class);
+    }
+
+    public function course(): BelongsTo
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+}

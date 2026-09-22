@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('name');
             $table->decimal('grade', 5, 2)->nullable();
             $table->string('title');
-            $table->foreignId('product_id')->constrained('products');
+            $table->foreignId('course_id')->constrained('courses');
             $table->string('version', 50)->nullable();
             $table->unsignedInteger('time')->default(0);
             $table->timestamps();

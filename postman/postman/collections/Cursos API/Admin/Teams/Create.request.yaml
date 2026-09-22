@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/teams"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Turma de Teste",
+        "status": "active",
+        "sort_order": 0,
+        "course_ids": [
+            {{course_id}}
+        ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('team_id', j.data.id); }
+    language: text/javascript
+order: 2000

@@ -1,6 +1,6 @@
 # Cursos API
 
-API em Laravel 12 rodando com Docker (PHP 8.4 + MySQL 8.4).
+API REST de plataforma de cursos em **Laravel 13 + Sanctum**, rodando com Docker (PHP 8.4 + MySQL 8.4 + Redis). Multi-tenant por `company_id`.
 
 ## Requisitos
 
@@ -22,17 +22,26 @@ docker compose run --rm app composer install
 # 4. Suba os containers
 docker compose up -d --build
 
-# 5. Rode as migrations
+# 5. Rode as migrations e os seeders
 docker compose exec app php artisan migrate
+docker compose exec app php artisan db:seed
 ```
 
 A aplicação fica disponível em: http://localhost:8000
+
+Usuários de demonstração (após `db:seed`):
+
+| Perfil  | E-mail               | Senha      |
+| ------- | -------------------- | ---------- |
+| Admin   | `admin@cursos.test`  | `password` |
+| Aluno   | `aluno@cursos.test`  | `password` |
 
 ## Serviços
 
 | Serviço | Container         | Porta host | Porta interna |
 | ------- | ----------------- | ---------- | ------------- |
 | app     | `cursos_api_app`  | 8000       | 8000          |
+| queue   | `cursos_api_queue`| —          | —             |
 | db      | `cursos_api_db`   | 3308       | 3306          |
 | redis   | `cursos_api_redis`| 6380       | 6379          |
 
@@ -106,8 +115,48 @@ docker compose exec app php -r "echo (new Redis)->connect('redis', 6379) ? 'ok' 
 > Por padrão os drivers continuam `file`/`sync`. Para usar o Redis troque no `.env`:
 > `CACHE_STORE=redis`, `SESSION_DRIVER=redis` e/ou `QUEUE_CONNECTION=redis`.
 
+## Variáveis de ambiente relevantes
+
+| Variável | Descrição |
+| --- | --- |
+| `FRONTEND_URL` | base do link de redefinição de senha (default `http://localhost:3000`) |
+| `SANCTUM_EXPIRATION` | validade do token em minutos (vazio = nunca expira) |
+| `MERCADOPAGO_WEBHOOK_SECRET` | segredo HMAC do webhook do MercadoPago (**obrigatório em produção**) |
+| `MANUAL_WEBHOOK_SECRET` | segredo do header `X-Webhook-Secret` do gateway manual (**obrigatório em produção**) |
+
+> Sem os segredos de webhook configurados, **todo** webhook é rejeitado com `401 invalid_webhook_signature` (falha fechada).
+
 ## Testes
 
 ```sh
 docker compose exec app php artisan test
+```
+
+## API
+
+- Base: `http://localhost:8000/api/v1`
+- Auth: Bearer Token (Sanctum) — `POST /api/v1/auth/login`
+- Rotas públicas e webhooks exigem o header `X-Company` (id da empresa).
+- Documentação completa: [`docs/API.md`](docs/API.md)
+- OpenAPI 3: [`docs/openapi.yaml`](docs/openapi.yaml)
+- Arquitetura: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- Segurança: [`docs/SECURITY.md`](docs/SECURITY.md)
+- Performance: [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md)
+
+### Postman (todas as rotas prontas)
+
+1. No Postman: **Import** → selecione [`docs/postman/course-platform-api.json`](docs/postman/course-platform-api.json).
+2. Importe também o environment [`docs/postman/course-platform-api.environment.json`](docs/postman/course-platform-api.environment.json) e selecione **"Cursos API - Local"**.
+3. Rode a pasta **Setup (rode primeiro)**: `Login (admin)` e `Login (aluno)` preenchem os tokens automaticamente.
+4. As requisições de listagem/criação preenchem as variáveis de id (`course_id`, `lesson_id`, `team_id`, ...) sozinhas, então você pode executar na ordem que quiser.
+
+A collection cobre **todas as rotas** (`/api/v1`) e já vem com corpo de exemplo, `Accept: application/json` e o header `X-Company` nas rotas públicas/webhooks.
+
+
+Exemplo de login:
+
+```sh
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@cursos.test","password":"password"}'
 ```

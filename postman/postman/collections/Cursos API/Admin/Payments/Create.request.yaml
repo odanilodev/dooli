@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/payments"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "order_id": {{order_id}},
+        "gateway_id": {{gateway_id}},
+        "method": "pix",
+        "amount": 199.9,
+        "metadata": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('payment_id', j.data.id); }
+    language: text/javascript
+order: 2000

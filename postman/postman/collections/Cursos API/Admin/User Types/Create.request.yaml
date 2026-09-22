@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/user-types"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Tipo de Teste",
+        "status": "active",
+        "permission_menu": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('user_type_id', j.data.id); }
+    language: text/javascript
+order: 2000

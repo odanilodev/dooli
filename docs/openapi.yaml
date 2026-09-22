@@ -1,0 +1,604 @@
+openapi: 3.0.3
+info:
+  title: Cursos API
+  description: API REST da plataforma de cursos (Laravel 13 + Sanctum, multi-tenant).
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+    description: Local
+tags:
+  - name: Auth
+  - name: Store
+  - name: Student
+  - name: Admin
+  - name: Webhooks
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Autentica e retorna um token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+                username: { type: string }
+                password: { type: string, minLength: 6 }
+                device_name: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Usuário autenticado
+      responses:
+        '200': { description: OK }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Encerra a sessão atual
+      responses:
+        '200': { description: OK }
+
+  /api/v1/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Envia o link de redefinição de senha
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200': { description: 'Sempre 200 (não revela se o e-mail existe)' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/v1/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Redefine a senha com um token válido
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, email, password, password_confirmation]
+              properties:
+                token: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                password_confirmation: { type: string }
+      responses:
+        '200': { description: OK }
+        '422': { description: Token inválido }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/v1/me/profile:
+    get:
+      tags: [Auth]
+      summary: Perfil do usuário autenticado
+      responses:
+        '200': { description: OK }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    put:
+      tags: [Auth]
+      summary: Atualiza o próprio perfil
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                username: { type: string }
+                email: { type: string, format: email }
+                image: { type: string }
+                phone: { type: string }
+                address: { type: string }
+                city: { type: string }
+      responses:
+        '200': { description: OK }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/me/password:
+    put:
+      tags: [Auth]
+      summary: Troca a própria senha
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, password, password_confirmation]
+              properties:
+                current_password: { type: string }
+                password: { type: string, minLength: 8 }
+                password_confirmation: { type: string }
+      responses:
+        '200': { description: OK }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/store/products:
+    get:
+      tags: [Store]
+      summary: Lista produtos de loja ativos
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/XCompany' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { $ref: '#/components/parameters/Search' }
+      responses:
+        '200': { description: OK }
+        '400': { description: Empresa não informada }
+
+  /api/v1/store/products/{slug}:
+    get:
+      tags: [Store]
+      summary: Detalhe do produto de loja
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/XCompany' }
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/certificates/{code}/verify:
+    get:
+      tags: [Store]
+      summary: Verifica autenticidade do certificado
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/XCompany' }
+        - name: code
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      code: { type: string, format: uuid }
+                      valid: { type: boolean }
+                      holder_name: { type: string }
+                      course: { type: string, nullable: true }
+                      lessons_count: { type: integer }
+                      issued_at: { type: string, format: date-time }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/me/courses:
+    get:
+      tags: [Student]
+      summary: Cursos do aluno
+      responses:
+        '200': { description: OK }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/me/courses/{course}:
+    get:
+      tags: [Student]
+      summary: Conteúdo do curso
+      parameters:
+        - { $ref: '#/components/parameters/CourseId' }
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/me/courses/{course}/progress:
+    get:
+      tags: [Student]
+      summary: Progresso do aluno no curso
+      parameters:
+        - { $ref: '#/components/parameters/CourseId' }
+        - name: team_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/me/progress/complete:
+    post:
+      tags: [Student]
+      summary: Conclui uma aula (idempotente)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lesson_id, course_id, team_id, module_id]
+              properties:
+                lesson_id: { type: integer }
+                course_id: { type: integer }
+                team_id: { type: integer }
+                module_id: { type: integer }
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/me/certificates:
+    get:
+      tags: [Student]
+      summary: Certificados do aluno
+      responses:
+        '200': { description: OK }
+
+  /api/v1/me/certificates/generate:
+    post:
+      tags: [Student]
+      summary: Gera certificado (validado no backend)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [course_id, team_id]
+              properties:
+                course_id: { type: integer }
+                team_id: { type: integer }
+      responses:
+        '201': { description: Emitido }
+        '422': { description: Critérios não atendidos }
+
+  /api/v1/me/orders:
+    get:
+      tags: [Student]
+      summary: Pedidos do aluno
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [Student]
+      summary: Cria pedido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      store_product_id: { type: integer }
+                      quantity: { type: integer, minimum: 1 }
+                coupon_code: { type: string }
+      responses:
+        '201': { description: Criado }
+        '422': { description: Cupom inválido }
+
+  /api/v1/admin/courses:
+    get:
+      tags: [Admin]
+      summary: Lista cursos
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      summary: Cria curso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                image: { type: string }
+                status: { type: string, enum: [active, inactive] }
+                sort_order: { type: integer }
+      responses:
+        '201': { description: Criado }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/admin/courses/{course}:
+    get:
+      tags: [Admin]
+      summary: Detalhe do curso
+      parameters:
+        - { $ref: '#/components/parameters/CourseId' }
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Admin]
+      summary: Atualiza curso
+      parameters:
+        - { $ref: '#/components/parameters/CourseId' }
+      responses:
+        '200': { description: OK }
+    delete:
+      tags: [Admin]
+      summary: Exclui curso
+      parameters:
+        - { $ref: '#/components/parameters/CourseId' }
+      responses:
+        '204': { description: Sem conteúdo }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/admin/courses/{course}/publish:
+    post:
+      tags: [Admin]
+      summary: Publica curso
+      parameters:
+        - { $ref: '#/components/parameters/CourseId' }
+      responses:
+        '200': { description: OK }
+
+  /api/v1/admin/teams/{team}/students:
+    post:
+      tags: [Admin]
+      summary: Adiciona aluno à turma
+      parameters:
+        - name: team
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id: { type: integer }
+                expired_at: { type: string, format: date-time }
+      responses:
+        '200': { description: OK }
+
+  /api/v1/admin/orders:
+    get:
+      tags: [Admin]
+      summary: Lista pedidos da empresa
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/admin/orders/{order}:
+    get:
+      tags: [Admin]
+      summary: Detalhe do pedido
+      parameters:
+        - name: order
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/admin/certificate-users:
+    get:
+      tags: [Admin]
+      summary: Lista certificados emitidos
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/admin/certificate-users/{certificateUser}/revoke:
+    post:
+      tags: [Admin]
+      summary: Invalida um certificado emitido
+      parameters:
+        - name: certificateUser
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/admin/comments:
+    get:
+      tags: [Admin]
+      summary: Lista comentários (moderação)
+      responses:
+        '200': { description: OK }
+
+  /api/v1/admin/comments/{comment}:
+    delete:
+      tags: [Admin]
+      summary: Exclui um comentário
+      parameters:
+        - name: comment
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Sem conteúdo }
+
+  /api/v1/admin/ratings:
+    get:
+      tags: [Admin]
+      summary: Lista avaliações (moderação)
+      responses:
+        '200': { description: OK }
+
+  /api/v1/admin/ratings/{rating}:
+    delete:
+      tags: [Admin]
+      summary: Exclui uma avaliação
+      parameters:
+        - name: rating
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+
+  /api/v1/admin/datalogs:
+    get:
+      tags: [Admin]
+      summary: Trilha de auditoria
+      parameters:
+        - name: module
+          in: query
+          schema: { type: string }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: user_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+
+  /api/v1/webhooks/payments/{gateway}:
+    post:
+      tags: [Webhooks]
+      summary: Webhook de pagamento
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/XCompany' }
+        - name: gateway
+          in: path
+          required: true
+          schema: { type: string, example: manual }
+      responses:
+        '202': { description: Enfileirado }
+        '400': { description: Empresa não informada }
+        '401': { description: Assinatura inválida }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+
+  parameters:
+    XCompany:
+      name: X-Company
+      in: header
+      required: true
+      schema: { type: integer }
+      description: Id da empresa (obrigatório em rotas públicas/webhooks)
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Search:
+      name: search
+      in: query
+      schema: { type: string }
+    CourseId:
+      name: course
+      in: path
+      required: true
+      schema: { type: integer }
+
+  responses:
+    Unauthorized:
+      description: Não autenticado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Sem permissão
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Não encontrado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Dados inválidos
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationError' }
+    TooManyRequests:
+      description: Rate limit excedido
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Registro duplicado ou com vínculos
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Success:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data: { type: object }
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        message: { type: string }
+        code: { type: string }
+    ValidationError:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        message: { type: string }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }

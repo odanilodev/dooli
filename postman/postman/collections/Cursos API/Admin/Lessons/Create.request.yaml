@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/lessons"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "name": "Aula de Teste",
+        "topic_id": {{topic_id}},
+        "description": "Criada pelo Postman",
+        "content": "<p>Conteúdo</p>",
+        "video_id": {{video_id}},
+        "document_id": {{document_id}},
+        "published_at": "2026-01-01 00:00:00",
+        "attachment_ids": [
+            {{attachment_id}}
+        ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('lesson_id', j.data.id); }
+    language: text/javascript
+order: 2000

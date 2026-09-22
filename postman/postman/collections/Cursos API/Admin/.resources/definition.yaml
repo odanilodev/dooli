@@ -1,0 +1,3 @@
+$kind: collection
+description: "Área administrativa: usa {{admin_token}} (herdado da collection)."
+order: 6000

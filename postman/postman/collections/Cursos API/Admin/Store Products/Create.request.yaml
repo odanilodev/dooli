@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/admin/store-products"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+        "course_id": {{course_id}},
+        "title": "Produto de Teste",
+        "slug": "produto-de-teste",
+        "description": "Criado pelo Postman",
+        "price": 199.9,
+        "sale": 149.9,
+        "status": "active",
+        "team_ids": [
+            {{team_id}}
+        ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const j = pm.response.json();
+      if (j && j.data && j.data.id) { pm.collectionVariables.set('store_product_id', j.data.id); }
+    language: text/javascript
+order: 2000

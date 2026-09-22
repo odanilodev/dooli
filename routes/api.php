@@ -11,3 +11,5 @@ Route::get('/health', function () {
         'timestamp' => now()->toIso8601String(),
     ]);
 });
+
+Route::prefix('v1')->group(base_path('routes/api/v1.php'));

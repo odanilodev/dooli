@@ -1,0 +1,20 @@
+$kind: http-request
+description: Header X-Webhook-Secret deve bater com MANUAL_WEBHOOK_SECRET do .env.
+url: "{{base_url}}/api/v1/webhooks/payments/{{gateway_code}}"
+method: POST
+headers:
+  Content-Type: application/json
+  X-Company: "{{company_id}}"
+  X-Webhook-Secret: "{{webhook_secret}}"
+body:
+  type: text
+  content: |-
+    {
+        "event_id": "evt-postman-1",
+        "event": "payment.updated",
+        "status": "paid",
+        "transaction_id": "MANUAL-DEMO-0002"
+    }
+auth:
+  type: noauth
+order: 1000
