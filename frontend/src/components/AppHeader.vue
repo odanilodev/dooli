@@ -50,6 +50,7 @@ import { useTheme } from '../composables/useTheme';
 import { useSidebar } from '../composables/useSidebar';
 import { useSearch } from '../composables/useSearch';
 import { useAuthStore } from '../stores/auth';
+import { resetUserStores } from '../stores/resetUserStores';
 
 const route = useRoute();
 const router = useRouter();
@@ -66,6 +67,7 @@ const menuRef = ref(null);
 async function handleLogout() {
   userMenuOpen.value = false;
   await auth.logout();
+  resetUserStores();
   router.push({ name: 'login' });
 }
 

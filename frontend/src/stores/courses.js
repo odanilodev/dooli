@@ -77,5 +77,12 @@ export const useCoursesStore = defineStore('courses', () => {
     }
   }
 
-  return { items, meta, loading, loaded, error, cards, completedCount, fetchMyCourses };
+  function reset() {
+    items.value = [];
+    meta.value = {};
+    loaded.value = false;
+    error.value = null;
+  }
+
+  return { items, meta, loading, loaded, error, cards, completedCount, fetchMyCourses, reset };
 });

@@ -101,7 +101,42 @@
           <template v-else>Nenhum material adicional para esta aula.</template>
         </div>
 
-        <div v-else class="tab-panel simple active">Os comentários dos alunos aparecerão aqui em breve.</div>
+        <div v-else class="tab-panel active">
+          <div class="comment-form">
+            <textarea
+              class="form-control"
+              rows="3"
+              v-model="commentText"
+              placeholder="Escreva um comentário ou dúvida sobre esta aula..."
+              style="resize:vertical;"
+              @keydown.ctrl.enter="submitComment"
+            ></textarea>
+            <div class="comment-form-actions">
+              <span v-if="commentError" class="form-error show" style="margin:0;">{{ commentError }}</span>
+              <button
+                class="btn btn-primary"
+                :disabled="comments.posting || !commentText.trim()"
+                @click="submitComment"
+              >{{ comments.posting ? 'Enviando...' : 'Comentar' }}</button>
+            </div>
+          </div>
+
+          <div v-if="comments.loading" class="comment-empty">Carregando comentários...</div>
+          <div v-else-if="comments.error" class="comment-empty">{{ comments.error }}</div>
+          <div v-else-if="comments.items.length === 0" class="comment-empty">Seja o primeiro a comentar esta aula.</div>
+          <template v-else>
+            <div v-for="comment in comments.items" :key="comment.id" class="comment-row">
+              <span class="comment-avatar">{{ initialsOf(comment.user?.name) }}</span>
+              <div class="comment-body">
+                <div class="comment-head">
+                  <span class="comment-author">{{ comment.user?.name || 'Aluno' }}</span>
+                  <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
+                </div>
+                <p class="comment-text">{{ comment.content }}</p>
+              </div>
+            </div>
+          </template>
+        </div>
       </div>
 
       <!-- RIGHT COLUMN -->
@@ -185,15 +220,19 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useCoursePlayerStore } from '../stores/coursePlayer';
+import { useCommentsStore } from '../stores/comments';
 
 const route = useRoute();
 const router = useRouter();
 const store = useCoursePlayerStore();
+const comments = useCommentsStore();
 
 const activeTab = ref('descricao');
 const openModule = ref(null);
 const completing = ref(false);
 const completeError = ref('');
+const commentText = ref('');
+const commentError = ref('');
 
 const courseId = computed(() => Number(route.params.courseId));
 const lessonIdParam = computed(() => (route.params.lessonId ? Number(route.params.lessonId) : null));
@@ -235,10 +274,78 @@ watch(lessonIdParam, (id) => {
 });
 
 watch(currentLesson, (lesson) => {
+  comments.reset();
+  commentText.value = '';
+  commentError.value = '';
+
   if (lesson) {
     openModule.value = lesson.moduleId;
+
+    if (activeTab.value === 'comentarios') {
+      comments.fetch(lesson.id);
+    }
   }
 });
+
+watch(activeTab, (tab) => {
+  if (tab === 'comentarios' && currentLesson.value) {
+    comments.fetch(currentLesson.value.id);
+  }
+});
+
+function formatDate(value) {
+  if (!value) {
+    return '';
+  }
+
+  try {
+    return new Date(value).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch (e) {
+    return '';
+  }
+}
+
+function initialsOf(name) {
+  const trimmed = (name || '').trim();
+
+  if (!trimmed) {
+    return '?';
+  }
+
+  const parts = trimmed.split(/\s+/);
+
+  return ((parts[0]?.[0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+}
+
+async function submitComment() {
+  commentError.value = '';
+
+  const content = commentText.value.trim();
+
+  if (!content || !currentLesson.value || !store.course || !store.progress) {
+    return;
+  }
+
+  try {
+    await comments.store({
+      content,
+      lessonId: currentLesson.value.id,
+      moduleId: currentLesson.value.moduleId,
+      courseId: store.course.id,
+      teamId: store.progress.team_id,
+    });
+
+    commentText.value = '';
+  } catch (e) {
+    commentError.value = e?.message || 'Não foi possível enviar seu comentário.';
+  }
+}
 
 function goLesson(lessonId) {
   if (!lessonId) {
