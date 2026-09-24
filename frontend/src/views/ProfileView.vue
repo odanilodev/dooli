@@ -10,17 +10,14 @@
 
     <div class="profile-header">
       <div class="profile-avatar-wrap">
-        <span class="profile-avatar">LF</span>
-        <button class="profile-avatar-edit" aria-label="Alterar foto" type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-        </button>
+        <span class="profile-avatar">{{ auth.initials }}</span>
       </div>
       <div class="profile-info">
-        <span class="profile-name">{{ form.name }}</span>
-        <span class="profile-role">{{ form.email }}</span>
-        <span class="profile-plan">
+        <span class="profile-name">{{ form.name || auth.user?.name }}</span>
+        <span class="profile-role">{{ form.email || auth.user?.email }}</span>
+        <span class="profile-plan" v-if="profile?.user_type?.name">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 6.6L21 10l-5 4.3L17.4 21 12 17.6 6.6 21 8 14.3 3 10l6.6-1.4z"/></svg>
-          Plano Pro
+          {{ profile.user_type.name }}
         </span>
       </div>
     </div>
@@ -48,60 +45,199 @@
       </div>
     </div>
 
-    <form class="panel" @submit.prevent="save">
-      <div>
-        <h2 class="panel-title">Informações pessoais</h2>
-        <p class="panel-desc">Essas informações aparecem no seu perfil e certificados.</p>
-      </div>
+    <div v-if="store.loading && !store.loaded" class="tab-panel simple active">Carregando perfil...</div>
 
-      <div class="form-success" :class="{ show: showSuccess }">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-        Alterações salvas com sucesso.
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="p-name">Nome completo</label>
-          <input class="form-control" type="text" id="p-name" v-model="form.name" required>
+    <template v-else>
+      <form class="panel" @submit.prevent="save">
+        <div>
+          <h2 class="panel-title">Informações pessoais</h2>
+          <p class="panel-desc">Essas informações aparecem no seu perfil e certificados.</p>
         </div>
-        <div class="form-group">
-          <label for="p-phone">Telefone</label>
-          <input class="form-control" type="tel" id="p-phone" v-model="form.phone">
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="p-email">E-mail</label>
-        <input class="form-control" type="email" id="p-email" v-model="form.email" required>
-      </div>
-      <div class="form-group">
-        <label for="p-bio">Sobre você</label>
-        <textarea class="form-control" id="p-bio" v-model="form.bio" rows="3" style="resize:vertical;"></textarea>
-      </div>
 
-      <div>
-        <button type="submit" class="btn btn-primary">Salvar alterações</button>
-      </div>
-    </form>
+        <div class="form-success" :class="{ show: profileSuccess }">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          Alterações salvas com sucesso.
+        </div>
+
+        <div class="form-error" :class="{ show: profileError }">{{ profileError }}</div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="p-name">Nome completo</label>
+            <input class="form-control" type="text" id="p-name" v-model="form.name" required>
+          </div>
+          <div class="form-group">
+            <label for="p-username">Usuário</label>
+            <input class="form-control" type="text" id="p-username" v-model="form.username">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="p-email">E-mail</label>
+            <input class="form-control" type="email" id="p-email" v-model="form.email" required>
+          </div>
+          <div class="form-group">
+            <label for="p-phone">Telefone</label>
+            <input class="form-control" type="tel" id="p-phone" v-model="form.phone">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="p-city">Cidade</label>
+            <input class="form-control" type="text" id="p-city" v-model="form.city">
+          </div>
+          <div class="form-group">
+            <label for="p-address">Endereço</label>
+            <input class="form-control" type="text" id="p-address" v-model="form.address">
+          </div>
+        </div>
+
+        <div>
+          <button type="submit" class="btn btn-primary" :disabled="store.saving">
+            {{ store.saving ? 'Salvando...' : 'Salvar alterações' }}
+          </button>
+        </div>
+      </form>
+
+      <form class="panel" @submit.prevent="changePassword">
+        <div>
+          <h2 class="panel-title">Trocar senha</h2>
+          <p class="panel-desc">Ao trocar a senha, os outros dispositivos conectados serão desconectados.</p>
+        </div>
+
+        <div class="form-success" :class="{ show: passwordSuccess }">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          Senha alterada com sucesso.
+        </div>
+
+        <div class="form-error" :class="{ show: passwordError }">{{ passwordError }}</div>
+
+        <div class="form-group">
+          <label for="p-current">Senha atual</label>
+          <input class="form-control" type="password" id="p-current" v-model="passwordForm.current_password" autocomplete="current-password">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="p-new">Nova senha</label>
+            <input class="form-control" type="password" id="p-new" v-model="passwordForm.password" autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label for="p-confirm">Confirmar nova senha</label>
+            <input class="form-control" type="password" id="p-confirm" v-model="passwordForm.password_confirmation" autocomplete="new-password">
+          </div>
+        </div>
+
+        <div>
+          <button type="submit" class="btn btn-primary" :disabled="savingPassword">
+            {{ savingPassword ? 'Alterando...' : 'Alterar senha' }}
+          </button>
+        </div>
+      </form>
+    </template>
 
   </main>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useAuthStore } from '../stores/auth';
+import { useProfileStore } from '../stores/profile';
 
-const form = reactive({
-  name: 'Luis Felipe',
-  phone: '(11) 99999-0000',
-  email: 'victorhugomarquezin@gmail.com',
-  bio: 'Aprendendo a operar com disciplina e gestão de risco.',
-});
+const auth = useAuthStore();
+const store = useProfileStore();
 
-const showSuccess = ref(false);
+const profile = computed(() => store.profile);
+
+const form = reactive({ name: '', username: '', email: '', phone: '', city: '', address: '' });
+const passwordForm = reactive({ current_password: '', password: '', password_confirmation: '' });
+
+const profileError = ref('');
+const profileSuccess = ref(false);
+const passwordError = ref('');
+const passwordSuccess = ref(false);
+const savingPassword = ref(false);
+
 let hideTimer = null;
 
-function save() {
-  showSuccess.value = true;
-  clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => { showSuccess.value = false; }, 2500);
+function fillForm(source) {
+  form.name = source?.name ?? '';
+  form.username = source?.username ?? '';
+  form.email = source?.email ?? '';
+  form.phone = source?.phone ?? '';
+  form.city = source?.city ?? '';
+  form.address = source?.address ?? '';
+}
+
+function firstError(error) {
+  const errors = error?.errors;
+
+  if (!errors) {
+    return '';
+  }
+
+  const first = Object.values(errors)[0];
+
+  return Array.isArray(first) ? first[0] : String(first);
+}
+
+onMounted(async () => {
+  const fetched = await store.fetch();
+  fillForm(fetched);
+});
+
+async function save() {
+  profileError.value = '';
+  profileSuccess.value = false;
+
+  if (!form.name.trim() || !form.email.trim()) {
+    profileError.value = 'Informe nome e e-mail.';
+    return;
+  }
+
+  const payload = { name: form.name.trim(), email: form.email.trim() };
+
+  if (form.username.trim()) payload.username = form.username.trim();
+  if (form.phone.trim()) payload.phone = form.phone.trim();
+  if (form.city.trim()) payload.city = form.city.trim();
+  if (form.address.trim()) payload.address = form.address.trim();
+
+  try {
+    const updated = await store.update(payload);
+    fillForm(updated);
+    profileSuccess.value = true;
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => { profileSuccess.value = false; }, 2500);
+  } catch (e) {
+    profileError.value = firstError(e) || e?.message || 'Não foi possível salvar suas informações.';
+  }
+}
+
+async function changePassword() {
+  passwordError.value = '';
+  passwordSuccess.value = false;
+
+  if (!passwordForm.current_password || !passwordForm.password) {
+    passwordError.value = 'Informe a senha atual e a nova senha.';
+    return;
+  }
+
+  if (passwordForm.password !== passwordForm.password_confirmation) {
+    passwordError.value = 'As senhas não conferem.';
+    return;
+  }
+
+  savingPassword.value = true;
+
+  try {
+    await store.updatePassword({ ...passwordForm });
+    passwordSuccess.value = true;
+    passwordForm.current_password = '';
+    passwordForm.password = '';
+    passwordForm.password_confirmation = '';
+  } catch (e) {
+    passwordError.value = firstError(e) || e?.message || 'Não foi possível alterar a senha.';
+  } finally {
+    savingPassword.value = false;
+  }
 }
 </script>

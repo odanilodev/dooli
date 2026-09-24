@@ -24,6 +24,10 @@ export const useAuthStore = defineStore('auth', () => {
     ).toUpperCase();
   });
 
+  function setUser(value) {
+    user.value = value;
+  }
+
   function clear() {
     user.value = null;
     token.value = null;
@@ -101,6 +105,7 @@ export const useAuthStore = defineStore('auth', () => {
     initials,
     login,
     fetchMe,
+    setUser,
     logout,
     clear,
     init,
