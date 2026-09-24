@@ -1,0 +1,108 @@
+import { defineStore } from 'pinia';
+import { computed, ref } from 'vue';
+import { api, getToken, setToken } from '../api/http';
+
+export const useAuthStore = defineStore('auth', () => {
+  const user = ref(null);
+  const token = ref(getToken());
+  const loading = ref(false);
+  const initialized = ref(false);
+
+  const isAuthenticated = computed(() => Boolean(token.value));
+  const role = computed(() => user.value?.user_type?.name || null);
+  const initials = computed(() => {
+    const name = user.value?.name?.trim();
+
+    if (!name) {
+      return '?';
+    }
+
+    const parts = name.split(/\s+/);
+
+    return (
+      (parts[0]?.[0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')
+    ).toUpperCase();
+  });
+
+  function clear() {
+    user.value = null;
+    token.value = null;
+    setToken(null);
+  }
+
+  async function login(credentials) {
+    loading.value = true;
+
+    try {
+      const { data } = await api.post('/auth/login', {
+        email: credentials.email,
+        password: credentials.password,
+        device_name: 'web',
+      });
+
+      token.value = data.data.token;
+      setToken(token.value);
+      user.value = data.data.user;
+
+      return user.value;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function fetchMe() {
+    if (!token.value) {
+      return null;
+    }
+
+    try {
+      const { data } = await api.get('/auth/me');
+      user.value = data.data;
+
+      return user.value;
+    } catch (error) {
+      if (error.status === 401) {
+        clear();
+      }
+
+      return null;
+    }
+  }
+
+  async function logout() {
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      /* token already invalid: proceed with local cleanup */
+    }
+
+    clear();
+  }
+
+  async function init() {
+    if (initialized.value) {
+      return;
+    }
+
+    if (token.value) {
+      await fetchMe();
+    }
+
+    initialized.value = true;
+  }
+
+  return {
+    user,
+    token,
+    loading,
+    initialized,
+    isAuthenticated,
+    role,
+    initials,
+    login,
+    fetchMe,
+    logout,
+    clear,
+    init,
+  };
+});

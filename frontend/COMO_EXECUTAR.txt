@@ -1,0 +1,75 @@
+DELTA CLASS — Como executar o projeto
+======================================
+
+Esse é um projeto Vue 3 + Vite. Para rodar, você precisa ter o Node.js
+instalado no computador.
+
+1) INSTALAR O NODE.JS (se ainda não tiver)
+-------------------------------------------
+Baixe e instale a versão LTS em: https://nodejs.org
+Depois de instalar, feche e abra o terminal de novo.
+
+Para conferir se instalou certo, rode:
+    node --version
+    npm --version
+
+(qualquer versão do Node 18 em diante funciona)
+
+
+2) INSTALAR AS DEPENDÊNCIAS DO PROJETO
+-------------------------------------------
+Abra o terminal DENTRO da pasta do projeto (onde está o arquivo
+package.json) e rode:
+
+    npm install
+
+Isso baixa tudo que o projeto precisa pra funcionar. Só precisa
+fazer isso uma vez (ou de novo se o package.json mudar).
+
+
+3) RODAR O PROJETO EM MODO DE DESENVOLVIMENTO
+-------------------------------------------
+Com as dependências instaladas, rode:
+
+    npm run dev
+
+O terminal vai mostrar um endereço, algo como:
+
+    Local:   http://localhost:5173/
+
+Abra esse endereço no navegador. A página atualiza sozinha (hot
+reload) sempre que um arquivo do projeto é alterado.
+
+Para parar o servidor, aperte Ctrl + C no terminal.
+
+
+4) GERAR A VERSÃO FINAL (BUILD DE PRODUÇÃO)
+-------------------------------------------
+Quando quiser gerar os arquivos finais prontos para publicar em um
+servidor/hospedagem, rode:
+
+    npm run build
+
+Isso cria uma pasta "dist" com tudo já otimizado (HTML, CSS e JS
+finais). É essa pasta "dist" que vai para o servidor de hospedagem,
+não o projeto inteiro.
+
+Para conferir se o build ficou certo antes de publicar, rode:
+
+    npm run preview
+
+e abra o endereço que aparecer no terminal.
+
+
+OBSERVAÇÕES
+-------------------------------------------
+- As telas de Login, Cadastro, Perfil e Configurações são só de
+  demonstração: os formulários não salvam em nenhum banco de dados
+  de verdade ainda (não tem backend conectado). É só front-end.
+- Os dados dos cursos (títulos, progresso, etc.) estão no arquivo
+  src/data/courses.js — é só editar esse arquivo para trocar o
+  conteúdo de exemplo.
+- O tema claro/escuro fica salvo no navegador de quem está usando
+  (cada pessoa vê a preferência dela).
+
+Qualquer dúvida, me chama.
