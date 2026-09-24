@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Repositories\ActionRepository;
 use App\Repositories\LessonRepository;
 use App\Repositories\TimelineRepository;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ProgressService
@@ -104,6 +105,44 @@ class ProgressService
             'percentage' => $totalLessons > 0 ? round(($completedCount / $totalLessons) * 100, 2) : 0.0,
             'completed_lesson_ids' => $completedIds,
         ];
+    }
+
+    /**
+     * @return array<int, array{total_lessons: int, completed_lessons: int, percentage: float}>
+     */
+    public function progressSummaryFor(User $user, Collection $courses): array
+    {
+        $completedAction = $this->actions->findByCode(ActionCode::Completed->value);
+
+        $summary = [];
+
+        foreach ($courses as $course) {
+            $team = $this->studentCourses->accessibleTeams($user, $course->id)->first();
+
+            if (! $team) {
+                $summary[$course->id] = [
+                    'total_lessons' => 0,
+                    'completed_lessons' => 0,
+                    'percentage' => 0.0,
+                ];
+
+                continue;
+            }
+
+            $totalLessons = $this->lessons->countPublishedByCourse($course->id);
+
+            $completedCount = $completedAction
+                ? count($this->timeline->completedLessonIds($user->id, $course->id, $team->id, $completedAction->id))
+                : 0;
+
+            $summary[$course->id] = [
+                'total_lessons' => $totalLessons,
+                'completed_lessons' => $completedCount,
+                'percentage' => $totalLessons > 0 ? round(($completedCount / $totalLessons) * 100, 2) : 0.0,
+            ];
+        }
+
+        return $summary;
     }
 
     /**

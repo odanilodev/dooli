@@ -30,6 +30,35 @@ class StudentProgressTest extends TestCase
             ->assertJsonPath('meta.total', 1);
     }
 
+    public function test_my_courses_list_includes_progress_summary(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $team = $this->enroll($this->student, $course['course'], $this->company->id);
+        $token = $this->apiLogin($this->student);
+
+        $this->withToken($token)
+            ->getJson('/api/v1/me/courses')
+            ->assertOk()
+            ->assertJsonPath('data.0.total_lessons', 1)
+            ->assertJsonPath('data.0.completed_lessons', 0)
+            ->assertJsonPath('data.0.percentage', 0);
+
+        $this->withToken($token)
+            ->postJson('/api/v1/me/progress/complete', [
+                'lesson_id' => $course['lesson']->id,
+                'course_id' => $course['course']->id,
+                'team_id' => $team->id,
+                'module_id' => $course['module']->id,
+            ])
+            ->assertOk();
+
+        $this->withToken($token)
+            ->getJson('/api/v1/me/courses')
+            ->assertOk()
+            ->assertJsonPath('data.0.completed_lessons', 1)
+            ->assertJsonPath('data.0.percentage', 100);
+    }
+
     public function test_student_cannot_access_course_without_enrollment(): void
     {
         $course = $this->buildCourse($this->company->id);

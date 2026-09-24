@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1\Student;
 
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Resources\CourseResource;
+use App\Http\Resources\StudentCourseResource;
+use App\Models\Course;
 use App\Services\ProgressService;
 use App\Services\StudentCourseService;
 use App\Support\ApiResponse;
@@ -19,9 +21,17 @@ class MyCourseController extends ApiController
 
     public function index(Request $request): JsonResponse
     {
-        $paginator = $this->studentCourses->myCourses($request->user(), $this->perPage($request));
+        $user = $request->user();
 
-        return ApiResponse::paginated($paginator, CourseResource::class);
+        $paginator = $this->studentCourses->myCourses($user, $this->perPage($request));
+
+        $summary = $this->progress->progressSummaryFor($user, $paginator->getCollection());
+
+        $paginator->getCollection()->each(
+            fn (Course $course) => $course->setAttribute('progress', $summary[$course->id] ?? null),
+        );
+
+        return ApiResponse::paginated($paginator, StudentCourseResource::class);
     }
 
     public function show(Request $request, int $course): JsonResponse
