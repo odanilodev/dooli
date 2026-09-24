@@ -8,7 +8,6 @@ import AuthLayout from '../layouts/AuthLayout.vue';
 import DashboardView from '../views/DashboardView.vue';
 import CoursesView from '../views/CoursesView.vue';
 import LessonView from '../views/LessonView.vue';
-import TurmasView from '../views/TurmasView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import LoginView from '../views/LoginView.vue';
@@ -25,7 +24,6 @@ const routes = [
       { path: 'cursos', name: 'cursos', component: CoursesView, meta: { title: 'Meus cursos', searchPlaceholder: 'Buscar nos meus cursos...' } },
       { path: 'cursos/:courseId', name: 'curso', component: LessonView, meta: { title: 'Curso', searchPlaceholder: 'Buscar no curso...' } },
       { path: 'cursos/:courseId/aula/:lessonId', name: 'aula', component: LessonView, meta: { title: 'Aula', searchPlaceholder: 'Buscar no curso...' } },
-      { path: 'turmas', name: 'turmas', component: TurmasView, meta: { title: 'Minhas turmas' } },
       { path: 'perfil', name: 'perfil', component: ProfileView, meta: { title: 'Meu perfil' } },
       { path: 'configuracoes', name: 'configuracoes', component: SettingsView, meta: { title: 'Configurações' } },
       { path: ':pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { title: 'Página não encontrada' } },
