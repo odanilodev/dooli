@@ -31,7 +31,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 RUN printf "date.timezone=America/Sao_Paulo\n" > /usr/local/etc/php/conf.d/zz-timezone.ini \
-    && printf "memory_limit=512M\n" > /usr/local/etc/php/conf.d/zz-memory.ini
+    && printf "memory_limit=512M\n" > /usr/local/etc/php/conf.d/zz-memory.ini \
+    && printf "opcache.enable_cli=1\nopcache.validate_timestamps=1\nopcache.revalidate_freq=2\n" > /usr/local/etc/php/conf.d/zz-opcache.ini
 
 WORKDIR /var/www/html
 
