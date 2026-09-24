@@ -16,6 +16,8 @@ Route → Middleware → FormRequest → Controller → Service → Repository �
 - **Resources**: formato explícito de resposta (nunca `SELECT *`).
 - **Policies**: autorização por empresa + perfil.
 
+> Hierarquias de **conteúdo**, **acesso** (turmas) e **comercial** (produtos) estão detalhadas em [`DOMAIN.md`](DOMAIN.md).
+
 ## Decisões
 
 | Tema | Decisão |
