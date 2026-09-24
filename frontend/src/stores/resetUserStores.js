@@ -2,6 +2,7 @@ import { useCoursesStore } from './courses';
 import { useCoursePlayerStore } from './coursePlayer';
 import { useCommentsStore } from './comments';
 import { useProfileStore } from './profile';
+import { useNotificationsStore } from './notifications';
 
 /**
  * Clears every user-scoped store so stale data from a previous session is never
@@ -12,4 +13,5 @@ export function resetUserStores() {
   useCoursePlayerStore().reset();
   useCommentsStore().reset();
   useProfileStore().reset();
+  useNotificationsStore().reset();
 }

@@ -18,7 +18,7 @@ class NotificationResource extends JsonResource
                 'slug' => $this->type->slug,
                 'name' => $this->type->name,
             ]),
-            'read_at' => $this->whenPivotLoaded('notification_users', fn () => $this->pivot->read_at),
+            'read_at' => $this->whenLoaded('users', fn () => $this->users->firstWhere('id', $request->user()?->id)?->pivot?->read_at),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

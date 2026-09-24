@@ -19,11 +19,6 @@
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/></svg>
         <span>Meus cursos</span>
       </router-link>
-      <a href="#" class="nav-link" @click.prevent>
-        <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 13 6 9z"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
-        <span style="flex-grow:1;">Notificações</span>
-        <span class="nav-badge">2</span>
-      </a>
       <router-link to="/perfil" class="nav-link" :class="{ active: $route.name === 'perfil' }" @click="close">
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
         <span>Meu perfil</span>

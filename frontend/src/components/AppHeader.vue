@@ -17,10 +17,44 @@
         <span class="knob"></span>
       </button>
 
-      <button class="icon-btn" aria-label="Notificações">
-        <svg class="icon" width="20" height="20" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 13 6 9z"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
-        <span class="badge-dot">2</span>
-      </button>
+      <div class="notif-menu" :class="{ open: notifOpen }" ref="notifRef">
+        <button class="icon-btn" aria-label="Notificações" @click="notifOpen = !notifOpen">
+          <svg class="icon" width="20" height="20" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 13 6 9z"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
+          <span v-if="unreadCount > 0" class="badge-dot">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+        </button>
+
+        <div class="notif-dropdown">
+          <div class="notif-dropdown-head">
+            <span class="notif-dropdown-title">Notificações</span>
+            <button v-if="unreadCount > 0" class="notif-mark-all" type="button" @click="markAll">Marcar todas</button>
+          </div>
+
+          <div v-if="notifications.loading && !notifications.loaded" class="notif-empty">Carregando...</div>
+          <div v-else-if="notifications.error" class="notif-empty">{{ notifications.error }}</div>
+          <div v-else-if="notifications.items.length === 0" class="notif-empty">Nenhuma notificação.</div>
+          <div v-else class="notif-list">
+            <button
+              v-for="item in notifications.items"
+              :key="item.id"
+              class="notif-item"
+              :class="{ unread: !item.read_at }"
+              type="button"
+              @click="read(item)"
+            >
+              <span class="notif-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 13 6 9z"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
+              </span>
+              <span class="notif-body">
+                <span class="notif-head">
+                  <span class="notif-type">{{ label(item) }}</span>
+                  <span v-if="!item.read_at" class="notif-dot"></span>
+                </span>
+                <span class="notif-date">{{ formatDate(item.release_at || item.created_at) }}</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div class="v-divider"></div>
 
@@ -50,19 +84,69 @@ import { useTheme } from '../composables/useTheme';
 import { useSidebar } from '../composables/useSidebar';
 import { useSearch } from '../composables/useSearch';
 import { useAuthStore } from '../stores/auth';
+import { useNotificationsStore } from '../stores/notifications';
 import { resetUserStores } from '../stores/resetUserStores';
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
+const notifications = useNotificationsStore();
 const { toggleTheme } = useTheme();
 const { toggle } = useSidebar();
 const { query } = useSearch();
+
+const unreadCount = computed(() => notifications.unreadCount);
 
 const placeholder = computed(() => route.meta?.searchPlaceholder || 'Buscar cursos, aulas ou temas...');
 
 const userMenuOpen = ref(false);
 const menuRef = ref(null);
+const notifOpen = ref(false);
+const notifRef = ref(null);
+
+const NOTIF_LABELS = {
+  course_completed: 'Curso concluído',
+  certificate_available: 'Certificado disponível',
+  lesson_updated: 'Aula atualizada',
+  certificate_recalculation_required: 'Certificado precisa ser recalculado',
+};
+
+function label(item) {
+  return NOTIF_LABELS[item.type?.slug] || item.type?.name || 'Notificação';
+}
+
+function formatDate(value) {
+  if (!value) {
+    return '';
+  }
+
+  try {
+    return new Date(value).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch (e) {
+    return '';
+  }
+}
+
+async function read(item) {
+  try {
+    await notifications.markAsRead(item.id);
+  } catch (e) {
+    /* mantém como está em caso de falha */
+  }
+}
+
+async function markAll() {
+  try {
+    await notifications.markAllAsRead();
+  } catch (e) {
+    /* ignora falha */
+  }
+}
 
 async function handleLogout() {
   userMenuOpen.value = false;
@@ -74,6 +158,10 @@ async function handleLogout() {
 function onClickOutside(event) {
   if (menuRef.value && !menuRef.value.contains(event.target)) {
     userMenuOpen.value = false;
+  }
+
+  if (notifRef.value && !notifRef.value.contains(event.target)) {
+    notifOpen.value = false;
   }
 }
 
