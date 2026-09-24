@@ -18,6 +18,6 @@ defineProps({
   title: { type: String, required: true },
   icon: { type: String, required: true },
   grad: { type: String, required: true },
-  to: { type: [String, Object], default: '/aula' },
+  to: { type: [String, Object], default: '/cursos' },
 });
 </script>

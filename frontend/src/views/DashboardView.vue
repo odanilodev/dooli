@@ -41,11 +41,11 @@
       <h1 class="hero-title">Do Zero ao Trader <em>Consistente</em></h1>
       <p class="hero-desc">Aprenda estratégias, gestão de risco e psicologia para evoluir no mercado financeiro.</p>
       <div class="hero-actions">
-        <router-link to="/aula" class="btn btn-primary">
+        <router-link to="/cursos" class="btn btn-primary">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5l12 7-12 7V5z"/></svg>
           Continuar assistindo
         </router-link>
-        <router-link to="/aula" class="btn btn-ghost-light">Ver detalhes</router-link>
+        <router-link to="/cursos" class="btn btn-ghost-light">Ver detalhes</router-link>
       </div>
       <span class="hero-quote">&quot;Disciplina hoje, liberdade amanhã.&quot;</span>
 
@@ -76,7 +76,7 @@
           :pct="item.pct"
           :icon="item.icon"
           :grad="item.grad"
-          to="/aula"
+          to="/cursos"
         />
       </div>
     </section>
@@ -97,7 +97,7 @@
           :badge="course.badge"
           :icon="course.icon"
           :grad="course.grad"
-          to="/aula"
+          :to="{ name: 'curso', params: { courseId: course.id } }"
         />
       </div>
     </section>
@@ -115,7 +115,7 @@
           :title="item.title"
           :icon="item.icon"
           :grad="item.grad"
-          to="/aula"
+          to="/cursos"
         />
       </div>
     </section>

@@ -22,6 +22,6 @@ defineProps({
   badge: { type: String, default: '' },
   icon: { type: String, required: true },
   grad: { type: String, required: true },
-  to: { type: [String, Object], default: '/aula' },
+  to: { type: [String, Object], default: '/cursos' },
 });
 </script>

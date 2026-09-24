@@ -21,6 +21,6 @@ defineProps({
   pct: { type: Number, default: 0 },
   icon: { type: String, required: true },
   grad: { type: String, required: true },
-  to: { type: [String, Object], default: '/aula' },
+  to: { type: [String, Object], default: '/cursos' },
 });
 </script>

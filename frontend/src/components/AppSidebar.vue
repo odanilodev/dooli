@@ -15,7 +15,7 @@
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/></svg>
         <span>Início</span>
       </router-link>
-      <router-link to="/cursos" class="nav-link" :class="{ active: ['cursos', 'aula'].includes($route.name) }" @click="close">
+      <router-link to="/cursos" class="nav-link" :class="{ active: ['cursos', 'curso', 'aula'].includes($route.name) }" @click="close">
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/></svg>
         <span>Meus cursos</span>
       </router-link>

@@ -9,7 +9,7 @@
     </div>
 
     <div class="turma-list">
-      <router-link v-for="turma in turmas" :key="turma.id" to="/aula" class="turma-card" style="text-decoration:none;color:inherit;">
+      <router-link v-for="turma in turmas" :key="turma.id" to="/cursos" class="turma-card" style="text-decoration:none;color:inherit;">
         <div class="turma-thumb" :style="{ background: turma.grad }">
           <span class="glow"></span>
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-opacity=".55" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="position:relative;"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.6 14.3c2.5.5 4.4 2.7 4.4 5.7"/></svg>

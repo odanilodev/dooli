@@ -30,7 +30,7 @@
         :badge="course.badge"
         :icon="course.icon"
         :grad="course.grad"
-        to="/aula"
+        :to="{ name: 'curso', params: { courseId: course.id } }"
       />
     </div>
 
