@@ -1,6 +1,7 @@
 import { useCoursesStore } from './courses';
 import { useCoursePlayerStore } from './coursePlayer';
 import { useCommentsStore } from './comments';
+import { useRatingsStore } from './ratings';
 import { useProfileStore } from './profile';
 import { useNotificationsStore } from './notifications';
 
@@ -12,6 +13,7 @@ export function resetUserStores() {
   useCoursesStore().reset();
   useCoursePlayerStore().reset();
   useCommentsStore().reset();
+  useRatingsStore().reset();
   useProfileStore().reset();
   useNotificationsStore().reset();
 }

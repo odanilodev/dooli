@@ -74,6 +74,7 @@
           <button class="tab" :class="{ active: activeTab === 'descricao' }" @click="activeTab = 'descricao'">Descrição</button>
           <button class="tab" :class="{ active: activeTab === 'materiais' }" @click="activeTab = 'materiais'">Materiais da aula</button>
           <button class="tab" :class="{ active: activeTab === 'comentarios' }" @click="activeTab = 'comentarios'">Comentários</button>
+          <button class="tab" :class="{ active: activeTab === 'avaliacoes' }" @click="activeTab = 'avaliacoes'">Avaliações</button>
         </div>
 
         <div v-if="activeTab === 'descricao'" class="tab-panel active">
@@ -101,7 +102,7 @@
           <template v-else>Nenhum material adicional para esta aula.</template>
         </div>
 
-        <div v-else class="tab-panel active">
+        <div v-else-if="activeTab === 'comentarios'" class="tab-panel active">
           <div class="comment-form">
             <textarea
               class="form-control"
@@ -133,6 +134,68 @@
                   <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
                 </div>
                 <p class="comment-text">{{ comment.content }}</p>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div v-else class="tab-panel active">
+          <div class="rating-summary">
+            <div class="rating-score">
+              <span class="rating-average">{{ formatRating(averageRating) }}</span>
+              <span class="rating-average-max">/10</span>
+            </div>
+            <div class="rating-summary-body">
+              <span class="rating-stars">
+                <svg v-for="n in 5" :key="n" viewBox="0 0 24 24" :class="{ filled: n <= averageStars }"><path d="M12 2l2.9 6.3 6.6.6-5 4.4 1.5 6.5L12 16.9 5.9 19.8 7.4 13.3 2.4 8.9l6.6-.6z"/></svg>
+              </span>
+              <span class="rating-count">{{ ratings.items.length }} {{ ratings.items.length === 1 ? 'avaliação' : 'avaliações' }}</span>
+            </div>
+          </div>
+
+          <div v-if="myRating" class="rating-mine">
+            <span class="rating-mine-label">Sua avaliação</span>
+            <span class="rating-stars">
+              <svg v-for="n in 5" :key="n" viewBox="0 0 24 24" :class="{ filled: n <= myStars }"><path d="M12 2l2.9 6.3 6.6.6-5 4.4 1.5 6.5L12 16.9 5.9 19.8 7.4 13.3 2.4 8.9l6.6-.6z"/></svg>
+            </span>
+            <span class="rating-mine-value">{{ formatRating(myRating.rating) }}/10</span>
+          </div>
+          <div v-else class="rating-form">
+            <span class="rating-form-label">Avalie esta aula</span>
+            <span class="rating-stars rating-stars-input" @mouseleave="hoverStars = 0">
+              <button
+                v-for="n in 5"
+                :key="n"
+                type="button"
+                class="rating-star-btn"
+                :aria-label="`${n} ${n === 1 ? 'estrela' : 'estrelas'}`"
+                @click="selectedStars = n"
+                @mouseenter="hoverStars = n"
+              >
+                <svg viewBox="0 0 24 24" :class="{ filled: n <= (hoverStars || selectedStars) }"><path d="M12 2l2.9 6.3 6.6.6-5 4.4 1.5 6.5L12 16.9 5.9 19.8 7.4 13.3 2.4 8.9l6.6-.6z"/></svg>
+              </button>
+            </span>
+            <button class="btn btn-primary" :disabled="ratings.posting || !selectedStars" @click="submitRating">
+              {{ ratings.posting ? 'Enviando...' : 'Enviar avaliação' }}
+            </button>
+          </div>
+          <p v-if="ratingError" class="form-error show" style="margin:0;">{{ ratingError }}</p>
+
+          <div v-if="ratings.loading" class="comment-empty">Carregando avaliações...</div>
+          <div v-else-if="ratings.error" class="comment-empty">{{ ratings.error }}</div>
+          <div v-else-if="ratings.items.length === 0" class="comment-empty">Seja o primeiro a avaliar esta aula.</div>
+          <template v-else>
+            <div v-for="rating in ratings.items" :key="rating.id" class="rating-row">
+              <span class="comment-avatar">{{ initialsOf(rating.user?.name) }}</span>
+              <div class="rating-body">
+                <div class="rating-head">
+                  <span class="rating-author">{{ rating.user?.name || 'Aluno' }}</span>
+                  <span class="rating-date">{{ formatDate(rating.created_at) }}</span>
+                </div>
+                <span class="rating-stars">
+                  <svg v-for="n in 5" :key="n" viewBox="0 0 24 24" :class="{ filled: n <= starsOf(rating.rating) }"><path d="M12 2l2.9 6.3 6.6.6-5 4.4 1.5 6.5L12 16.9 5.9 19.8 7.4 13.3 2.4 8.9l6.6-.6z"/></svg>
+                  <span class="rating-value">{{ formatRating(rating.rating) }}</span>
+                </span>
               </div>
             </div>
           </template>
@@ -221,11 +284,15 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useCoursePlayerStore } from '../stores/coursePlayer';
 import { useCommentsStore } from '../stores/comments';
+import { useRatingsStore } from '../stores/ratings';
+import { useAuthStore } from '../stores/auth';
 
 const route = useRoute();
 const router = useRouter();
 const store = useCoursePlayerStore();
 const comments = useCommentsStore();
+const ratings = useRatingsStore();
+const auth = useAuthStore();
 
 const activeTab = ref('descricao');
 const openModule = ref(null);
@@ -233,12 +300,39 @@ const completing = ref(false);
 const completeError = ref('');
 const commentText = ref('');
 const commentError = ref('');
+const ratingError = ref('');
+const selectedStars = ref(0);
+const hoverStars = ref(0);
 
 const courseId = computed(() => Number(route.params.courseId));
 const lessonIdParam = computed(() => (route.params.lessonId ? Number(route.params.lessonId) : null));
 const currentLesson = computed(() => store.currentLesson);
 const modules = computed(() => store.course?.modules ?? []);
 const isCurrentCompleted = computed(() => (currentLesson.value ? store.isCompleted(currentLesson.value.id) : false));
+
+const myRating = computed(() => {
+  const userId = auth.user?.id;
+
+  if (!userId) {
+    return null;
+  }
+
+  return ratings.items.find((rating) => rating.user?.id === userId) ?? null;
+});
+
+const myStars = computed(() => (myRating.value ? starsOf(myRating.value.rating) : 0));
+
+const averageRating = computed(() => {
+  if (!ratings.items.length) {
+    return 0;
+  }
+
+  const sum = ratings.items.reduce((acc, rating) => acc + Number(rating.rating), 0);
+
+  return sum / ratings.items.length;
+});
+
+const averageStars = computed(() => Math.round(averageRating.value / 2));
 
 const videoBg = computed(() => {
   const image = currentLesson.value?.video?.image;
@@ -275,8 +369,12 @@ watch(lessonIdParam, (id) => {
 
 watch(currentLesson, (lesson) => {
   comments.reset();
+  ratings.reset();
   commentText.value = '';
   commentError.value = '';
+  selectedStars.value = 0;
+  hoverStars.value = 0;
+  ratingError.value = '';
 
   if (lesson) {
     openModule.value = lesson.moduleId;
@@ -284,12 +382,24 @@ watch(currentLesson, (lesson) => {
     if (activeTab.value === 'comentarios') {
       comments.fetch(lesson.id);
     }
+
+    if (activeTab.value === 'avaliacoes') {
+      ratings.fetch(lesson.id);
+    }
   }
 });
 
 watch(activeTab, (tab) => {
-  if (tab === 'comentarios' && currentLesson.value) {
+  if (!currentLesson.value) {
+    return;
+  }
+
+  if (tab === 'comentarios') {
     comments.fetch(currentLesson.value.id);
+  }
+
+  if (tab === 'avaliacoes') {
+    ratings.fetch(currentLesson.value.id);
   }
 });
 
@@ -321,6 +431,42 @@ function initialsOf(name) {
   const parts = trimmed.split(/\s+/);
 
   return ((parts[0]?.[0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+}
+
+function starsOf(value) {
+  const numeric = Number(value) || 0;
+
+  return Math.max(0, Math.min(5, Math.round(numeric / 2)));
+}
+
+function formatRating(value) {
+  return (Number(value) || 0).toLocaleString('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
+
+async function submitRating() {
+  ratingError.value = '';
+
+  if (!selectedStars.value || !currentLesson.value || !store.course || !store.progress) {
+    return;
+  }
+
+  try {
+    await ratings.store({
+      rating: selectedStars.value * 2,
+      lessonId: currentLesson.value.id,
+      moduleId: currentLesson.value.moduleId,
+      courseId: store.course.id,
+      teamId: store.progress.team_id,
+    });
+
+    selectedStars.value = 0;
+    hoverStars.value = 0;
+  } catch (e) {
+    ratingError.value = e?.message || 'Não foi possível enviar sua avaliação.';
+  }
 }
 
 async function submitComment() {
