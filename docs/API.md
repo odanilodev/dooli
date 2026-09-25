@@ -192,6 +192,13 @@ Query opcional: `team_id`.
 ### GET /api/v1/me/courses/{course}/timeline
 Histórico de ações do aluno no curso. Query: `team_id`.
 
+### GET /api/v1/me/courses/{course}/documents/{document}
+Baixa (stream) um documento da aula. Exige matrícula no curso (403). 404 se o documento não pertence ao curso ou o arquivo não existe no disco.
+> Arquivos ficam privados em `storage/app/private/uploads/{company_id}/{path}`. O download usa o token Bearer (não é link público).
+
+### GET /api/v1/me/courses/{course}/attachments/{attachment}
+Baixa (stream) um anexo da aula. Mesmas regras do documento.
+
 ### POST /api/v1/me/progress/complete
 **Objetivo:** concluir uma aula. O backend valida acesso e recalcula o progresso.
 **Body:**

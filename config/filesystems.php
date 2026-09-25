@@ -38,6 +38,15 @@ return [
             'report' => false,
         ],
 
+        // Private lesson materials (documents and attachments), stored per
+        // company: storage/app/private/uploads/{company_id}/{path}.
+        'materials' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/uploads'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

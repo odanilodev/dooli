@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\V1\Public\CertificateVerifyController;
 use App\Http\Controllers\Api\V1\Public\StoreController;
 use App\Http\Controllers\Api\V1\Student\CertificateController as StudentCertificateController;
 use App\Http\Controllers\Api\V1\Student\CommentController;
+use App\Http\Controllers\Api\V1\Student\MaterialController;
 use App\Http\Controllers\Api\V1\Student\MyCourseController;
 use App\Http\Controllers\Api\V1\Student\NotificationController as StudentNotificationController;
 use App\Http\Controllers\Api\V1\Student\OrderController as StudentOrderController;
@@ -92,6 +93,9 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     Route::get('me/courses/{course}', [MyCourseController::class, 'show']);
     Route::get('me/courses/{course}/progress', [MyCourseController::class, 'progress']);
     Route::get('me/courses/{course}/timeline', [MyCourseController::class, 'timeline']);
+
+    Route::get('me/courses/{course}/documents/{document}', [MaterialController::class, 'document']);
+    Route::get('me/courses/{course}/attachments/{attachment}', [MaterialController::class, 'attachment']);
 
     Route::post('me/progress/complete', [ProgressController::class, 'completeLesson']);
 

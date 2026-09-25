@@ -93,15 +93,18 @@
         <div v-else-if="activeTab === 'materiais'" class="tab-panel simple active">
           <template v-if="currentLesson.document || currentLesson.attachments.length">
             <p v-if="currentLesson.document" style="margin:0 0 12px;">
-              <a :href="currentLesson.document.path" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;">Documento da aula</a>
+              <a href="#" @click.prevent="downloadMaterial('document', currentLesson.document)" style="color:var(--accent);font-weight:700;">
+                Documento da aula · {{ fileName(currentLesson.document.path) }}
+              </a>
             </p>
             <ul v-if="currentLesson.attachments.length" style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;">
               <li v-for="attachment in currentLesson.attachments" :key="attachment.id">
-                <a :href="attachment.path" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">{{ attachment.path }}</a>
+                <a href="#" @click.prevent="downloadMaterial('attachment', attachment)" style="color:var(--accent);font-weight:600;">{{ fileName(attachment.path) }}</a>
               </li>
             </ul>
           </template>
           <template v-else>Nenhum material adicional para esta aula.</template>
+          <p v-if="materialError" class="form-error show" style="margin-top:12px;">{{ materialError }}</p>
         </div>
 
         <div v-else-if="activeTab === 'comentarios'" class="tab-panel active">
@@ -288,6 +291,7 @@ import { useCoursePlayerStore } from '../stores/coursePlayer';
 import { useCommentsStore } from '../stores/comments';
 import { useRatingsStore } from '../stores/ratings';
 import { useAuthStore } from '../stores/auth';
+import { api } from '../api/http';
 
 const route = useRoute();
 const router = useRouter();
@@ -305,6 +309,8 @@ const commentError = ref('');
 const ratingError = ref('');
 const selectedStars = ref(0);
 const hoverStars = ref(0);
+const materialError = ref('');
+const downloadingId = ref(null);
 
 const courseId = computed(() => Number(route.params.courseId));
 const lessonIdParam = computed(() => (route.params.lessonId ? Number(route.params.lessonId) : null));
@@ -468,6 +474,36 @@ async function submitRating() {
     hoverStars.value = 0;
   } catch (e) {
     ratingError.value = e?.message || 'Não foi possível enviar sua avaliação.';
+  }
+}
+
+function fileName(path) {
+  return (path || '').split('/').pop() || 'arquivo';
+}
+
+async function downloadMaterial(type, material) {
+  materialError.value = '';
+  downloadingId.value = material.id;
+
+  const segment = type === 'document' ? 'documents' : 'attachments';
+
+  try {
+    const { data } = await api.get(`/me/courses/${courseId.value}/${segment}/${material.id}`, {
+      responseType: 'blob',
+    });
+
+    const url = URL.createObjectURL(data);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName(material.path);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    materialError.value = e?.message || 'Não foi possível baixar o arquivo.';
+  } finally {
+    downloadingId.value = null;
   }
 }
 
