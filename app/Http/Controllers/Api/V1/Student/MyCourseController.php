@@ -56,4 +56,9 @@ class MyCourseController extends ApiController
 
         return ApiResponse::success($this->progress->history($request->user(), $course, $team->id));
     }
+
+    public function continueWatching(Request $request): JsonResponse
+    {
+        return ApiResponse::success($this->progress->continueWatching($request->user()));
+    }
 }

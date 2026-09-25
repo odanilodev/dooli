@@ -1,19 +1,8 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { api } from '../api/http';
-import { ICON } from '../data/icons';
-
-const PALETTE = [
-  { icon: ICON.trendUp, grad: 'linear-gradient(150deg,#0f3d2e,#22c55e)' },
-  { icon: ICON.bolt, grad: 'linear-gradient(150deg,#101826,#1e293b)' },
-  { icon: ICON.wave, grad: 'linear-gradient(150deg,#122236,#134e4a)' },
-  { icon: ICON.shield, grad: 'linear-gradient(150deg,#3a2f12,#7c5a15)' },
-  { icon: ICON.bulb, grad: 'linear-gradient(150deg,#0d1420,#1b2536)' },
-  { icon: ICON.options, grad: 'linear-gradient(150deg,#101826,#1e293b)' },
-  { icon: ICON.magnifier, grad: 'linear-gradient(150deg,#0f2a3a,#134e4a)' },
-  { icon: ICON.candles, grad: 'linear-gradient(150deg,#1e1b3a,#3b1f4a)' },
-  { icon: ICON.target, grad: 'linear-gradient(150deg,#1a2e1a,#0f3d2e)' },
-];
+import { PALETTE } from '../data/palette';
+import { formatDuration } from '../utils/format';
 
 function statusFromPercentage(pct) {
   if (pct >= 100) {
@@ -30,6 +19,7 @@ function statusFromPercentage(pct) {
 export const useCoursesStore = defineStore('courses', () => {
   const items = ref([]);
   const meta = ref({});
+  const continueItems = ref([]);
   const loading = ref(false);
   const loaded = ref(false);
   const error = ref(null);
@@ -48,6 +38,23 @@ export const useCoursesStore = defineStore('courses', () => {
         badge: '',
         icon: palette.icon,
         grad: palette.grad,
+      };
+    }),
+  );
+
+  const continueCards = computed(() =>
+    continueItems.value.map((item, index) => {
+      const palette = PALETTE[index % PALETTE.length];
+
+      return {
+        id: `${item.course_id}-${item.lesson_id}`,
+        title: item.course_name,
+        sub: item.lesson_name,
+        dur: formatDuration(item.duration),
+        pct: Math.round(Number(item.percentage) || 0),
+        icon: palette.icon,
+        grad: palette.grad,
+        to: { name: 'aula', params: { courseId: item.course_id, lessonId: item.lesson_id } },
       };
     }),
   );
@@ -77,12 +84,38 @@ export const useCoursesStore = defineStore('courses', () => {
     }
   }
 
+  async function fetchContinueWatching() {
+    try {
+      const { data } = await api.get('/me/continue-watching');
+      continueItems.value = data.data ?? [];
+
+      return continueItems.value;
+    } catch (e) {
+      continueItems.value = [];
+      return [];
+    }
+  }
+
   function reset() {
     items.value = [];
     meta.value = {};
+    continueItems.value = [];
     loaded.value = false;
     error.value = null;
   }
 
-  return { items, meta, loading, loaded, error, cards, completedCount, fetchMyCourses, reset };
+  return {
+    items,
+    meta,
+    loading,
+    loaded,
+    error,
+    cards,
+    continueItems,
+    continueCards,
+    completedCount,
+    fetchMyCourses,
+    fetchContinueWatching,
+    reset,
+  };
 });

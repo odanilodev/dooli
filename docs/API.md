@@ -192,6 +192,18 @@ Query opcional: `team_id`.
 ### GET /api/v1/me/courses/{course}/timeline
 Histórico de ações do aluno no curso. Query: `team_id`.
 
+### GET /api/v1/me/continue-watching
+Lista os cursos **em andamento** com a próxima aula a assistir (1ª aula publicada ainda não concluída, na ordem módulo→tópico→aula).
+```json
+{
+  "success": true,
+  "data": [
+    { "course_id": 2, "course_name": "Curso de biju", "lesson_id": 7, "lesson_name": "Aula de produção", "module_name": "Macramê", "duration": 1250, "percentage": 33.33 }
+  ]
+}
+```
+> `duration` (segundos, do vídeo da aula) pode ser `null`. Cursos com 0% ou 100% não aparecem.
+
 ### GET /api/v1/me/courses/{course}/documents/{document}
 Baixa (stream) um documento da aula. Exige matrícula no curso (403). 404 se o documento não pertence ao curso ou o arquivo não existe no disco.
 > Arquivos ficam privados em `storage/app/private/uploads/{company_id}/{path}`. O download usa o token Bearer (não é link público).

@@ -146,6 +146,62 @@ class ProgressService
     }
 
     /**
+     * Courses the student started but has not finished yet, paired with the
+     * next published lesson to watch. Drives the "continue watching" shelf.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function continueWatching(User $user): array
+    {
+        $completedAction = $this->actions->findByCode(ActionCode::Completed->value);
+
+        if (! $completedAction) {
+            return [];
+        }
+
+        $shelf = [];
+
+        foreach ($this->studentCourses->enrolledCourses($user) as $course) {
+            $team = $this->studentCourses->accessibleTeams($user, $course->id)->first();
+
+            if (! $team) {
+                continue;
+            }
+
+            $totalLessons = $this->lessons->countPublishedByCourse($course->id);
+
+            if ($totalLessons === 0) {
+                continue;
+            }
+
+            $completedIds = $this->timeline->completedLessonIds($user->id, $course->id, $team->id, $completedAction->id);
+            $completedCount = count($completedIds);
+
+            if ($completedCount === 0 || $completedCount >= $totalLessons) {
+                continue;
+            }
+
+            $nextLesson = $this->lessons->nextIncompleteForCourse($course->id, $completedIds);
+
+            if (! $nextLesson) {
+                continue;
+            }
+
+            $shelf[] = [
+                'course_id' => $course->id,
+                'course_name' => $course->name,
+                'lesson_id' => $nextLesson->id,
+                'lesson_name' => $nextLesson->name,
+                'module_name' => $nextLesson->topic?->module?->name,
+                'duration' => $nextLesson->video?->time,
+                'percentage' => round(($completedCount / $totalLessons) * 100, 2),
+            ];
+        }
+
+        return $shelf;
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function history(User $user, int $courseId, int $teamId): array

@@ -10,6 +10,7 @@ use App\Models\Lesson;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class StudentCourseService
@@ -18,14 +19,28 @@ class StudentCourseService
 
     public function myCourses(User $user, int $perPage = 20): LengthAwarePaginator
     {
+        return $this->enrolledCoursesQuery($user)->paginate($perPage);
+    }
+
+    /**
+     * Every active course the user is enrolled in, ordered for display.
+     *
+     * @return Collection<int, Course>
+     */
+    public function enrolledCourses(User $user): Collection
+    {
+        return $this->enrolledCoursesQuery($user)->get();
+    }
+
+    private function enrolledCoursesQuery(User $user): Builder
+    {
         return Course::query()
             ->where('status', GeneralStatus::Active->value)
             ->whereHas('teams', function ($q) use ($user) {
                 $q->whereHas('users', fn ($u) => $this->activeEnrollmentConstraint($u, $user->id))
                     ->where('team_courses.status', GeneralStatus::Active->value);
             })
-            ->orderBy('sort_order')
-            ->paginate($perPage);
+            ->orderBy('sort_order');
     }
 
     /**

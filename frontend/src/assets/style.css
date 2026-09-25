@@ -310,6 +310,27 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 }
 
 /* ==========================================================================
+   Loja (store)
+   ========================================================================== */
+.card-product .product-thumb-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.card-product .sale-badge{background:var(--accent-grad);color:var(--accent-ink);font-weight:800;}
+.product-price{display:flex;align-items:baseline;gap:7px;margin-top:2px;}
+.price-old{font-size:11px;color:var(--text-muted);text-decoration:line-through;}
+.price-now{font-size:13.5px;font-weight:800;color:var(--accent);}
+.product-price-lg .price-now{font-size:20px;}
+.product-price-lg .price-old{font-size:13px;}
+.product-detail{display:grid;grid-template-columns:minmax(240px,360px) 1fr;gap:28px;align-items:start;}
+.product-detail-media{
+  position:relative;min-height:220px;border-radius:var(--radius-md);overflow:hidden;
+  display:flex;align-items:center;justify-content:center;border:1px solid var(--border);
+}
+.product-detail-media img{width:100%;height:100%;object-fit:cover;}
+.product-detail-media .icon{color:#fff;opacity:.65;}
+.product-detail-info{display:flex;flex-direction:column;gap:14px;}
+.product-detail-desc{color:var(--text-secondary);font-size:13.5px;line-height:1.6;white-space:pre-line;}
+@media (max-width:720px){.product-detail{grid-template-columns:1fr;}}
+
+/* ==========================================================================
    Lesson (aula) page
    ========================================================================== */
 .lesson-content{flex:1;padding:26px 32px 36px;display:flex;gap:28px;align-items:flex-start;}

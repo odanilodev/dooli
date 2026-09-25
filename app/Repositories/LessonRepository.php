@@ -34,4 +34,28 @@ class LessonRepository extends BaseRepository
             ->where('lessons.status', GeneralStatus::Active->value)
             ->count();
     }
+
+    /**
+     * First published lesson of the course (module -> topic -> lesson order)
+     * whose id is not in the excluded list.
+     *
+     * @param  array<int, int>  $excludeIds
+     */
+    public function nextIncompleteForCourse(int $courseId, array $excludeIds): ?Lesson
+    {
+        return $this->query()
+            ->select('lessons.*')
+            ->with(['topic.module', 'video'])
+            ->join('topics', 'topics.id', '=', 'lessons.topic_id')
+            ->join('course_modules', 'course_modules.module_id', '=', 'topics.module_id')
+            ->where('course_modules.course_id', $courseId)
+            ->where('course_modules.status', GeneralStatus::Active->value)
+            ->where('topics.status', GeneralStatus::Active->value)
+            ->where('lessons.status', GeneralStatus::Active->value)
+            ->when($excludeIds !== [], fn ($q) => $q->whereNotIn('lessons.id', $excludeIds))
+            ->orderBy('course_modules.sort_order')
+            ->orderBy('topics.sort_order')
+            ->orderBy('lessons.sort_order')
+            ->first();
+    }
 }

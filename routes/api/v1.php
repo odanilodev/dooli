@@ -94,6 +94,8 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     Route::get('me/courses/{course}/progress', [MyCourseController::class, 'progress']);
     Route::get('me/courses/{course}/timeline', [MyCourseController::class, 'timeline']);
 
+    Route::get('me/continue-watching', [MyCourseController::class, 'continueWatching']);
+
     Route::get('me/courses/{course}/documents/{document}', [MaterialController::class, 'document']);
     Route::get('me/courses/{course}/attachments/{attachment}', [MaterialController::class, 'attachment']);
 

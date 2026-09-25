@@ -61,14 +61,14 @@
     </section>
 
     <!-- CONTINUAR ASSISTINDO -->
-    <section class="section">
+    <section class="section" v-if="continueCards.length">
       <div class="section-head">
         <h2 class="section-title">Continuar assistindo</h2>
         <router-link to="/cursos" class="section-link">Ver todos →</router-link>
       </div>
       <div class="card-grid">
         <ThumbCard
-          v-for="item in continueWatching"
+          v-for="item in continueCards"
           :key="item.id"
           :title="item.title"
           :sub="item.sub"
@@ -76,7 +76,7 @@
           :pct="item.pct"
           :icon="item.icon"
           :grad="item.grad"
-          to="/cursos"
+          :to="item.to"
         />
       </div>
     </section>
@@ -103,19 +103,19 @@
     </section>
 
     <!-- RECOMENDADO -->
-    <section class="section">
+    <section class="section" v-if="recommendedProducts.length">
       <div class="section-head">
         <h2 class="section-title">Recomendado para você</h2>
-        <router-link to="/cursos" class="section-link">Ver todos →</router-link>
+        <router-link to="/loja" class="section-link">Ir para a loja →</router-link>
       </div>
       <div class="card-grid">
         <RecoCard
-          v-for="item in recommended"
+          v-for="item in recommendedProducts"
           :key="item.id"
           :title="item.title"
           :icon="item.icon"
           :grad="item.grad"
-          to="/cursos"
+          :to="item.to"
         />
       </div>
     </section>
@@ -128,13 +128,36 @@ import { computed, ref } from 'vue';
 import ThumbCard from '../components/ThumbCard.vue';
 import CourseCard from '../components/CourseCard.vue';
 import RecoCard from '../components/RecoCard.vue';
-import { continueWatching, recommended } from '../data/courses';
 import { useCoursesStore } from '../stores/courses';
+import { useShopStore } from '../stores/store';
+import { paletteAt } from '../data/palette';
 
 const store = useCoursesStore();
+const shop = useShopStore();
 store.fetchMyCourses();
+store.fetchContinueWatching();
+shop.fetchProducts({ per_page: 12 });
 
 const courses = computed(() => store.cards);
+const continueCards = computed(() => store.continueCards);
+
+const enrolledCourseIds = computed(() => new Set(store.items.map((course) => course.id)));
+const recommendedProducts = computed(() =>
+  shop.products
+    .filter((product) => !product.course_id || !enrolledCourseIds.value.has(product.course_id))
+    .slice(0, 5)
+    .map((product, index) => {
+      const palette = paletteAt(index);
+
+      return {
+        id: product.id,
+        title: product.title,
+        icon: palette.icon,
+        grad: palette.grad,
+        to: { name: 'loja-produto', params: { slug: product.slug } },
+      };
+    }),
+);
 
 const activeSlide = ref(0);
 function nextSlide() {

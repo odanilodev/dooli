@@ -1,0 +1,88 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Lesson;
+use App\Models\Video;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\BuildsTenant;
+use Tests\TestCase;
+
+class StudentContinueWatchingTest extends TestCase
+{
+    use BuildsTenant, RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->buildTenant();
+    }
+
+    public function test_continue_watching_returns_the_next_incomplete_lesson(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $team = $this->enroll($this->student, $data['course'], $this->company->id);
+
+        $video = Video::factory()->create(['company_id' => $this->company->id, 'time' => 1250]);
+
+        $second = Lesson::factory()->create([
+            'company_id' => $this->company->id,
+            'topic_id' => $data['topic']->id,
+            'sort_order' => 1,
+            'video_id' => $video->id,
+        ]);
+        Lesson::factory()->create([
+            'company_id' => $this->company->id,
+            'topic_id' => $data['topic']->id,
+            'sort_order' => 2,
+        ]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->postJson('/api/v1/me/progress/complete', [
+                'lesson_id' => $data['lesson']->id,
+                'course_id' => $data['course']->id,
+                'team_id' => $team->id,
+                'module_id' => $data['module']->id,
+            ])
+            ->assertOk();
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/continue-watching')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.course_id', $data['course']->id)
+            ->assertJsonPath('data.0.lesson_id', $second->id)
+            ->assertJsonPath('data.0.lesson_name', $second->name)
+            ->assertJsonPath('data.0.module_name', $data['module']->name)
+            ->assertJsonPath('data.0.duration', 1250)
+            ->assertJsonPath('data.0.percentage', 33.33);
+    }
+
+    public function test_continue_watching_ignores_not_started_and_finished_courses(): void
+    {
+        $notStarted = $this->buildCourse($this->company->id);
+        $this->enroll($this->student, $notStarted['course'], $this->company->id);
+
+        $finished = $this->buildCourse($this->company->id);
+        $team = $this->enroll($this->student, $finished['course'], $this->company->id);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->postJson('/api/v1/me/progress/complete', [
+                'lesson_id' => $finished['lesson']->id,
+                'course_id' => $finished['course']->id,
+                'team_id' => $team->id,
+                'module_id' => $finished['module']->id,
+            ])
+            ->assertOk();
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/continue-watching')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_continue_watching_requires_authentication(): void
+    {
+        $this->getJson('/api/v1/me/continue-watching')->assertStatus(401);
+    }
+}
