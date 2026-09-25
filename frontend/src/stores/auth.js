@@ -54,6 +54,18 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function forgotPassword(email) {
+    const { data } = await api.post('/auth/forgot-password', { email });
+
+    return data;
+  }
+
+  async function resetPassword(payload) {
+    const { data } = await api.post('/auth/reset-password', payload);
+
+    return data;
+  }
+
   async function fetchMe() {
     if (!token.value) {
       return null;
@@ -104,6 +116,8 @@ export const useAuthStore = defineStore('auth', () => {
     role,
     initials,
     login,
+    forgotPassword,
+    resetPassword,
     fetchMe,
     setUser,
     logout,

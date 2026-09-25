@@ -27,7 +27,7 @@
         <input type="checkbox" v-model="form.remember">
         Lembrar de mim
       </label>
-      <a href="#" @click.prevent>Esqueci minha senha</a>
+      <router-link to="/recuperar-senha">Esqueci minha senha</router-link>
     </div>
 
     <button type="submit" class="btn btn-primary btn-block" :disabled="success || auth.loading">

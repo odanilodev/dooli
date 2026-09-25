@@ -122,7 +122,7 @@ Revoga todos os tokens do usuário.
 ### POST /api/v1/auth/forgot-password
 **Auth:** não. **Rate limit:** `password` (3/min por IP).
 **Body:** `{ "email": "aluno@cursos.test" }`
-Envia o e-mail com o link de redefinição (o link aponta para o frontend: `FRONTEND_URL/reset-password?token=...&email=...`).
+Envia o e-mail com o link de redefinição (o link aponta para o frontend: `FRONTEND_URL/#/reset-password?token=...&email=...`).
 **Sucesso 200** — sempre a mesma resposta, exista ou não o e-mail (evita enumeração de contas).
 
 ### POST /api/v1/auth/reset-password

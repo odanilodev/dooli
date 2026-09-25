@@ -12,6 +12,8 @@ import ProfileView from '../views/ProfileView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
+import ForgotPasswordView from '../views/ForgotPasswordView.vue';
+import ResetPasswordView from '../views/ResetPasswordView.vue';
 import NotFoundView from '../views/NotFoundView.vue';
 
 const routes = [
@@ -52,6 +54,26 @@ const routes = [
           title: 'Criar conta',
           quote: 'Junte-se a milhares de alunos que já estão evoluindo com',
           quoteHighlight: 'disciplina e estratégia no mercado financeiro.',
+        },
+      },
+      {
+        path: 'recuperar-senha',
+        name: 'recuperar-senha',
+        component: ForgotPasswordView,
+        meta: {
+          title: 'Recuperar senha',
+          quote: 'Recupere o acesso à sua conta e continue evoluindo com',
+          quoteHighlight: 'disciplina e estratégia no mercado financeiro.',
+        },
+      },
+      {
+        path: 'reset-password',
+        name: 'reset-password',
+        component: ResetPasswordView,
+        meta: {
+          title: 'Redefinir senha',
+          quote: 'Crie uma nova senha e retome seus estudos com',
+          quoteHighlight: 'segurança e tranquilidade.',
         },
       },
     ],
