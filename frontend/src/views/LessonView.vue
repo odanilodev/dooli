@@ -79,7 +79,9 @@
 
         <div v-if="activeTab === 'descricao'" class="tab-panel active">
           <div class="desc-row">
-            <p class="desc-text" style="white-space:pre-line;">{{ currentLesson.content || currentLesson.description || 'Sem descrição para esta aula.' }}</p>
+            <p v-if="currentLesson.content" class="desc-text" v-html="currentLesson.content"></p>
+            <p v-else-if="currentLesson.description" class="desc-text" style="white-space:pre-line;">{{ currentLesson.description }}</p>
+            <p v-else class="desc-text">Sem descrição para esta aula.</p>
             <button class="btn btn-primary" :disabled="isCurrentCompleted || completing" @click="markCompleted">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
               <span>{{ isCurrentCompleted ? 'Aula concluída' : (completing ? 'Salvando...' : 'Marcar como concluída') }}</span>
