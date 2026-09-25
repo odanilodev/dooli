@@ -10,6 +10,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => Boolean(token.value));
   const role = computed(() => user.value?.user_type?.name || null);
+  const isAdmin = computed(() => user.value?.user_type?.code === 'admin');
   const initials = computed(() => {
     const name = user.value?.name?.trim();
 
@@ -114,6 +115,7 @@ export const useAuthStore = defineStore('auth', () => {
     initialized,
     isAuthenticated,
     role,
+    isAdmin,
     initials,
     login,
     forgotPassword,

@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'company_id', 'name', 'topic_id', 'description', 'content',
-    'sort_order', 'status', 'video_id', 'document_id', 'webinar_link', 'published_at',
+    'sort_order', 'status', 'video_id', 'document_id', 'webinar_link', 'webinar_starts_at', 'published_at',
 ])]
 class Lesson extends Model
 {
@@ -29,6 +29,7 @@ class Lesson extends Model
     {
         return [
             'sort_order' => 'integer',
+            'webinar_starts_at' => 'datetime',
             'published_at' => 'datetime',
         ];
     }

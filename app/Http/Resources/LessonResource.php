@@ -19,6 +19,7 @@ class LessonResource extends JsonResource
             'sort_order' => $this->sort_order,
             'published_at' => $this->published_at?->toIso8601String(),
             'webinar_link' => $this->webinar_link,
+            'webinar_starts_at' => $this->webinar_starts_at?->toIso8601String(),
             'video' => new VideoResource($this->whenLoaded('video')),
             'document' => new DocumentResource($this->whenLoaded('document')),
             'attachments' => AttachmentResource::collection($this->whenLoaded('attachments')),

@@ -32,7 +32,38 @@
 
         <!-- VIDEO -->
         <div class="video-block">
-          <div class="video-stage" :style="videoBg">
+          <div v-if="currentLesson.webinar_link && !liveSoon" class="video-stage has-player">
+            <iframe
+              :src="currentLesson.webinar_link"
+              class="video-frame"
+              title="Aula ao vivo"
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+              allowfullscreen
+            ></iframe>
+            <span class="live-badge">AO VIVO</span>
+          </div>
+          <div v-else-if="currentLesson.webinar_link && liveSoon" class="video-stage live-soon">
+            <span class="live-soon-badge">EM BREVE</span>
+            <div class="live-soon-title">Aula ao vivo</div>
+            <div class="live-soon-date">{{ formatDate(currentLesson.webinar_starts_at) }}</div>
+          </div>
+          <div v-else-if="videoEmbedUrl" class="video-stage has-player">
+            <VideoPlayer
+              :key="currentLesson.id"
+              :platform="videoPlatform"
+              :embed-url="videoEmbedUrl"
+              :link="videoEmbedUrl"
+              :duration="videoDuration"
+              :resume-from="videoResumeFrom"
+              @progress="onVideoProgress"
+              @error="videoError = $event"
+            />
+          </div>
+          <div v-else-if="videoLoading" class="video-stage video-stage-loading">
+            <span class="video-spinner"></span>
+            <span class="video-loading-text">Carregando vídeo...</span>
+          </div>
+          <div v-else class="video-stage" :style="videoBg">
             <svg v-if="!currentLesson.video" class="video-illustration" width="100%" height="100%" viewBox="0 0 900 420" preserveAspectRatio="xMidYMid slice" fill="none">
               <defs>
                 <radialGradient id="vidGlow" cx="35%" cy="55%" r="55%">
@@ -59,7 +90,7 @@
               <svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff"><path d="M8 5l12 7-12 7V5z"/></svg>
             </button>
           </div>
-          <div class="video-controls">
+          <div v-if="!currentLesson.webinar_link && !videoEmbedUrl && !videoLoading" class="video-controls">
             <button aria-label="Reproduzir"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M8 5l12 7-12 7V5z"/></svg></button>
             <span class="time">{{ currentLesson.video?.time || '00:00' }}</span>
             <span class="video-seek"><span></span></span>
@@ -67,6 +98,7 @@
             <button aria-label="Configurações"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" stroke="#fff"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></button>
             <button aria-label="Tela cheia"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" stroke="#fff"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
           </div>
+          <p v-if="videoError" class="form-error show" style="padding:10px 14px 0;">{{ videoError }}</p>
         </div>
 
         <!-- TABS -->
@@ -285,13 +317,14 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useCoursePlayerStore } from '../stores/coursePlayer';
 import { useCommentsStore } from '../stores/comments';
 import { useRatingsStore } from '../stores/ratings';
 import { useAuthStore } from '../stores/auth';
-import { api } from '../api/http';
+import { api, getToken } from '../api/http';
+import VideoPlayer from '../components/VideoPlayer.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -311,6 +344,17 @@ const selectedStars = ref(0);
 const hoverStars = ref(0);
 const materialError = ref('');
 const downloadingId = ref(null);
+const videoEmbedUrl = ref(null);
+const videoPlatform = ref(null);
+const videoDuration = ref(0);
+const videoResumeFrom = ref(0);
+const videoError = ref('');
+const videoLoading = ref(false);
+const now = ref(Date.now());
+
+let videoLessonId = null;
+let videoRequestId = 0;
+let nowTimer = null;
 
 const courseId = computed(() => Number(route.params.courseId));
 const lessonIdParam = computed(() => (route.params.lessonId ? Number(route.params.lessonId) : null));
@@ -347,12 +391,174 @@ const videoBg = computed(() => {
   return image ? { backgroundImage: `url(${image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {};
 });
 
+const liveSoon = computed(() => {
+  const lesson = currentLesson.value;
+
+  if (!lesson?.webinar_link || !lesson.webinar_starts_at) {
+    return false;
+  }
+
+  return new Date(lesson.webinar_starts_at).getTime() > now.value;
+});
+
+function resetVideoState() {
+  videoLoading.value = false;
+  videoEmbedUrl.value = null;
+  videoPlatform.value = null;
+  videoDuration.value = 0;
+  videoResumeFrom.value = 0;
+  videoError.value = '';
+  videoLessonId = null;
+}
+
+async function loadVideoPlayback(lessonId) {
+  const cid = courseId.value;
+
+  if (!lessonId || !cid) {
+    resetVideoState();
+
+    return;
+  }
+
+  // Live lessons stream via the webinar embed, no on-demand playback to load.
+  if (store.lessons.find((item) => item.id === Number(lessonId))?.webinar_link) {
+    resetVideoState();
+
+    return;
+  }
+
+  if (videoLessonId === lessonId && (videoLoading.value || videoEmbedUrl.value)) {
+    return;
+  }
+
+  videoLessonId = lessonId;
+  videoLoading.value = true;
+  videoEmbedUrl.value = null;
+  videoPlatform.value = null;
+  videoDuration.value = 0;
+  videoResumeFrom.value = 0;
+  videoError.value = '';
+
+  const requestId = ++videoRequestId;
+
+  try {
+    const { data } = await api.get(`/me/courses/${cid}/lessons/${lessonId}/video`);
+
+    if (requestId !== videoRequestId) {
+      return;
+    }
+
+    const playback = data.data || {};
+
+    videoEmbedUrl.value = playback.embed_url || null;
+    videoPlatform.value = playback.platform || null;
+    videoDuration.value = playback.duration || 0;
+    videoResumeFrom.value = playback.resume_from || 0;
+  } catch (e) {
+    if (requestId !== videoRequestId) {
+      return;
+    }
+
+    // A lesson without a video is a valid state, not an error.
+    if (e?.status !== 404) {
+      videoError.value = e?.message || 'Não foi possível carregar o vídeo.';
+    }
+  } finally {
+    if (requestId === videoRequestId) {
+      videoLoading.value = false;
+    }
+  }
+}
+
+let lastVideoSentAt = 0;
+const videoTracking = { lessonId: null, courseId: null, teamId: null, position: 0, duration: null };
+
+function videoPositionPayload() {
+  return {
+    lesson_id: videoTracking.lessonId,
+    course_id: videoTracking.courseId,
+    team_id: videoTracking.teamId,
+    position: Math.max(0, Math.floor(videoTracking.position)),
+    duration: videoTracking.duration ? Math.floor(videoTracking.duration) : null,
+  };
+}
+
+function sendVideoPosition(keepalive = false) {
+  if (!videoTracking.lessonId || !videoTracking.teamId) {
+    return;
+  }
+
+  const payload = videoPositionPayload();
+
+  if (keepalive) {
+    try {
+      const token = getToken();
+      fetch(`${api.defaults.baseURL}/me/progress/video-position`, {
+        method: 'POST',
+        keepalive: true,
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    } catch (e) {
+      /* ignore */
+    }
+
+    return;
+  }
+
+  api.post('/me/progress/video-position', payload).catch(() => {});
+}
+
+function onVideoProgress({ position, duration }) {
+  videoTracking.lessonId = currentLesson.value?.id ?? null;
+  videoTracking.courseId = courseId.value;
+  videoTracking.teamId = store.progress?.team_id ?? null;
+  videoTracking.position = position;
+  videoTracking.duration = duration || videoTracking.duration;
+
+  const now = Date.now();
+
+  if (now - lastVideoSentAt >= 5000) {
+    lastVideoSentAt = now;
+    sendVideoPosition();
+  }
+}
+
+function flushVideoPosition() {
+  if (videoTracking.lessonId && videoTracking.position > 0) {
+    sendVideoPosition();
+  }
+}
+
+function handleBeforeUnload() {
+  sendVideoPosition(true);
+}
+
+onMounted(() => {
+  window.addEventListener('beforeunload', handleBeforeUnload);
+  nowTimer = setInterval(() => {
+    now.value = Date.now();
+  }, 30000);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload);
+  clearInterval(nowTimer);
+  flushVideoPosition();
+});
+
 watch(
   courseId,
   async (id) => {
     if (!id) {
       return;
     }
+
+    videoLessonId = null;
 
     await store.load(id);
 
@@ -372,10 +578,13 @@ watch(
 watch(lessonIdParam, (id) => {
   if (id) {
     store.selectLesson(id);
+    loadVideoPlayback(id);
   }
-});
+}, { immediate: true });
 
 watch(currentLesson, (lesson) => {
+  flushVideoPosition();
+
   comments.reset();
   ratings.reset();
   commentText.value = '';

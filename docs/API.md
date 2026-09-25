@@ -211,6 +211,25 @@ Baixa (stream) um documento da aula. Exige matrícula no curso (403). 404 se o d
 ### GET /api/v1/me/courses/{course}/attachments/{attachment}
 Baixa (stream) um anexo da aula. Mesmas regras do documento.
 
+### GET /api/v1/me/courses/{course}/lessons/{lesson}/video
+Dados de reprodução (embed assinado) do vídeo da aula. Exige matrícula no curso (403); 404 se a aula não tem vídeo.
+```json
+{ "success": true, "data": { "platform": "vdocipher", "embed_url": "https://player.vdocipher.com/v2/?otp=...&playbackInfo=...", "video_code": "abc123", "duration": 1250, "resume_from": 137 } }
+```
+> O backend gera o OTP/URL temporária via adapter da plataforma configurada em `video_platforms` (por empresa). O segredo da API nunca é enviado ao cliente. Sem credencial configurada, devolve o link direto + `warning`. `resume_from` é a posição (segundos) salva do aluno para retomar o vídeo.
+> **Aulas ao vivo** não usam este endpoint: quando a aula tem `webinar_link`, o frontend embute a URL (iframe). Cada aula em `GET /me/courses/{course}` traz `webinar_link` e `webinar_starts_at` (ISO, nullable): no futuro → card "EM BREVE"; passado/nulo → player ao vivo com selo "AO VIVO".
+
+### POST /api/v1/me/progress/video-position
+Salva a posição de reprodução (retomar de onde parou). Exige matrícula (403); faz upsert por `user_id + lesson_id + course_id + team_id`.
+**Body:**
+```json
+{ "lesson_id": 10, "course_id": 1, "team_id": 1, "position": 137, "duration": 600 }
+```
+**Resposta:**
+```json
+{ "success": true, "data": { "lesson_id": 10, "position_seconds": 137, "duration": 600 } }
+```
+
 ### POST /api/v1/me/progress/complete
 **Objetivo:** concluir uma aula. O backend valida acesso e recalcula o progresso.
 **Body:**
@@ -270,6 +289,7 @@ CRUD + `PUT /topics/{topic}/lessons/reorder` (`ids: []`).
 
 ### Aulas (`lessons`)
 CRUD + `POST /lessons/{lesson}/publish`, `POST /lessons/{lesson}/unpublish`, `attachment_ids[]` opcional.
+> **Aula ao vivo:** `webinar_link` (URL de embed, ex.: `https://player.vdocipher.com/live-v2?liveId=...`) + `webinar_starts_at` (data/hora agendada, nullable). A aula com `webinar_link` é renderizada como live no player do aluno (iframe), sem passar pelo fluxo de OTP/`videos`. Antes de `webinar_starts_at` o frontend mostra um card "EM BREVE"; depois (ou sem data) mostra o iframe com selo "AO VIVO".
 > Ao publicar/criar aulas em um curso com alunos concluídos, o backend dispara a regra de recálculo de certificados (ver `docs/ARCHITECTURE.md`).
 
 ### Turmas (`teams`)
@@ -317,6 +337,9 @@ CRUD. `credentials`/`settings` são **cifrados em repouso** e **nunca retornados
 
 ### Vídeos (`videos`)
 CRUD + `GET /videos/{video}/playback` (dados seguros de reprodução via adapter da plataforma, sem expor credenciais).
+
+### Plataformas de vídeo (`video-platforms`)
+CRUD. Configura o provedor de vídeo **por empresa** (any-platform): `code` ∈ `panda`, `vdocipher`, `vimeo`, `fastpix`, `external`. `credentials` (ex.: `api_secret` do VdoCipher, `api_key` do Panda) é **cifrado em repouso** e **nunca retornado**; a resposta expõe apenas `has_credentials`.
 
 ### Documentos, anexos e banners
 `documents`, `attachments`, `banners` — CRUD.

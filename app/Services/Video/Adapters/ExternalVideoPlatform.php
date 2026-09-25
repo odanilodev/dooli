@@ -3,9 +3,8 @@
 namespace App\Services\Video\Adapters;
 
 use App\Models\Video;
-use App\Services\Video\Contracts\VideoPlatformContract;
 
-class ExternalVideoPlatform implements VideoPlatformContract
+class ExternalVideoPlatform extends AbstractVideoPlatform
 {
     public function code(): string
     {

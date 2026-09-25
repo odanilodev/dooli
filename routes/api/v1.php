@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\Admin\TopicController as AdminTopicController;
 use App\Http\Controllers\Api\V1\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\V1\Admin\UserTypeController as AdminUserTypeController;
 use App\Http\Controllers\Api\V1\Admin\VideoController as AdminVideoController;
+use App\Http\Controllers\Api\V1\Admin\VideoPlatformController as AdminVideoPlatformController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -34,6 +35,7 @@ use App\Http\Controllers\Api\V1\Student\NotificationController as StudentNotific
 use App\Http\Controllers\Api\V1\Student\OrderController as StudentOrderController;
 use App\Http\Controllers\Api\V1\Student\ProgressController;
 use App\Http\Controllers\Api\V1\Student\RatingController;
+use App\Http\Controllers\Api\V1\Student\VideoController as StudentVideoController;
 use App\Http\Controllers\Api\V1\Webhook\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -99,7 +101,10 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     Route::get('me/courses/{course}/documents/{document}', [MaterialController::class, 'document']);
     Route::get('me/courses/{course}/attachments/{attachment}', [MaterialController::class, 'attachment']);
 
+    Route::get('me/courses/{course}/lessons/{lesson}/video', [StudentVideoController::class, 'playback']);
+
     Route::post('me/progress/complete', [ProgressController::class, 'completeLesson']);
+    Route::post('me/progress/video-position', [ProgressController::class, 'saveVideoPosition']);
 
     Route::get('me/certificates', [StudentCertificateController::class, 'index']);
     Route::post('me/certificates/generate', [StudentCertificateController::class, 'generate']);
@@ -159,6 +164,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::apiResource('orders', AdminOrderController::class)->only(['index', 'show']);
 
         Route::apiResource('gateways', AdminGatewayController::class);
+        Route::apiResource('video-platforms', AdminVideoPlatformController::class)->parameters(['video-platforms' => 'videoPlatform']);
         Route::apiResource('videos', AdminVideoController::class);
         Route::get('videos/{video}/playback', [AdminVideoController::class, 'playback']);
         Route::apiResource('documents', AdminDocumentController::class);

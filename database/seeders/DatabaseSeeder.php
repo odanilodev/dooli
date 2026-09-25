@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             TypeNotificationSeeder::class,
             CompanySettingSeeder::class,
             GatewaySeeder::class,
+            VideoPlatformSeeder::class,
             BannerSeeder::class,
             DemoUserSeeder::class,
             StoreProductSeeder::class,

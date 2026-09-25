@@ -28,6 +28,7 @@ class StoreLessonRequest extends FormRequest
             'video_id' => ['nullable', 'integer', $this->companyExists('videos')],
             'document_id' => ['nullable', 'integer', $this->companyExists('documents')],
             'webinar_link' => ['nullable', 'url', 'max:255'],
+            'webinar_starts_at' => ['nullable', 'date'],
             'published_at' => ['nullable', 'date'],
             'attachment_ids' => ['sometimes', 'array'],
             'attachment_ids.*' => ['integer', $this->companyExists('attachments')],

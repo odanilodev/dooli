@@ -3,7 +3,6 @@
 namespace App\Services\Video\Adapters;
 
 use App\Models\Video;
-use App\Services\Video\Contracts\VideoPlatformContract;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -11,10 +10,11 @@ use Illuminate\Support\Facades\Log;
 /**
  * Panda Video adapter (real integration).
  *
- * The API key is read from company settings (video.panda_api_key) or env.
- * Playback URLs are signed/temporary and credentials are never returned.
+ * The API key comes from the company's active "video_platforms" record
+ * (code = panda, credentials.api_key). Playback URLs are temporary and
+ * credentials are never returned.
  */
-class PandaVideoPlatform implements VideoPlatformContract
+class PandaVideoPlatform extends AbstractVideoPlatform
 {
     public function code(): string
     {
@@ -23,7 +23,7 @@ class PandaVideoPlatform implements VideoPlatformContract
 
     public function playbackData(Video $video): array
     {
-        $apiKey = config('services.panda.api_key');
+        $apiKey = $this->credential('api_key');
 
         if (! $apiKey) {
             return [
@@ -31,7 +31,7 @@ class PandaVideoPlatform implements VideoPlatformContract
                 'embed_url' => $video->link,
                 'video_code' => $video->code,
                 'duration' => $video->time,
-                'warning' => 'Panda API key ausente; retornando link direto.',
+                'warning' => 'Panda sem api_key configurada; retornando link direto.',
             ];
         }
 

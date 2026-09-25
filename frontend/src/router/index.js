@@ -12,6 +12,7 @@ import StoreView from '../views/StoreView.vue';
 import StoreProductView from '../views/StoreProductView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import SettingsView from '../views/SettingsView.vue';
+import AdminVideoPlatformsView from '../views/AdminVideoPlatformsView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
 import ForgotPasswordView from '../views/ForgotPasswordView.vue';
@@ -32,6 +33,7 @@ const routes = [
       { path: 'loja/:slug', name: 'loja-produto', component: StoreProductView, meta: { title: 'Produto', searchPlaceholder: 'Buscar na loja...' } },
       { path: 'perfil', name: 'perfil', component: ProfileView, meta: { title: 'Meu perfil' } },
       { path: 'configuracoes', name: 'configuracoes', component: SettingsView, meta: { title: 'Configurações' } },
+      { path: 'admin/video-platforms', name: 'admin-video-platforms', component: AdminVideoPlatformsView, meta: { title: 'Plataformas de vídeo', requiresAdmin: true } },
       { path: ':pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { title: 'Página não encontrada' } },
     ],
   },
@@ -107,6 +109,10 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta?.guestOnly && auth.isAuthenticated) {
+    return { name: 'dashboard' };
+  }
+
+  if (to.meta?.requiresAdmin && !auth.isAdmin) {
     return { name: 'dashboard' };
   }
 

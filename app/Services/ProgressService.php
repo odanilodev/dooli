@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Repositories\ActionRepository;
 use App\Repositories\LessonRepository;
 use App\Repositories\TimelineRepository;
+use App\Repositories\VideoProgressRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -24,6 +25,7 @@ class ProgressService
         private readonly StudentCourseService $studentCourses,
         private readonly CertificateService $certificates,
         private readonly DatalogService $audit,
+        private readonly VideoProgressRepository $videoProgress,
     ) {}
 
     /**
@@ -147,7 +149,8 @@ class ProgressService
 
     /**
      * Courses the student started but has not finished yet, paired with the
-     * next published lesson to watch. Drives the "continue watching" shelf.
+     * lesson to continue (the last one with a saved video position, or the
+     * next published lesson). Drives the "continue watching" shelf.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -181,24 +184,57 @@ class ProgressService
                 continue;
             }
 
-            $nextLesson = $this->lessons->nextIncompleteForCourse($course->id, $completedIds);
+            $target = $this->continueTarget($user, $course->id, $team->id, $completedIds);
 
-            if (! $nextLesson) {
+            if (! $target) {
                 continue;
             }
 
             $shelf[] = [
                 'course_id' => $course->id,
                 'course_name' => $course->name,
-                'lesson_id' => $nextLesson->id,
-                'lesson_name' => $nextLesson->name,
-                'module_name' => $nextLesson->topic?->module?->name,
-                'duration' => $nextLesson->video?->time,
+                'lesson_id' => $target['lesson']->id,
+                'lesson_name' => $target['lesson']->name,
+                'module_name' => $target['lesson']->topic?->module?->name,
+                'duration' => $target['duration'],
+                'resume_from' => $target['resume_from'],
                 'percentage' => round(($completedCount / $totalLessons) * 100, 2),
             ];
         }
 
         return $shelf;
+    }
+
+    /**
+     * Lesson the student should continue with: the one with the most recent
+     * saved video position (to resume), or the next incomplete lesson.
+     *
+     * @param  array<int, int>  $completedIds
+     * @return array{lesson: Lesson, duration: int|null, resume_from: int}|null
+     */
+    private function continueTarget(User $user, int $courseId, int $teamId, array $completedIds): ?array
+    {
+        $resume = $this->videoProgress->latestForCourse($user->id, $courseId, $teamId);
+
+        if ($resume?->lesson) {
+            return [
+                'lesson' => $resume->lesson,
+                'duration' => $resume->duration ?? $resume->lesson->video?->time,
+                'resume_from' => $resume->position_seconds,
+            ];
+        }
+
+        $nextLesson = $this->lessons->nextIncompleteForCourse($courseId, $completedIds);
+
+        if (! $nextLesson) {
+            return null;
+        }
+
+        return [
+            'lesson' => $nextLesson,
+            'duration' => $nextLesson->video?->time,
+            'resume_from' => 0,
+        ];
     }
 
     /**

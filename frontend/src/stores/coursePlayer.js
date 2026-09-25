@@ -25,6 +25,8 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
             video: lesson.video ?? null,
             document: lesson.document ?? null,
             attachments: lesson.attachments ?? [],
+            webinar_link: lesson.webinar_link ?? null,
+            webinar_starts_at: lesson.webinar_starts_at ?? null,
             moduleId: module.id,
             moduleName: module.name,
             topicId: topic.id,
