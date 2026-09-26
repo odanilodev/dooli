@@ -15,6 +15,8 @@ import SettingsView from '../views/SettingsView.vue';
 import AdminVideoPlatformsView from '../views/AdminVideoPlatformsView.vue';
 import AdminCoursesView from '../views/AdminCoursesView.vue';
 import AdminCourseView from '../views/AdminCourseView.vue';
+import AdminModuleView from '../views/AdminModuleView.vue';
+import AdminTopicView from '../views/AdminTopicView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
 import ForgotPasswordView from '../views/ForgotPasswordView.vue';
@@ -38,6 +40,8 @@ const routes = [
       { path: 'admin/video-platforms', name: 'admin-video-platforms', component: AdminVideoPlatformsView, meta: { title: 'Plataformas de vídeo', requiresAdmin: true } },
       { path: 'admin/cursos', name: 'admin-cursos', component: AdminCoursesView, meta: { title: 'Cursos (admin)', requiresAdmin: true } },
       { path: 'admin/cursos/:courseId', name: 'admin-curso', component: AdminCourseView, meta: { title: 'Editar curso', requiresAdmin: true } },
+      { path: 'admin/modulos/:moduleId', name: 'admin-modulo', component: AdminModuleView, meta: { title: 'Editar módulo', requiresAdmin: true } },
+      { path: 'admin/topicos/:topicId', name: 'admin-topico', component: AdminTopicView, meta: { title: 'Editar tópico', requiresAdmin: true } },
       { path: ':pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { title: 'Página não encontrada' } },
     ],
   },

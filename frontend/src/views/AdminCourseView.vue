@@ -110,6 +110,9 @@
               </div>
               <div class="admin-module-actions">
                 <span class="status-pill" :class="module.status">{{ module.status }}</span>
+                <router-link class="btn btn-outline btn-sm" :to="{ name: 'admin-modulo', params: { moduleId: module.id }, query: { course: courseId } }">
+                  Abrir
+                </router-link>
                 <button class="btn btn-outline btn-sm" :disabled="index === 0" @click="move(index, -1)">↑</button>
                 <button class="btn btn-outline btn-sm" :disabled="index === modules.length - 1" @click="move(index, 1)">↓</button>
                 <button class="btn btn-danger btn-sm" @click="detachModule(module)">Remover</button>
