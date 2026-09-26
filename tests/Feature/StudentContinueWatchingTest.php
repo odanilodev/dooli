@@ -103,6 +103,35 @@ class StudentContinueWatchingTest extends TestCase
             ->assertJsonPath('data.0.duration', 500);
     }
 
+    public function test_continue_watching_shows_a_started_course_without_completed_lessons(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $team = $this->enroll($this->student, $data['course'], $this->company->id);
+
+        $video = Video::factory()->create(['company_id' => $this->company->id, 'time' => 300]);
+        $data['lesson']->update(['video_id' => $video->id]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->postJson('/api/v1/me/progress/video-position', [
+                'lesson_id' => $data['lesson']->id,
+                'course_id' => $data['course']->id,
+                'team_id' => $team->id,
+                'position' => 77,
+                'duration' => 300,
+            ])
+            ->assertOk();
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/continue-watching')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.course_id', $data['course']->id)
+            ->assertJsonPath('data.0.lesson_id', $data['lesson']->id)
+            ->assertJsonPath('data.0.lesson_name', $data['lesson']->name)
+            ->assertJsonPath('data.0.resume_from', 77)
+            ->assertJsonPath('data.0.duration', 300);
+    }
+
     public function test_continue_watching_ignores_not_started_and_finished_courses(): void
     {
         $notStarted = $this->buildCourse($this->company->id);

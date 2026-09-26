@@ -180,7 +180,7 @@ class ProgressService
             $completedIds = $this->timeline->completedLessonIds($user->id, $course->id, $team->id, $completedAction->id);
             $completedCount = count($completedIds);
 
-            if ($completedCount === 0 || $completedCount >= $totalLessons) {
+            if ($completedCount >= $totalLessons) {
                 continue;
             }
 
@@ -222,6 +222,10 @@ class ProgressService
                 'duration' => $resume->duration ?? $resume->lesson->video?->time,
                 'resume_from' => $resume->position_seconds,
             ];
+        }
+
+        if ($completedIds === []) {
+            return null;
         }
 
         $nextLesson = $this->lessons->nextIncompleteForCourse($courseId, $completedIds);
