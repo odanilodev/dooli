@@ -13,6 +13,8 @@ import StoreProductView from '../views/StoreProductView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import AdminVideoPlatformsView from '../views/AdminVideoPlatformsView.vue';
+import AdminCoursesView from '../views/AdminCoursesView.vue';
+import AdminCourseView from '../views/AdminCourseView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
 import ForgotPasswordView from '../views/ForgotPasswordView.vue';
@@ -34,6 +36,8 @@ const routes = [
       { path: 'perfil', name: 'perfil', component: ProfileView, meta: { title: 'Meu perfil' } },
       { path: 'configuracoes', name: 'configuracoes', component: SettingsView, meta: { title: 'Configurações' } },
       { path: 'admin/video-platforms', name: 'admin-video-platforms', component: AdminVideoPlatformsView, meta: { title: 'Plataformas de vídeo', requiresAdmin: true } },
+      { path: 'admin/cursos', name: 'admin-cursos', component: AdminCoursesView, meta: { title: 'Cursos (admin)', requiresAdmin: true } },
+      { path: 'admin/cursos/:courseId', name: 'admin-curso', component: AdminCourseView, meta: { title: 'Editar curso', requiresAdmin: true } },
       { path: ':pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { title: 'Página não encontrada' } },
     ],
   },
