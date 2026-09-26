@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Enums\GeneralStatus;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Requests\Admin\ReorderRequest;
 use App\Http\Requests\Admin\StoreLessonRequest;
@@ -98,12 +99,15 @@ class LessonController extends ApiController
 
     /**
      * @param  array<int, int>  $attachmentIds
-     * @return array<int, array{company_id: int}>
+     * @return array<int, array{company_id: int, status: string}>
      */
     private function pivotAttachments(Lesson $lesson, array $attachmentIds): array
     {
         return collect($attachmentIds)->mapWithKeys(fn ($id) => [
-            $id => ['company_id' => $lesson->company_id],
+            $id => [
+                'company_id' => $lesson->company_id,
+                'status' => GeneralStatus::Active->value,
+            ],
         ])->all();
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Attachment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
@@ -68,5 +69,42 @@ class CourseManagementTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('success', false)
             ->assertJsonStructure(['errors' => ['name']]);
+    }
+
+    public function test_admin_can_attach_materials_to_a_lesson(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+
+        $attachment = Attachment::query()->create([
+            'company_id' => $this->company->id,
+            'path' => 'materiais/aula.pdf',
+        ]);
+
+        $token = $this->apiLogin($this->admin);
+
+        $lessonId = $this->withToken($token)
+            ->postJson('/api/v1/admin/lessons', [
+                'name' => 'Aula com anexo',
+                'topic_id' => $data['topic']->id,
+                'attachment_ids' => [$attachment->id],
+            ])
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->assertDatabaseHas('lesson_attachments', [
+            'company_id' => $this->company->id,
+            'lesson_id' => $lessonId,
+            'attachment_id' => $attachment->id,
+            'status' => 'active',
+        ]);
+
+        $this->withToken($token)
+            ->putJson("/api/v1/admin/lessons/{$lessonId}", ['attachment_ids' => []])
+            ->assertOk();
+
+        $this->assertDatabaseMissing('lesson_attachments', [
+            'lesson_id' => $lessonId,
+            'attachment_id' => $attachment->id,
+        ]);
     }
 }
