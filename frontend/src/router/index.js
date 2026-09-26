@@ -17,6 +17,7 @@ import AdminCoursesView from '../views/AdminCoursesView.vue';
 import AdminCourseView from '../views/AdminCourseView.vue';
 import AdminModuleView from '../views/AdminModuleView.vue';
 import AdminTopicView from '../views/AdminTopicView.vue';
+import AdminLessonView from '../views/AdminLessonView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
 import ForgotPasswordView from '../views/ForgotPasswordView.vue';
@@ -42,6 +43,7 @@ const routes = [
       { path: 'admin/cursos/:courseId', name: 'admin-curso', component: AdminCourseView, meta: { title: 'Editar curso', requiresAdmin: true } },
       { path: 'admin/modulos/:moduleId', name: 'admin-modulo', component: AdminModuleView, meta: { title: 'Editar módulo', requiresAdmin: true } },
       { path: 'admin/topicos/:topicId', name: 'admin-topico', component: AdminTopicView, meta: { title: 'Editar tópico', requiresAdmin: true } },
+      { path: 'admin/aulas/:lessonId', name: 'admin-aula', component: AdminLessonView, meta: { title: 'Editar aula', requiresAdmin: true } },
       { path: ':pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { title: 'Página não encontrada' } },
     ],
   },

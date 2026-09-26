@@ -96,6 +96,9 @@
               </div>
               <div class="admin-module-actions">
                 <span class="status-pill" :class="lesson.status">{{ lesson.status }}</span>
+                <router-link class="btn btn-outline btn-sm" :to="{ name: 'admin-aula', params: { lessonId: lesson.id } }">
+                  Abrir
+                </router-link>
                 <button class="btn btn-outline btn-sm" :disabled="index === 0" @click="moveLesson(index, -1)">↑</button>
                 <button class="btn btn-outline btn-sm" :disabled="index === lessons.length - 1" @click="moveLesson(index, 1)">↓</button>
                 <button class="btn btn-danger btn-sm" @click="removeLesson(lesson)">Excluir</button>
