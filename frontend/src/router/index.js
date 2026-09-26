@@ -13,11 +13,7 @@ import StoreProductView from '../views/StoreProductView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import AdminVideoPlatformsView from '../views/AdminVideoPlatformsView.vue';
-import AdminCoursesView from '../views/AdminCoursesView.vue';
-import AdminCourseView from '../views/AdminCourseView.vue';
-import AdminModuleView from '../views/AdminModuleView.vue';
-import AdminTopicView from '../views/AdminTopicView.vue';
-import AdminLessonView from '../views/AdminLessonView.vue';
+import AdminContentView from '../views/AdminContentView.vue';
 import AdminVideosView from '../views/AdminVideosView.vue';
 import AdminDocumentsView from '../views/AdminDocumentsView.vue';
 import AdminAttachmentsView from '../views/AdminAttachmentsView.vue';
@@ -42,11 +38,7 @@ const routes = [
       { path: 'perfil', name: 'perfil', component: ProfileView, meta: { title: 'Meu perfil' } },
       { path: 'configuracoes', name: 'configuracoes', component: SettingsView, meta: { title: 'Configurações' } },
       { path: 'admin/video-platforms', name: 'admin-video-platforms', component: AdminVideoPlatformsView, meta: { title: 'Plataformas de vídeo', requiresAdmin: true } },
-      { path: 'admin/cursos', name: 'admin-cursos', component: AdminCoursesView, meta: { title: 'Cursos (admin)', requiresAdmin: true } },
-      { path: 'admin/cursos/:courseId', name: 'admin-curso', component: AdminCourseView, meta: { title: 'Editar curso', requiresAdmin: true } },
-      { path: 'admin/modulos/:moduleId', name: 'admin-modulo', component: AdminModuleView, meta: { title: 'Editar módulo', requiresAdmin: true } },
-      { path: 'admin/topicos/:topicId', name: 'admin-topico', component: AdminTopicView, meta: { title: 'Editar tópico', requiresAdmin: true } },
-      { path: 'admin/aulas/:lessonId', name: 'admin-aula', component: AdminLessonView, meta: { title: 'Editar aula', requiresAdmin: true } },
+      { path: 'admin/conteudo', name: 'admin-conteudo', component: AdminContentView, meta: { title: 'Conteúdo (admin)', requiresAdmin: true } },
       { path: 'admin/videos', name: 'admin-videos', component: AdminVideosView, meta: { title: 'Vídeos (admin)', requiresAdmin: true } },
       { path: 'admin/documentos', name: 'admin-documentos', component: AdminDocumentsView, meta: { title: 'Documentos (admin)', requiresAdmin: true } },
       { path: 'admin/anexos', name: 'admin-anexos', component: AdminAttachmentsView, meta: { title: 'Anexos (admin)', requiresAdmin: true } },
