@@ -33,6 +33,18 @@
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5A2.5 2.5 0 0 1 4 20.5z"/></svg>
           <span>Cursos</span>
         </router-link>
+        <router-link to="/admin/videos" class="nav-link" :class="{ active: $route.name === 'admin-videos' }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>
+          <span>Vídeos</span>
+        </router-link>
+        <router-link to="/admin/documentos" class="nav-link" :class="{ active: $route.name === 'admin-documentos' }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5"/></svg>
+          <span>Documentos</span>
+        </router-link>
+        <router-link to="/admin/anexos" class="nav-link" :class="{ active: $route.name === 'admin-anexos' }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5 12.5 20a5 5 0 0 1-7-7l8-8a3.5 3.5 0 0 1 5 5l-8 8a2 2 0 0 1-3-3l7-7"/></svg>
+          <span>Anexos</span>
+        </router-link>
         <router-link to="/admin/video-platforms" class="nav-link" :class="{ active: $route.name === 'admin-video-platforms' }" @click="close">
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10 9.5l5 2.5-5 2.5V9.5z" fill="currentColor" stroke="none"/></svg>
           <span>Plataformas de vídeo</span>
