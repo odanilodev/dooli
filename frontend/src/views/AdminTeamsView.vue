@@ -77,7 +77,8 @@
             <td><span class="status-count">{{ team.courses_count ?? 0 }}</span></td>
             <td><span class="status-pill" :class="team.status">{{ statusLabel(team.status) }}</span></td>
             <td class="admin-actions">
-              <button class="btn btn-outline btn-sm" @click="openTeam(team)">Abrir</button>
+              <button class="btn btn-outline btn-sm" @click="openTeam(team, 'students')">Alunos</button>
+              <button class="btn btn-outline btn-sm" @click="openTeam(team, 'courses')">Cursos</button>
               <button class="btn btn-danger btn-sm" :disabled="busyId === team.id" @click="remove(team)">Excluir</button>
             </td>
           </tr>
@@ -95,6 +96,7 @@
       <TeamDrawer
         v-if="selectedTeam"
         :team="selectedTeam"
+        :initial-tab="drawerTab"
         @close="selectedTeam = null"
         @saved="onSaved"
         @changed="load"
@@ -130,6 +132,7 @@ const formError = ref('');
 const form = reactive({ name: '', status: 'active', sort_order: 0 });
 
 const selectedTeam = ref(null);
+const drawerTab = ref('details');
 
 let searchTimer = null;
 
@@ -206,6 +209,7 @@ async function save() {
     showForm.value = false;
     resetForm();
     await load();
+    drawerTab.value = 'details';
     selectedTeam.value = data.data;
   } catch (e) {
     formError.value = e?.message || 'Não foi possível criar a turma.';
@@ -232,7 +236,8 @@ async function remove(team) {
   }
 }
 
-function openTeam(team) {
+function openTeam(team, tab = 'details') {
+  drawerTab.value = tab;
   selectedTeam.value = team;
 }
 

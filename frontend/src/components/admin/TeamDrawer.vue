@@ -144,6 +144,7 @@ import { statusLabel } from '../../utils/adminLabels';
 
 const props = defineProps({
   team: { type: Object, required: true },
+  initialTab: { type: String, default: 'details' },
 });
 
 const emit = defineEmits(['close', 'saved', 'changed']);
@@ -151,7 +152,7 @@ const emit = defineEmits(['close', 'saved', 'changed']);
 const tabs = ['details', 'students', 'courses'];
 const tabLabels = { details: 'Detalhes', students: 'Alunos', courses: 'Cursos' };
 
-const tab = ref('details');
+const tab = ref(tabs.includes(props.initialTab) ? props.initialTab : 'details');
 const form = reactive({ name: '', status: 'active', sort_order: 0 });
 const error = ref('');
 const saved = ref(false);
@@ -373,6 +374,10 @@ function onBackdropDown(e) {
 }
 
 watch(() => props.team, sync, { immediate: true });
+
+watch(() => props.team?.id, () => {
+  tab.value = tabs.includes(props.initialTab) ? props.initialTab : 'details';
+});
 
 onMounted(() => {
   ensureStudentType();
