@@ -29,7 +29,7 @@
       </router-link>
       <template v-if="auth.isAdmin">
         <span class="nav-group-label">Administração</span>
-        <router-link to="/admin/conteudo" class="nav-link" :class="{ active: ['admin-conteudo', 'admin-conteudo-curso'].includes($route.name) }" @click="close">
+        <router-link to="/admin/conteudo" class="nav-link" :class="{ active: ['admin-conteudo', 'admin-conteudo-novo', 'admin-conteudo-curso'].includes($route.name) }" @click="close">
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5A2.5 2.5 0 0 1 4 20.5z"/></svg>
           <span>Conteúdo</span>
         </router-link>

@@ -239,6 +239,7 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 .btn-ghost-light{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.35);color:#fff;}
 .btn-ghost-light:hover{background:rgba(255,255,255,.12);}
 .btn-block{width:100%;}
+.btn-sm{padding:7px 12px;font-size:12px;border-radius:9px;}
 
 /* Content area
    ========================================================================== */
