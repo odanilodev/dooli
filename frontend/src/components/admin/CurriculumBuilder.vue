@@ -286,7 +286,7 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenus));
 </script>
 
 <style scoped>
-.cb{display:flex;flex-direction:column;gap:14px;width:100%;max-width:1080px;}
+.cb{display:flex;flex-direction:column;gap:14px;width:100%;max-width:1440px;}
 .cb-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .cb-bar-text{display:flex;flex-direction:column;gap:1px;}
 .cb-bar-title{font-size:14px;font-weight:800;}

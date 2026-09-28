@@ -21,39 +21,44 @@
 
     <span class="form-error" :class="{ show: error }">{{ error }}</span>
 
-    <p v-if="loading" class="page-subtitle">Carregando...</p>
+    <div class="builder-split" :class="{ 'has-editor': selectedItem }">
+      <div class="builder-main">
+        <p v-if="loading" class="page-subtitle">Carregando...</p>
 
-    <template v-else-if="course">
-      <CurriculumBuilder
-        :course="course"
-        :selected="selected"
-        @select="onSelect"
-        @rename="rename"
-        @add-module="createModule"
-        @attach-module="openAttach"
-        @add-topic="createTopic"
-        @add-lesson="createLesson"
-        @remove="removeNode"
-        @reorder="reorder"
-      />
-    </template>
+        <template v-else-if="course">
+          <CurriculumBuilder
+            :course="course"
+            :selected="selected"
+            @select="onSelect"
+            @rename="rename"
+            @add-module="createModule"
+            @attach-module="openAttach"
+            @add-topic="createTopic"
+            @add-lesson="createLesson"
+            @remove="removeNode"
+            @reorder="reorder"
+          />
+        </template>
 
-    <div v-else class="empty-state">
-      <strong>Nenhum curso</strong>
-      <span>Crie o primeiro curso para começar a montar o conteúdo.</span>
-      <button class="btn btn-primary" @click="createCourse">+ Novo curso</button>
+        <div v-else class="empty-state">
+          <strong>Nenhum curso</strong>
+          <span>Crie o primeiro curso para começar a montar o conteúdo.</span>
+          <button class="btn btn-primary" @click="createCourse">+ Novo curso</button>
+        </div>
+      </div>
+
+      <aside v-if="selectedItem" class="editor-dock">
+        <Transition name="drawer" appear>
+          <ItemDrawer
+            :type="selected.type"
+            :item="selectedItem"
+            :course="course"
+            @close="selected = null"
+            @saved="onSaved"
+          />
+        </Transition>
+      </aside>
     </div>
-
-    <Transition name="drawer">
-      <ItemDrawer
-        v-if="selectedItem"
-        :type="selected.type"
-        :item="selectedItem"
-        :course="course"
-        @close="selected = null"
-        @saved="onSaved"
-      />
-    </Transition>
 
     <div v-if="showAttach" class="admin-modal-backdrop" @click.self="showAttach = false">
       <div class="panel admin-modal">
