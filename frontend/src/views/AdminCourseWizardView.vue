@@ -109,28 +109,70 @@
       </section>
 
       <!-- Passo 4 -->
-      <section v-else class="panel wizard-panel">
+      <section v-else-if="step === 4" class="panel wizard-panel">
+        <h2 class="panel-title">Aulas</h2>
+        <p class="panel-desc">Adicione aulas novas ou copie aulas existentes para cada tópico.</p>
+
+        <p v-if="!topicCount" class="form-hint">Crie pelo menos um tópico no passo anterior.</p>
+
+        <div v-for="m in modules" :key="m.id" class="wizard-module-block">
+          <strong>{{ m.name }}</strong>
+
+          <div v-for="t in m.topics" :key="t.id" class="wizard-topic-block">
+            <div class="wizard-module-head">
+              <span class="wizard-topic-name">{{ t.name }}</span>
+              <div class="wizard-panel-actions">
+                <button class="btn btn-outline btn-sm" @click="lessonPickerTopic = t">Copiar aula existente</button>
+                <button class="btn btn-primary btn-sm" @click="startNewLesson(t)">+ Nova aula</button>
+              </div>
+            </div>
+
+            <div v-if="newLesson.topicId === t.id" class="wizard-inline">
+              <input class="form-control" v-model="newLesson.name" placeholder="Nome da aula" @keydown.enter.prevent="createLesson(t)">
+              <button class="btn btn-primary btn-sm" :disabled="busy" @click="createLesson(t)">Criar</button>
+              <button class="btn btn-outline btn-sm" @click="cancelNewLesson">Cancelar</button>
+            </div>
+
+            <p v-if="!(t.lessons?.length)" class="form-hint">Nenhuma aula ainda.</p>
+            <div v-else class="wizard-list">
+              <div v-for="l in t.lessons" :key="l.id" class="wizard-item">
+                <span class="wizard-item-name">{{ l.name }}</span>
+                <span v-if="l.video" class="wizard-item-meta">vídeo</span>
+                <button class="wizard-remove" @click="removeLesson(l)">remover</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Passo 5 -->
+      <section v-else-if="step === 5" class="panel wizard-panel">
         <h2 class="panel-title">Revisar</h2>
         <div class="wizard-review">
           <div class="wizard-review-row"><span>Curso</span><strong>{{ form.name }}</strong></div>
           <div class="wizard-review-row"><span>Status</span><span class="status-pill" :class="form.status">{{ statusLabel(form.status) }}</span></div>
           <div class="wizard-review-row"><span>Módulos</span><strong>{{ modules.length }}</strong></div>
           <div class="wizard-review-row"><span>Tópicos</span><strong>{{ topicCount }}</strong></div>
+          <div class="wizard-review-row"><span>Aulas</span><strong>{{ lessonCount }}</strong></div>
         </div>
 
         <div v-for="m in modules" :key="m.id" class="wizard-review-module">
           <strong>{{ m.name }}</strong>
-          <ul>
-            <li v-for="t in m.topics" :key="t.id">{{ t.name }}</li>
-            <li v-if="!(m.topics?.length)" class="wizard-review-empty">sem tópicos</li>
-          </ul>
+          <template v-for="t in m.topics" :key="t.id">
+            <p class="wizard-review-topic">{{ t.name }}</p>
+            <ul>
+              <li v-for="l in t.lessons" :key="l.id">{{ l.name }}</li>
+              <li v-if="!(t.lessons?.length)" class="wizard-review-empty">sem aulas</li>
+            </ul>
+          </template>
+          <p v-if="!(m.topics?.length)" class="wizard-review-empty">sem tópicos</p>
         </div>
       </section>
 
       <div class="wizard-foot">
         <button v-if="step > 1" class="btn btn-outline" @click="step--">Voltar</button>
         <span class="wizard-spacer"></span>
-        <button v-if="step < 4" class="btn btn-primary" :disabled="busy" @click="next">
+        <button v-if="step < 5" class="btn btn-primary" :disabled="busy" @click="next">
           {{ busy ? 'Salvando...' : (step === 1 ? (courseId ? 'Salvar e continuar' : 'Criar e continuar') : 'Continuar') }}
         </button>
         <button v-else class="btn btn-primary" @click="finish">Concluir</button>
@@ -172,6 +214,14 @@
       </div>
     </div>
 
+    <LessonPicker
+      v-if="lessonPickerTopic"
+      :topic-id="lessonPickerTopic.id"
+      :exclude-ids="courseLessonIds"
+      @close="lessonPickerTopic = null"
+      @copied="onLessonCopied"
+    />
+
   </main>
 </template>
 
@@ -180,6 +230,7 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api/http';
 import { statusLabel } from '../utils/adminLabels';
+import LessonPicker from '../components/admin/LessonPicker.vue';
 
 const router = useRouter();
 
@@ -187,6 +238,7 @@ const steps = [
   { key: 'dados', label: 'Dados' },
   { key: 'modulos', label: 'Módulos' },
   { key: 'topicos', label: 'Tópicos' },
+  { key: 'aulas', label: 'Aulas' },
   { key: 'revisar', label: 'Revisar' },
 ];
 
@@ -207,9 +259,29 @@ const topicPool = ref([]);
 const newModule = reactive({ open: false, name: '' });
 const newTopic = reactive({ moduleId: null, name: '' });
 const linkTopic = reactive({ module: null });
+const newLesson = reactive({ topicId: null, name: '' });
+const lessonPickerTopic = ref(null);
 
 const modules = computed(() => course.value?.modules ?? []);
 const topicCount = computed(() => modules.value.reduce((total, m) => total + (m.topics?.length ?? 0), 0));
+const lessonCount = computed(() => modules.value.reduce(
+  (total, m) => total + (m.topics ?? []).reduce((sum, t) => sum + (t.lessons?.length ?? 0), 0),
+  0,
+));
+
+const courseLessonIds = computed(() => {
+  const ids = [];
+
+  for (const m of modules.value) {
+    for (const t of m.topics ?? []) {
+      for (const l of t.lessons ?? []) {
+        ids.push(l.id);
+      }
+    }
+  }
+
+  return ids;
+});
 
 const linkedModuleIds = computed(() => new Set(modules.value.map((m) => m.id)));
 const availableModules = computed(() => modulePool.value.filter((m) => !linkedModuleIds.value.has(m.id)));
@@ -227,7 +299,7 @@ const availableTopics = computed(() => {
 });
 
 function goto(n) {
-  if (n <= step.value || (courseId.value && n <= 4)) {
+  if (n <= step.value || (courseId.value && n <= 5)) {
     step.value = n;
   }
 }
@@ -443,6 +515,66 @@ async function removeTopic(topic) {
   }
 }
 
+function startNewLesson(topic) {
+  newLesson.topicId = topic.id;
+  newLesson.name = '';
+}
+
+function cancelNewLesson() {
+  newLesson.topicId = null;
+  newLesson.name = '';
+}
+
+async function createLesson(topic) {
+  const name = newLesson.name.trim();
+
+  if (!name) {
+    return;
+  }
+
+  busy.value = true;
+  error.value = '';
+
+  try {
+    await api.post('/admin/lessons', { name, topic_id: topic.id, status: 'active' });
+    newLesson.name = '';
+    newLesson.topicId = null;
+    await loadCourse();
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível criar a aula.';
+  } finally {
+    busy.value = false;
+  }
+}
+
+function onLessonCopied(lesson) {
+  const topic = lessonPickerTopic.value;
+
+  if (topic) {
+    topic.lessons = [...(topic.lessons ?? []), lesson];
+  }
+
+  lessonPickerTopic.value = null;
+}
+
+async function removeLesson(lesson) {
+  if (!window.confirm(`Remover a aula "${lesson.name}"?`)) {
+    return;
+  }
+
+  busy.value = true;
+  error.value = '';
+
+  try {
+    await api.delete(`/admin/lessons/${lesson.id}`);
+    await loadCourse();
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível remover a aula.';
+  } finally {
+    busy.value = false;
+  }
+}
+
 onMounted(() => nextTick(() => nameInput.value?.focus()));
 </script>
 
@@ -484,11 +616,14 @@ onMounted(() => nextTick(() => nameInput.value?.focus()));
 
 .wizard-module-block{display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--border);padding-top:14px;}
 .wizard-module-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.wizard-topic-block{display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--border);padding-top:12px;margin-top:4px;}
+.wizard-topic-name{font-size:13px;font-weight:700;}
 
 .wizard-review{display:flex;flex-direction:column;gap:8px;}
 .wizard-review-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:var(--text-secondary);}
 .wizard-review-row strong{color:var(--text-primary);}
 .wizard-review-module{border-top:1px dashed var(--border);padding-top:12px;}
+.wizard-review-topic{margin:10px 0 0;font-size:12.5px;font-weight:700;color:var(--text-secondary);}
 .wizard-review-module ul{margin:6px 0 0;padding-left:18px;list-style:disc;color:var(--text-secondary);font-size:12.5px;}
 .wizard-review-module li{margin:2px 0;}
 .wizard-review-empty{color:var(--text-muted);font-style:italic;}
