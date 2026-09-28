@@ -1,12 +1,5 @@
 <template>
-  <article
-    class="card acard"
-    :class="{ 'menu-open': menuOpen }"
-    role="link"
-    tabindex="0"
-    @click="go"
-    @keydown.enter.self="go"
-  >
+  <article class="card acard" :class="{ 'menu-open': menuOpen }">
     <div class="acard-thumb" :style="{ background: gradient }">
       <span class="glow" style="top:-30px;right:-20px;left:auto;"></span>
       <img v-if="course.image" :src="course.image" class="acard-img" :alt="course.name">
@@ -28,7 +21,6 @@
             aria-haspopup="menu"
             title="Ações"
             @click="toggleMenu"
-            @keydown.enter.stop
             @keydown.esc="menuOpen = false"
           >⋯</button>
 
@@ -49,7 +41,6 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { statusLabel } from '../../utils/adminLabels';
 
 const props = defineProps({
@@ -58,7 +49,6 @@ const props = defineProps({
 });
 const emit = defineEmits(['open', 'edit', 'publish', 'unpublish', 'delete']);
 
-const router = useRouter();
 const menuOpen = ref(false);
 
 const GRADIENTS = [
@@ -72,10 +62,6 @@ const GRADIENTS = [
 const gradient = computed(() => GRADIENTS[Number(props.course.id) % GRADIENTS.length]);
 const moduleCount = computed(() => (props.course.modules ?? []).length);
 const published = computed(() => props.course.status === 'active');
-
-function go() {
-  router.push({ name: 'admin-conteudo-curso', params: { courseId: props.course.id } });
-}
 
 function toggleMenu() {
   menuOpen.value = !menuOpen.value;
@@ -95,9 +81,8 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenu));
 </script>
 
 <style scoped>
-.acard{display:flex;flex-direction:column;cursor:pointer;position:relative;overflow:visible;}
+.acard{display:flex;flex-direction:column;position:relative;overflow:visible;}
 .acard.menu-open{z-index:5;}
-.acard:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 .acard-thumb{position:relative;height:112px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:var(--radius-md) var(--radius-md) 0 0;}
 .acard-thumb .glow{position:absolute;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%);}
 .acard-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
