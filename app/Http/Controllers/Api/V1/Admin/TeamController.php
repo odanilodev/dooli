@@ -6,10 +6,11 @@ use App\DTO\CreateTeamDTO;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Requests\Admin\AddStudentRequest;
 use App\Http\Requests\Admin\StoreTeamRequest;
+use App\Http\Requests\Admin\UpdateStudentRequest;
 use App\Http\Requests\Admin\UpdateTeamRequest;
 use App\Http\Resources\CourseResource;
 use App\Http\Resources\TeamResource;
-use App\Http\Resources\UserResource;
+use App\Http\Resources\TeamStudentResource;
 use App\Models\Team;
 use App\Services\TeamService;
 use App\Support\ApiResponse;
@@ -86,11 +87,20 @@ class TeamController extends ApiController
         return ApiResponse::success(['message' => 'Aluno removido da turma.']);
     }
 
+    public function updateStudent(UpdateStudentRequest $request, Team $team, int $user): JsonResponse
+    {
+        $this->authorize('update', $team);
+
+        $this->teams->updateStudent($team, $user, $request->validated());
+
+        return ApiResponse::success(['message' => 'Vínculo do aluno atualizado.']);
+    }
+
     public function students(Team $team): JsonResponse
     {
         $this->authorize('view', $team);
 
-        return ApiResponse::collection(UserResource::collection($this->teams->students($team)));
+        return ApiResponse::collection(TeamStudentResource::collection($this->teams->students($team)));
     }
 
     public function courses(Team $team): JsonResponse

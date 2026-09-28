@@ -106,12 +106,23 @@ class TeamService
         $this->audit->log('team', 'remove_student', 'team', "Aluno {$userId} removido da turma {$team->name}");
     }
 
+    public function updateStudent(Team $team, int $userId, array $data): void
+    {
+        if (! $team->users()->whereKey($userId)->exists()) {
+            throw new BusinessRuleException('Aluno não está matriculado nesta turma.');
+        }
+
+        $team->users()->updateExistingPivot($userId, $data);
+
+        $this->audit->log('team', 'update_student', 'team', "Vínculo do aluno {$userId} atualizado na turma {$team->name}");
+    }
+
     /**
      * @return Collection<int, User>
      */
     public function students(Team $team): Collection
     {
-        return $team->users()->get();
+        return $team->users()->orderBy('users.name')->get();
     }
 
     /**

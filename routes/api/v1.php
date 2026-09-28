@@ -147,6 +147,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::apiResource('teams', AdminTeamController::class);
         Route::get('teams/{team}/students', [AdminTeamController::class, 'students']);
         Route::post('teams/{team}/students', [AdminTeamController::class, 'addStudent']);
+        Route::put('teams/{team}/students/{user}', [AdminTeamController::class, 'updateStudent'])->whereNumber('user');
         Route::delete('teams/{team}/students/{user}', [AdminTeamController::class, 'removeStudent'])->whereNumber('user');
         Route::get('teams/{team}/courses', [AdminTeamController::class, 'courses']);
         Route::post('teams/{team}/courses', [AdminTeamController::class, 'attachCourse']);
