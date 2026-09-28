@@ -218,6 +218,7 @@
       type="lesson"
       :item="editingLesson"
       :course="course"
+      :focus="drawerFocus"
       @close="editingLesson = null"
       @saved="onLessonSaved"
     />
@@ -261,6 +262,7 @@ const newTopic = reactive({ moduleId: null, name: '' });
 const linkTopic = reactive({ module: null });
 const newLesson = reactive({ topicId: null, name: '' });
 const editingLesson = ref(null);
+const drawerFocus = ref(null);
 
 const modules = computed(() => course.value?.modules ?? []);
 const topicCount = computed(() => modules.value.reduce((total, m) => total + (m.topics?.length ?? 0), 0));
@@ -522,10 +524,13 @@ async function createLesson(topic) {
   error.value = '';
 
   try {
-    await api.post('/admin/lessons', { name, topic_id: topic.id, status: 'active' });
+    const { data } = await api.post('/admin/lessons', { name, topic_id: topic.id, status: 'active' });
+    const lesson = { ...data.data, attachments: data.data.attachments ?? [] };
+    topic.lessons = [...(topic.lessons ?? []), lesson];
     newLesson.name = '';
     newLesson.topicId = null;
-    await loadCourse();
+    drawerFocus.value = 'description';
+    editingLesson.value = lesson;
   } catch (e) {
     error.value = e?.message || 'Não foi possível criar a aula.';
   } finally {
@@ -534,6 +539,7 @@ async function createLesson(topic) {
 }
 
 function openLesson(lesson) {
+  drawerFocus.value = null;
   editingLesson.value = lesson;
 }
 

@@ -181,7 +181,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { api } from '../../api/http';
 import { playerLabel, statusLabel, typeLabel } from '../../utils/adminLabels';
 import { toDateTimeInput } from '../../utils/format';
@@ -190,6 +190,7 @@ const props = defineProps({
   type: { type: String, required: true },
   item: { type: Object, required: true },
   course: { type: Object, default: null },
+  focus: { type: String, default: null },
 });
 
 const emit = defineEmits(['close', 'saved']);
@@ -449,9 +450,24 @@ function onKeydown(e) {
   }
 }
 
+const focusTargets = {
+  name: 'dw-name',
+  description: 'dw-desc',
+  content: 'dw-content',
+};
+
+function focusField() {
+  const id = focusTargets[props.focus];
+
+  if (id) {
+    document.getElementById(id)?.focus();
+  }
+}
+
 onMounted(() => {
   ensureReferences();
   document.addEventListener('keydown', onKeydown);
+  nextTick(focusField);
 });
 onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 </script>
