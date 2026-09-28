@@ -2,7 +2,7 @@
   <section class="cb">
     <header class="cb-bar">
       <div class="cb-bar-text">
-        <span class="cb-bar-title">Currículo</span>
+        <span class="cb-bar-title">{{ course.name }}</span>
         <span class="cb-bar-sub">{{ moduleCount }} módulo(s) · {{ lessonCount }} aula(s)</span>
       </div>
       <div class="cb-bar-actions">
@@ -166,7 +166,7 @@
     </draggable>
 
     <div v-if="!modules.length" class="cb-empty-root">
-      <strong>Currículo vazio</strong>
+      <strong>Sem conteúdo ainda</strong>
       <span>Comece adicionando um módulo ou vinculando um existente.</span>
       <div class="cb-empty-actions">
         <button class="btn btn-primary btn-sm" @click="emit('add-module')">+ Módulo</button>
@@ -289,7 +289,7 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenus));
 .cb{display:flex;flex-direction:column;gap:14px;width:100%;max-width:1440px;}
 .cb-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .cb-bar-text{display:flex;flex-direction:column;gap:1px;}
-.cb-bar-title{font-size:14px;font-weight:800;}
+.cb-bar-title{font-size:15px;font-weight:800;}
 .cb-bar-sub{font-size:11.5px;color:var(--text-muted);}
 .cb-bar-actions{display:flex;gap:8px;}
 
