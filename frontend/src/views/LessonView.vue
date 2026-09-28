@@ -26,7 +26,6 @@
           </span>
           <div>
             <h1 class="lesson-title">{{ currentLesson.name }}</h1>
-            <p class="lesson-desc">{{ currentLesson.description }}</p>
           </div>
         </div>
 
