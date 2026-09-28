@@ -76,7 +76,7 @@
             <td><span class="status-count">{{ team.users_count ?? 0 }}</span></td>
             <td><span class="status-count">{{ team.courses_count ?? 0 }}</span></td>
             <td><span class="status-pill" :class="team.status">{{ statusLabel(team.status) }}</span></td>
-            <td class="admin-actions">
+            <td class="team-actions">
               <button
                 type="button"
                 class="team-kebab"
@@ -339,6 +339,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .status-count{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:800;}
+.team-actions{text-align:right;white-space:nowrap;}
 .team-kebab{
   display:inline-flex;align-items:center;justify-content:center;width:30px;height:26px;padding:0;border-radius:9px;cursor:pointer;
   background:transparent;border:1.5px solid var(--border);color:var(--text-secondary);
