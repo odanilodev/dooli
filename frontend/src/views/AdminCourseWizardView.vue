@@ -120,7 +120,7 @@
 
           <div v-for="t in m.topics" :key="t.id" class="wizard-topic-block">
             <div class="wizard-module-head">
-              <span class="wizard-topic-name">{{ t.name }} <small class="wizard-topic-count">{{ t.lessons?.length ?? 0 }} aula(s)</small></span>
+              <span class="wizard-topic-name">{{ t.name }}</span>
               <div class="wizard-panel-actions">
                 <button class="btn btn-outline btn-sm" @click="lessonPickerTopic = t">Copiar aula existente</button>
                 <button class="btn btn-primary btn-sm" @click="startNewLesson(t)">+ Nova aula</button>
@@ -131,6 +131,15 @@
               <input class="form-control" v-model="newLesson.name" placeholder="Nome da aula" @keydown.enter.prevent="createLesson(t)">
               <button class="btn btn-primary btn-sm" :disabled="busy" @click="createLesson(t)">Criar</button>
               <button class="btn btn-outline btn-sm" @click="cancelNewLesson">Cancelar</button>
+            </div>
+
+            <p v-if="!(t.lessons?.length)" class="form-hint">Nenhuma aula ainda.</p>
+            <div v-else class="wizard-list">
+              <div v-for="l in t.lessons" :key="l.id" class="wizard-item">
+                <span class="wizard-item-name">{{ l.name }}</span>
+                <span v-if="l.video" class="wizard-item-meta">vídeo</span>
+                <button class="wizard-remove" @click="removeLesson(l)">remover</button>
+              </div>
             </div>
           </div>
         </div>
@@ -149,10 +158,14 @@
 
         <div v-for="m in modules" :key="m.id" class="wizard-review-module">
           <strong>{{ m.name }}</strong>
-          <ul>
-            <li v-for="t in m.topics" :key="t.id">{{ t.name }} <span class="wizard-review-count">{{ t.lessons?.length ?? 0 }} aula(s)</span></li>
-            <li v-if="!(m.topics?.length)" class="wizard-review-empty">sem tópicos</li>
-          </ul>
+          <template v-for="t in m.topics" :key="t.id">
+            <p class="wizard-review-topic">{{ t.name }}</p>
+            <ul>
+              <li v-for="l in t.lessons" :key="l.id">{{ l.name }}</li>
+              <li v-if="!(t.lessons?.length)" class="wizard-review-empty">sem aulas</li>
+            </ul>
+          </template>
+          <p v-if="!(m.topics?.length)" class="wizard-review-empty">sem tópicos</p>
         </div>
       </section>
 
@@ -544,6 +557,24 @@ function onLessonCopied(lesson) {
   lessonPickerTopic.value = null;
 }
 
+async function removeLesson(lesson) {
+  if (!window.confirm(`Remover a aula "${lesson.name}"?`)) {
+    return;
+  }
+
+  busy.value = true;
+  error.value = '';
+
+  try {
+    await api.delete(`/admin/lessons/${lesson.id}`);
+    await loadCourse();
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível remover a aula.';
+  } finally {
+    busy.value = false;
+  }
+}
+
 onMounted(() => nextTick(() => nameInput.value?.focus()));
 </script>
 
@@ -587,13 +618,12 @@ onMounted(() => nextTick(() => nameInput.value?.focus()));
 .wizard-module-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .wizard-topic-block{display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--border);padding-top:12px;margin-top:4px;}
 .wizard-topic-name{font-size:13px;font-weight:700;}
-.wizard-topic-count{font-size:11.5px;color:var(--text-muted);font-weight:600;}
 
 .wizard-review{display:flex;flex-direction:column;gap:8px;}
 .wizard-review-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:var(--text-secondary);}
 .wizard-review-row strong{color:var(--text-primary);}
 .wizard-review-module{border-top:1px dashed var(--border);padding-top:12px;}
-.wizard-review-count{font-size:11px;color:var(--text-muted);font-weight:600;}
+.wizard-review-topic{margin:10px 0 0;font-size:12.5px;font-weight:700;color:var(--text-secondary);}
 .wizard-review-module ul{margin:6px 0 0;padding-left:18px;list-style:disc;color:var(--text-secondary);font-size:12.5px;}
 .wizard-review-module li{margin:2px 0;}
 .wizard-review-empty{color:var(--text-muted);font-style:italic;}
