@@ -33,6 +33,10 @@
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5A2.5 2.5 0 0 1 4 20.5z"/></svg>
           <span>Conteúdo</span>
         </router-link>
+        <router-link to="/admin/turmas" class="nav-link" :class="{ active: $route.name === 'admin-turmas' }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5"/><path d="M16 5.5a3 3 0 0 1 0 5.9"/><path d="M17.5 13.7c2.2.6 3.9 2.5 3.9 5.3"/></svg>
+          <span>Turmas</span>
+        </router-link>
         <router-link to="/admin/videos" class="nav-link" :class="{ active: $route.name === 'admin-videos' }" @click="close">
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>
           <span>Vídeos</span>

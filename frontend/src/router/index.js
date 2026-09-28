@@ -16,6 +16,7 @@ import AdminVideoPlatformsView from '../views/AdminVideoPlatformsView.vue';
 import AdminContentIndexView from '../views/AdminContentIndexView.vue';
 import AdminCourseWizardView from '../views/AdminCourseWizardView.vue';
 import AdminContentView from '../views/AdminContentView.vue';
+import AdminTeamsView from '../views/AdminTeamsView.vue';
 import AdminVideosView from '../views/AdminVideosView.vue';
 import AdminDocumentsView from '../views/AdminDocumentsView.vue';
 import AdminAttachmentsView from '../views/AdminAttachmentsView.vue';
@@ -43,6 +44,7 @@ const routes = [
       { path: 'admin/conteudo', name: 'admin-conteudo', component: AdminContentIndexView, meta: { title: 'Conteúdo (admin)', requiresAdmin: true } },
       { path: 'admin/conteudo/novo', name: 'admin-conteudo-novo', component: AdminCourseWizardView, meta: { title: 'Novo curso (admin)', requiresAdmin: true } },
       { path: 'admin/conteudo/:courseId', name: 'admin-conteudo-curso', component: AdminContentView, meta: { title: 'Curso (admin)', requiresAdmin: true } },
+      { path: 'admin/turmas', name: 'admin-turmas', component: AdminTeamsView, meta: { title: 'Turmas (admin)', requiresAdmin: true } },
       { path: 'admin/videos', name: 'admin-videos', component: AdminVideosView, meta: { title: 'Vídeos (admin)', requiresAdmin: true } },
       { path: 'admin/documentos', name: 'admin-documentos', component: AdminDocumentsView, meta: { title: 'Documentos (admin)', requiresAdmin: true } },
       { path: 'admin/anexos', name: 'admin-anexos', component: AdminAttachmentsView, meta: { title: 'Anexos (admin)', requiresAdmin: true } },
