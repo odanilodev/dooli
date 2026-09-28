@@ -1,5 +1,5 @@
 <template>
-  <div class="drawer-backdrop" @click.self="emit('close')">
+  <div class="drawer-backdrop" @mousedown="onBackdropDown" @click.self="backdropDown && emit('close')">
     <aside class="drawer">
       <header class="drawer-head">
         <div class="drawer-head-text">
@@ -200,6 +200,7 @@ const saving = ref(false);
 const saved = ref(false);
 const error = ref('');
 const busy = ref(false);
+const backdropDown = ref(false);
 
 const form = reactive({
   name: '', description: '', image: '', status: 'active', sort_order: 0,
@@ -448,6 +449,10 @@ function onKeydown(e) {
   if (e.key === 'Escape') {
     emit('close');
   }
+}
+
+function onBackdropDown(e) {
+  backdropDown.value = e.target === e.currentTarget;
 }
 
 const focusTargets = {

@@ -49,7 +49,7 @@
       />
     </Transition>
 
-    <div v-if="showAttach" class="admin-modal-backdrop" @click.self="showAttach = false">
+    <div v-if="showAttach" class="admin-modal-backdrop" @mousedown="onBackdropDown" @click.self="backdropDown && (showAttach = false)">
       <div class="panel admin-modal">
         <div class="admin-panel-head">
           <h2 class="panel-title">Vincular módulo existente</h2>
@@ -91,6 +91,11 @@ const error = ref('');
 const showAttach = ref(false);
 const attaching = ref(false);
 const availableModules = ref([]);
+const backdropDown = ref(false);
+
+function onBackdropDown(e) {
+  backdropDown.value = e.target === e.currentTarget;
+}
 
 const selectedItem = computed(() => (selected.value ? findNode(selected.value.type, selected.value.id) : null));
 

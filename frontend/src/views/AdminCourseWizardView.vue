@@ -178,7 +178,7 @@
       </div>
     </div>
 
-    <div v-if="showModules" class="admin-modal-backdrop" @click.self="showModules = false">
+    <div v-if="showModules" class="admin-modal-backdrop" @mousedown="onBackdropDown" @click.self="backdropDown && (showModules = false)">
       <div class="panel admin-modal">
         <div class="admin-panel-head">
           <h2 class="panel-title">Vincular módulo existente</h2>
@@ -195,7 +195,7 @@
       </div>
     </div>
 
-    <div v-if="linkTopic.module" class="admin-modal-backdrop" @click.self="linkTopic.module = null">
+    <div v-if="linkTopic.module" class="admin-modal-backdrop" @mousedown="onBackdropDown" @click.self="backdropDown && (linkTopic.module = null)">
       <div class="panel admin-modal">
         <div class="admin-panel-head">
           <h2 class="panel-title">Vincular tópico a "{{ linkTopic.module.name }}"</h2>
@@ -263,6 +263,11 @@ const linkTopic = reactive({ module: null });
 const newLesson = reactive({ topicId: null, name: '' });
 const editingLesson = ref(null);
 const drawerFocus = ref(null);
+const backdropDown = ref(false);
+
+function onBackdropDown(e) {
+  backdropDown.value = e.target === e.currentTarget;
+}
 
 const modules = computed(() => course.value?.modules ?? []);
 const topicCount = computed(() => modules.value.reduce((total, m) => total + (m.topics?.length ?? 0), 0));
