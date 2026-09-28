@@ -25,6 +25,7 @@ class TeamService
         return $this->teams->paginate(
             perPage: $perPage,
             filters: $filters,
+            withCount: ['users', 'courses'],
             sort: $filters['sort'] ?? null,
             direction: $filters['direction'] ?? 'asc',
         );

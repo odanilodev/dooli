@@ -32,8 +32,9 @@ abstract class BaseRepository implements RepositoryInterface
         array $with = [],
         mixed $sort = null,
         mixed $direction = 'desc',
+        array $withCount = [],
     ): LengthAwarePaginator {
-        $query = $this->query()->with($with);
+        $query = $this->query()->with($with)->withCount($withCount);
 
         $this->applyFilters($query, $filters);
 

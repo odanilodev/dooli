@@ -14,6 +14,8 @@ class TeamResource extends JsonResource
             'name' => $this->name,
             'status' => $this->status,
             'sort_order' => $this->sort_order,
+            'users_count' => $this->whenCounted('users'),
+            'courses_count' => $this->whenCounted('courses'),
             'courses' => CourseResource::collection($this->whenLoaded('courses')),
             'users' => UserResource::collection($this->whenLoaded('users')),
             'created_at' => $this->created_at?->toIso8601String(),
