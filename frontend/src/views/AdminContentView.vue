@@ -2,16 +2,20 @@
   <main class="content">
 
     <div class="page-header">
-      <div>
+      <div class="builder-head-left">
         <h1 class="page-title">Conteúdo</h1>
-        <p class="page-subtitle">Cursos, módulos, tópicos e aulas em uma tela só.</p>
+        <CoursePicker
+          :courses="courses"
+          :current-id="courseId"
+          :current="course"
+          @select="selectCourse"
+          @create="createCourse"
+        />
       </div>
-      <div class="admin-head-actions">
-        <select class="form-control admin-course-select" :value="courseId" @change="selectCourse(Number($event.target.value))">
-          <option v-if="!courses.length" :value="null">Nenhum curso</option>
-          <option v-for="c in courses" :key="c.id" :value="c.id">{{ c.name }}</option>
-        </select>
-        <button class="btn btn-primary" @click="createCourse">+ Novo curso</button>
+
+      <div class="admin-head-actions" v-if="course">
+        <router-link class="btn btn-outline" :to="{ name: 'curso', params: { courseId: course.id } }">Ver como aluno</router-link>
+        <button class="btn btn-outline" @click="openDrawer('course', course.id)">Editar curso</button>
       </div>
     </div>
 
@@ -19,39 +23,37 @@
 
     <p v-if="loading" class="page-subtitle">Carregando...</p>
 
-    <div v-else-if="course" class="admin-layout">
-      <section class="panel admin-tree-panel">
-        <ContentTree
-          :course="course"
-          :selected="selected"
-          @select="selected = $event"
-          @create-module="createModule"
-          @attach-module="openAttach"
-          @create-topic="createTopic"
-          @create-lesson="createLesson"
-          @remove-node="removeNode"
-          @reorder="reorder"
-        />
-      </section>
-
-      <section class="admin-detail">
-        <CoursePanel v-if="selected?.type === 'course'" :course="course" @changed="reload" />
-        <ModulePanel v-else-if="selected?.type === 'module' && selectedNode" :module="selectedNode" @changed="reload" />
-        <TopicPanel v-else-if="selected?.type === 'topic' && selectedNode" :topic="selectedNode" @changed="reload" />
-        <LessonPanel v-else-if="selected?.type === 'lesson' && selectedNode" :lesson="selectedNode" @changed="reload" />
-        <div v-else class="panel">
-          <div class="empty-state">
-            <strong>Selecione um item</strong>
-            <span>Clique em um curso, módulo, tópico ou aula na árvore para editar.</span>
-          </div>
-        </div>
-      </section>
-    </div>
+    <template v-else-if="course">
+      <CurriculumBuilder
+        :course="course"
+        :selected="selected"
+        @select="onSelect"
+        @rename="rename"
+        @add-module="createModule"
+        @attach-module="openAttach"
+        @add-topic="createTopic"
+        @add-lesson="createLesson"
+        @remove="removeNode"
+        @reorder="reorder"
+      />
+    </template>
 
     <div v-else class="empty-state">
       <strong>Nenhum curso</strong>
-      <span>Crie o primeiro curso para começar.</span>
+      <span>Crie o primeiro curso para começar a montar o conteúdo.</span>
+      <button class="btn btn-primary" @click="createCourse">+ Novo curso</button>
     </div>
+
+    <Transition name="drawer">
+      <ItemDrawer
+        v-if="selectedItem"
+        :type="selected.type"
+        :item="selectedItem"
+        :course="course"
+        @close="selected = null"
+        @saved="onSaved"
+      />
+    </Transition>
 
     <div v-if="showAttach" class="admin-modal-backdrop" @click.self="showAttach = false">
       <div class="panel admin-modal">
@@ -65,8 +67,8 @@
 
         <div v-else class="admin-attach-list">
           <button v-for="m in availableModules" :key="m.id" class="admin-attach-item" @click="attach(m)">
-            <span>#{{ m.id }} · {{ m.name }}</span>
-            <span class="status-pill" :class="m.status">{{ m.status }}</span>
+            <span>{{ m.name }}</span>
+            <span class="status-pill" :class="m.status">{{ statusLabel(m.status) }}</span>
           </button>
         </div>
       </div>
@@ -78,11 +80,10 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { api } from '../api/http';
-import ContentTree from '../components/admin/ContentTree.vue';
-import CoursePanel from '../components/admin/CoursePanel.vue';
-import ModulePanel from '../components/admin/ModulePanel.vue';
-import TopicPanel from '../components/admin/TopicPanel.vue';
-import LessonPanel from '../components/admin/LessonPanel.vue';
+import { statusLabel } from '../utils/adminLabels';
+import CoursePicker from '../components/admin/CoursePicker.vue';
+import CurriculumBuilder from '../components/admin/CurriculumBuilder.vue';
+import ItemDrawer from '../components/admin/ItemDrawer.vue';
 
 const courses = ref([]);
 const courseId = ref(null);
@@ -95,12 +96,12 @@ const showAttach = ref(false);
 const attaching = ref(false);
 const availableModules = ref([]);
 
-const selectedNode = computed(() => {
-  if (!course.value || !selected.value) {
+const selectedItem = computed(() => (selected.value ? findNode(selected.value.type, selected.value.id) : null));
+
+function findNode(type, id) {
+  if (!course.value) {
     return null;
   }
-
-  const { type, id } = selected.value;
 
   if (type === 'course') {
     return course.value;
@@ -125,7 +126,7 @@ const selectedNode = computed(() => {
   }
 
   return null;
-});
+}
 
 async function loadCourses() {
   try {
@@ -145,28 +146,43 @@ async function loadCourse() {
   try {
     const { data } = await api.get(`/admin/courses/${courseId.value}`);
     course.value = data.data;
-
-    if (!selected.value || selected.value.type === 'course') {
-      selected.value = { type: 'course', id: course.value.id };
-    } else if (!selectedNode.value) {
-      selected.value = { type: 'course', id: course.value.id };
-    }
   } catch (e) {
     error.value = e?.message || 'Não foi possível carregar o curso.';
     course.value = null;
   }
 }
 
-async function reload() {
-  await Promise.all([loadCourse(), loadCourses()]);
-}
-
 async function selectCourse(id) {
   courseId.value = id;
-  selected.value = id ? { type: 'course', id } : null;
+  selected.value = null;
   loading.value = true;
+  error.value = '';
   await loadCourse();
   loading.value = false;
+}
+
+function onSelect(target) {
+  selected.value = target;
+}
+
+function openDrawer(type, id) {
+  selected.value = { type, id };
+}
+
+async function onSaved({ type, id, data }) {
+  const node = findNode(type, id);
+
+  if (node) {
+    Object.assign(node, data);
+  }
+
+  if (type === 'course') {
+    const inList = courses.value.find((c) => c.id === id);
+
+    if (inList && node) {
+      Object.assign(inList, { name: node.name, status: node.status });
+    }
+  }
 }
 
 async function createCourse() {
@@ -176,6 +192,7 @@ async function createCourse() {
     const { data } = await api.post('/admin/courses', { name: 'Novo curso', status: 'active' });
     await loadCourses();
     await selectCourse(data.data.id);
+    openDrawer('course', data.data.id);
   } catch (e) {
     error.value = e?.message || 'Não foi possível criar o curso.';
   }
@@ -187,8 +204,9 @@ async function createModule() {
   try {
     const { data } = await api.post('/admin/modules', { name: 'Novo módulo', status: 'active' });
     await api.post(`/admin/courses/${courseId.value}/modules`, { module_id: data.data.id });
-    await loadCourse();
-    selected.value = { type: 'module', id: data.data.id };
+    const module = { ...data.data, topics: [] };
+    course.value.modules = [...(course.value.modules ?? []), module];
+    openDrawer('module', module.id);
   } catch (e) {
     error.value = e?.message || 'Não foi possível criar o módulo.';
   }
@@ -203,8 +221,9 @@ async function createTopic(module) {
       module_id: module.id,
       status: 'active',
     });
-    await loadCourse();
-    selected.value = { type: 'topic', id: data.data.id };
+    const topic = { ...data.data, lessons: [] };
+    module.topics = [...(module.topics ?? []), topic];
+    openDrawer('topic', topic.id);
   } catch (e) {
     error.value = e?.message || 'Não foi possível criar o tópico.';
   }
@@ -219,15 +238,36 @@ async function createLesson(topic) {
       topic_id: topic.id,
       status: 'active',
     });
-    await loadCourse();
-    selected.value = { type: 'lesson', id: data.data.id };
+    const lesson = { ...data.data, attachments: data.data.attachments ?? [] };
+    topic.lessons = [...(topic.lessons ?? []), lesson];
+    openDrawer('lesson', lesson.id);
   } catch (e) {
     error.value = e?.message || 'Não foi possível criar a aula.';
   }
 }
 
+async function rename({ type, id, name }) {
+  error.value = '';
+
+  const paths = { module: 'modules', topic: 'topics', lesson: 'lessons' };
+
+  try {
+    await api.put(`/admin/${paths[type]}/${id}`, { name });
+    const node = findNode(type, id);
+
+    if (node) {
+      node.name = name;
+    }
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível renomear.';
+    await loadCourse();
+  }
+}
+
 async function removeNode({ type, node }) {
-  if (!window.confirm(`Remover ${label(type)} "${node.name}"?`)) {
+  const labels = { module: 'o módulo', topic: 'o tópico', lesson: 'a aula' };
+
+  if (!window.confirm(`Remover ${labels[type]} "${node.name}"?`)) {
     return;
   }
 
@@ -236,19 +276,31 @@ async function removeNode({ type, node }) {
   try {
     if (type === 'module') {
       await api.delete(`/admin/courses/${courseId.value}/modules/${node.id}`);
+    } else {
+      const paths = { topic: 'topics', lesson: 'lessons' };
+      await api.delete(`/admin/${paths[type]}/${node.id}`);
+    }
+
+    if (type === 'module') {
+      course.value.modules = (course.value.modules ?? []).filter((m) => m.id !== node.id);
     } else if (type === 'topic') {
-      await api.delete(`/admin/topics/${node.id}`);
-    } else if (type === 'lesson') {
-      await api.delete(`/admin/lessons/${node.id}`);
+      for (const module of course.value.modules ?? []) {
+        module.topics = (module.topics ?? []).filter((t) => t.id !== node.id);
+      }
+    } else {
+      for (const module of course.value.modules ?? []) {
+        for (const topic of module.topics ?? []) {
+          topic.lessons = (topic.lessons ?? []).filter((l) => l.id !== node.id);
+        }
+      }
     }
 
-    if (selected.value && selected.value.id === node.id && selected.value.type === type) {
-      selected.value = { type: 'course', id: course.value.id };
+    if (selected.value && selected.value.type === type && selected.value.id === node.id) {
+      selected.value = null;
     }
-
-    await loadCourse();
   } catch (e) {
     error.value = e?.message || 'Não foi possível remover o item.';
+    await loadCourse();
   }
 }
 
@@ -291,14 +343,10 @@ async function attach(module) {
     await api.post(`/admin/courses/${courseId.value}/modules`, { module_id: module.id });
     showAttach.value = false;
     await loadCourse();
-    selected.value = { type: 'module', id: module.id };
+    openDrawer('module', module.id);
   } catch (e) {
     error.value = e?.message || 'Não foi possível vincular o módulo.';
   }
-}
-
-function label(type) {
-  return { module: 'o módulo', topic: 'o tópico', lesson: 'a aula' }[type] || 'o item';
 }
 
 onMounted(async () => {
@@ -314,5 +362,5 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.admin-course-select{max-width:260px;}
+.builder-head-left{display:flex;flex-direction:column;gap:12px;}
 </style>

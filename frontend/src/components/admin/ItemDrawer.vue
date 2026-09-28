@@ -1,0 +1,470 @@
+<template>
+  <div class="drawer-backdrop" @click.self="emit('close')">
+    <aside class="drawer">
+      <header class="drawer-head">
+        <div class="drawer-head-text">
+          <span class="drawer-eyebrow">{{ typeLabel(type) }}</span>
+          <h2 class="drawer-title">{{ item.name }}</h2>
+        </div>
+        <span class="status-pill" :class="item.status">{{ statusLabel(item.status) }}</span>
+        <button class="drawer-close" @click="emit('close')" aria-label="Fechar">×</button>
+      </header>
+
+      <nav class="drawer-tabs">
+        <button
+          v-for="t in tabs"
+          :key="t"
+          class="drawer-tab"
+          :class="{ active: tab === t }"
+          @click="tab = t"
+        >{{ tabLabels[t] }}</button>
+      </nav>
+
+      <div class="drawer-body">
+        <span class="form-error" :class="{ show: error }">{{ error }}</span>
+        <div class="form-success" :class="{ show: saved }">Salvo.</div>
+
+        <!-- DETALHES -->
+        <template v-if="tab === 'details'">
+          <div class="form-group">
+            <label :for="`dw-name`">Nome</label>
+            <input :id="`dw-name`" class="form-control" v-model="form.name" @keydown.enter.prevent="save">
+          </div>
+
+          <template v-if="type !== 'topic'">
+            <div class="form-group">
+              <label :for="`dw-desc`">Descrição</label>
+              <textarea :id="`dw-desc`" class="form-control" rows="3" v-model="form.description"></textarea>
+            </div>
+          </template>
+
+          <template v-if="type === 'course' || type === 'module'">
+            <div class="form-group">
+              <label :for="`dw-image`">Imagem (URL)</label>
+              <input :id="`dw-image`" class="form-control" v-model="form.image" placeholder="https://...">
+            </div>
+          </template>
+
+          <template v-if="type === 'lesson'">
+            <div class="form-group">
+              <label :for="`dw-content`">Conteúdo (HTML)</label>
+              <textarea :id="`dw-content`" class="form-control" rows="6" v-model="form.content" placeholder="<p>Conteúdo da aula...</p>"></textarea>
+            </div>
+          </template>
+
+          <p v-if="type === 'topic'" class="form-hint">Módulo: {{ course?.modules?.find((m) => m.id === item.module_id)?.name || `#${item.module_id}` }}</p>
+        </template>
+
+        <!-- VÍDEO -->
+        <template v-else-if="tab === 'video'">
+          <div class="form-group">
+            <label :for="`dw-video`">Vídeo da aula</label>
+            <select :id="`dw-video`" class="form-control" v-model="form.video_id">
+              <option value="">Sem vídeo</option>
+              <option v-for="v in videos" :key="v.id" :value="v.id">{{ v.title }} · {{ playerLabel(v.player) }}</option>
+            </select>
+          </div>
+
+          <button type="button" class="drawer-link" @click="showVideo = !showVideo">
+            {{ showVideo ? '− Cancelar' : '+ Criar novo vídeo' }}
+          </button>
+
+          <div v-if="showVideo" class="drawer-inline">
+            <input class="form-control" v-model="newVideo.title" placeholder="Título do vídeo">
+            <div class="form-row">
+              <select class="form-control" v-model="newVideo.player">
+                <option value="vdocipher">VdoCipher</option>
+                <option value="panda">Panda Video</option>
+                <option value="vimeo">Vimeo</option>
+                <option value="fastpix">FastPix</option>
+                <option value="external">Link externo</option>
+              </select>
+              <input class="form-control" v-model="newVideo.code" placeholder="Código no provedor">
+            </div>
+            <input class="form-control" v-model="newVideo.link" placeholder="Link (para player externo)">
+            <button type="button" class="btn btn-primary btn-sm" :disabled="creatingVideo" @click="createVideo">
+              {{ creatingVideo ? 'Criando...' : 'Criar e vincular' }}
+            </button>
+          </div>
+        </template>
+
+        <!-- MATERIAIS -->
+        <template v-else-if="tab === 'materials'">
+          <div class="form-group">
+            <label :for="`dw-doc`">Documento</label>
+            <select :id="`dw-doc`" class="form-control" v-model="form.document_id">
+              <option value="">Sem documento</option>
+              <option v-for="d in documents" :key="d.id" :value="d.id">{{ d.path }}</option>
+            </select>
+          </div>
+
+          <button type="button" class="drawer-link" @click="showDocument = !showDocument">
+            {{ showDocument ? '− Cancelar' : '+ Criar novo documento' }}
+          </button>
+
+          <div v-if="showDocument" class="drawer-inline">
+            <input class="form-control" v-model="newDocument.path" placeholder="Caminho (path)">
+            <input class="form-control" v-model="newDocument.image" placeholder="Imagem (URL, opcional)">
+            <button type="button" class="btn btn-primary btn-sm" :disabled="creatingDocument" @click="createDocument">
+              {{ creatingDocument ? 'Criando...' : 'Criar e vincular' }}
+            </button>
+          </div>
+
+          <div class="drawer-divider"></div>
+
+          <div class="form-group">
+            <label>Anexos</label>
+            <div v-if="attachments.length" class="drawer-checks">
+              <label v-for="a in attachments" :key="a.id" class="form-check">
+                <input type="checkbox" :value="a.id" v-model="selectedAttachments">
+                <span>{{ a.path }}</span>
+              </label>
+            </div>
+            <p v-else class="form-hint">Nenhum anexo cadastrado.</p>
+          </div>
+
+          <button type="button" class="drawer-link" @click="showAttachment = !showAttachment">
+            {{ showAttachment ? '− Cancelar' : '+ Criar novo anexo' }}
+          </button>
+
+          <div v-if="showAttachment" class="drawer-inline">
+            <input class="form-control" v-model="newAttachment.path" placeholder="Caminho (path)">
+            <button type="button" class="btn btn-primary btn-sm" :disabled="creatingAttachment" @click="createAttachment">
+              {{ creatingAttachment ? 'Criando...' : 'Criar e vincular' }}
+            </button>
+          </div>
+        </template>
+
+        <!-- AO VIVO -->
+        <template v-else-if="tab === 'live'">
+          <div class="form-group">
+            <label :for="`dw-webinar`">Link do embed</label>
+            <input :id="`dw-webinar`" class="form-control" v-model="form.webinar_link" placeholder="https://player.vdocipher.com/live-v2?liveId=...">
+          </div>
+          <div class="form-group">
+            <label :for="`dw-webinar-at`">Início agendado</label>
+            <input :id="`dw-webinar-at`" class="form-control" type="datetime-local" v-model="form.webinar_starts_at">
+          </div>
+          <p class="form-hint">
+            Preencha o link para exibir a transmissão. Com data futura o aluno vê "Em breve"; a partir da data, o player ao vivo é liberado.
+          </p>
+        </template>
+
+        <!-- PUBLICAÇÃO -->
+        <template v-else-if="tab === 'publish'">
+          <div class="form-group">
+            <label :for="`dw-status`">Status</label>
+            <select :id="`dw-status`" class="form-control" v-model="form.status">
+              <option value="active">Publicado</option>
+              <option value="inactive">Rascunho</option>
+            </select>
+          </div>
+
+          <div v-if="type === 'lesson'" class="form-group">
+            <label :for="`dw-published`">Publicado em</label>
+            <input :id="`dw-published`" class="form-control" type="datetime-local" v-model="form.published_at">
+            <p class="form-hint">Vazio + status Publicado = disponível agora. Data futura = agendado.</p>
+          </div>
+        </template>
+      </div>
+
+      <footer class="drawer-foot">
+        <button v-if="canPublish" type="button" class="btn btn-outline" :disabled="busy" @click="togglePublish">
+          {{ published ? 'Despublicar' : 'Publicar' }}
+        </button>
+        <button type="button" class="btn btn-primary" :disabled="saving" @click="save">
+          {{ saving ? 'Salvando...' : 'Salvar' }}
+        </button>
+      </footer>
+    </aside>
+  </div>
+</template>
+
+<script setup>
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { api } from '../../api/http';
+import { playerLabel, statusLabel, typeLabel } from '../../utils/adminLabels';
+import { toDateTimeInput } from '../../utils/format';
+
+const props = defineProps({
+  type: { type: String, required: true },
+  item: { type: Object, required: true },
+  course: { type: Object, default: null },
+});
+
+const emit = defineEmits(['close', 'saved']);
+
+const tab = ref('details');
+const saving = ref(false);
+const saved = ref(false);
+const error = ref('');
+const busy = ref(false);
+
+const form = reactive({
+  name: '', description: '', image: '', status: 'active', sort_order: 0,
+  content: '', video_id: '', document_id: '',
+  webinar_link: '', webinar_starts_at: '', published_at: '',
+});
+const selectedAttachments = ref([]);
+
+const videos = ref([]);
+const documents = ref([]);
+const attachments = ref([]);
+
+const showVideo = ref(false);
+const showDocument = ref(false);
+const showAttachment = ref(false);
+const newVideo = reactive({ title: '', player: 'vdocipher', code: '', link: '' });
+const newDocument = reactive({ path: '', image: '' });
+const newAttachment = reactive({ path: '' });
+const creatingVideo = ref(false);
+const creatingDocument = ref(false);
+const creatingAttachment = ref(false);
+
+const tabLabels = {
+  details: 'Detalhes',
+  video: 'Vídeo',
+  materials: 'Materiais',
+  live: 'Ao vivo',
+  publish: 'Publicação',
+};
+
+const tabs = computed(() => {
+  if (props.type === 'lesson') {
+    return ['details', 'video', 'materials', 'live', 'publish'];
+  }
+
+  if (props.type === 'course') {
+    return ['details', 'publish'];
+  }
+
+  return ['details'];
+});
+
+const canPublish = computed(() => props.type === 'course' || props.type === 'lesson');
+const published = computed(() => form.status === 'active');
+
+function sync() {
+  const data = props.item;
+  form.name = data.name ?? '';
+  form.description = data.description ?? '';
+  form.image = data.image ?? '';
+  form.status = data.status ?? 'active';
+  form.sort_order = data.sort_order ?? 0;
+  form.content = data.content ?? '';
+  form.video_id = data.video?.id ?? '';
+  form.document_id = data.document?.id ?? '';
+  form.webinar_link = data.webinar_link ?? '';
+  form.webinar_starts_at = toDateTimeInput(data.webinar_starts_at);
+  form.published_at = toDateTimeInput(data.published_at);
+  selectedAttachments.value = (data.attachments ?? []).map((a) => a.id);
+  tab.value = 'details';
+  error.value = '';
+}
+
+async function ensureReferences() {
+  if (props.type !== 'lesson' || videos.value.length || documents.value.length || attachments.value.length) {
+    return;
+  }
+
+  try {
+    const [v, d, a] = await Promise.all([
+      api.get('/admin/videos', { params: { per_page: 100 } }),
+      api.get('/admin/documents', { params: { per_page: 100 } }),
+      api.get('/admin/attachments', { params: { per_page: 100 } }),
+    ]);
+    videos.value = v.data.data ?? [];
+    documents.value = d.data.data ?? [];
+    attachments.value = a.data.data ?? [];
+  } catch (e) {
+    /* silencioso */
+  }
+}
+
+function basePayload() {
+  if (props.type === 'course') {
+    return { name: form.name, description: form.description || null, image: form.image || null, status: form.status, sort_order: form.sort_order };
+  }
+
+  if (props.type === 'module') {
+    return { name: form.name, description: form.description || null, image: form.image || null, status: form.status };
+  }
+
+  if (props.type === 'topic') {
+    return { name: form.name, status: form.status, sort_order: form.sort_order };
+  }
+
+  return {
+    name: form.name,
+    description: form.description || null,
+    content: form.content || null,
+    sort_order: form.sort_order,
+    status: form.status,
+    video_id: form.video_id === '' ? null : Number(form.video_id),
+    document_id: form.document_id === '' ? null : Number(form.document_id),
+    webinar_link: form.webinar_link || null,
+    webinar_starts_at: form.webinar_starts_at || null,
+    published_at: form.published_at || null,
+    attachment_ids: selectedAttachments.value,
+  };
+}
+
+const endpoints = { course: 'courses', module: 'modules', topic: 'topics', lesson: 'lessons' };
+
+async function save() {
+  if (!form.name.trim()) {
+    error.value = 'Informe o nome.';
+    return;
+  }
+
+  saving.value = true;
+  error.value = '';
+
+  try {
+    const { data } = await api.put(`/admin/${endpoints[props.type]}/${props.item.id}`, basePayload());
+    let result = data.data ?? {};
+
+    if (props.type === 'lesson') {
+      result = {
+        ...result,
+        video: form.video_id === '' ? null : videos.value.find((v) => v.id === Number(form.video_id)) ?? null,
+        document: form.document_id === '' ? null : documents.value.find((d) => d.id === Number(form.document_id)) ?? null,
+        attachments: attachments.value.filter((a) => selectedAttachments.value.includes(a.id)),
+      };
+    }
+
+    saved.value = true;
+    setTimeout(() => { saved.value = false; }, 1800);
+    emit('saved', { type: props.type, id: props.item.id, data: result });
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível salvar.';
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function togglePublish() {
+  busy.value = true;
+  error.value = '';
+
+  try {
+    const action = published.value ? 'unpublish' : 'publish';
+    const { data } = await api.post(`/admin/${endpoints[props.type]}/${props.item.id}/${action}`);
+    emit('saved', { type: props.type, id: props.item.id, data: data.data ?? {} });
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível alterar a publicação.';
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function createVideo() {
+  if (!newVideo.title.trim()) {
+    error.value = 'Informe o título do vídeo.';
+    return;
+  }
+
+  creatingVideo.value = true;
+  error.value = '';
+
+  try {
+    const { data } = await api.post('/admin/videos', {
+      title: newVideo.title.trim(),
+      player: newVideo.player,
+      code: newVideo.code || null,
+      link: newVideo.link || null,
+      status: 'active',
+    });
+    videos.value = [...videos.value, data.data];
+    form.video_id = data.data.id;
+    newVideo.title = '';
+    newVideo.code = '';
+    newVideo.link = '';
+    showVideo.value = false;
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível criar o vídeo.';
+  } finally {
+    creatingVideo.value = false;
+  }
+}
+
+async function createDocument() {
+  if (!newDocument.path.trim()) {
+    error.value = 'Informe o caminho do documento.';
+    return;
+  }
+
+  creatingDocument.value = true;
+  error.value = '';
+
+  try {
+    const { data } = await api.post('/admin/documents', {
+      path: newDocument.path.trim(),
+      image: newDocument.image || null,
+      status: 'active',
+    });
+    documents.value = [...documents.value, data.data];
+    form.document_id = data.data.id;
+    newDocument.path = '';
+    newDocument.image = '';
+    showDocument.value = false;
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível criar o documento.';
+  } finally {
+    creatingDocument.value = false;
+  }
+}
+
+async function createAttachment() {
+  if (!newAttachment.path.trim()) {
+    error.value = 'Informe o caminho do anexo.';
+    return;
+  }
+
+  creatingAttachment.value = true;
+  error.value = '';
+
+  try {
+    const { data } = await api.post('/admin/attachments', {
+      path: newAttachment.path.trim(),
+      status: 'active',
+    });
+    attachments.value = [...attachments.value, data.data];
+    selectedAttachments.value = [...selectedAttachments.value, data.data.id];
+    newAttachment.path = '';
+    showAttachment.value = false;
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível criar o anexo.';
+  } finally {
+    creatingAttachment.value = false;
+  }
+}
+
+watch(() => props.item, sync, { immediate: true });
+watch(() => props.type, ensureReferences);
+
+function onKeydown(e) {
+  if (e.key === 'Escape') {
+    emit('close');
+  }
+}
+
+onMounted(() => {
+  ensureReferences();
+  document.addEventListener('keydown', onKeydown);
+});
+onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
+</script>
+
+<style scoped>
+.drawer-divider{height:1px;background:var(--border);margin:4px 0;}
+.drawer-link{
+  align-self:flex-start;background:none;border:none;color:var(--accent);font-weight:700;font-size:12.5px;cursor:pointer;
+  padding:2px 0;font-family:inherit;
+}
+.drawer-inline{
+  display:flex;flex-direction:column;gap:8px;background:var(--bg-card-alt);border:1px solid var(--border);
+  border-radius:12px;padding:12px;
+}
+.drawer-checks{display:flex;flex-direction:column;gap:8px;max-height:220px;overflow:auto;}
+</style>
