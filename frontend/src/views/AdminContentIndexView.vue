@@ -6,9 +6,7 @@
         <h1 class="page-title">Conteúdo</h1>
         <p class="page-subtitle">{{ courses.length }} curso(s) · {{ draftCount }} rascunho(s)</p>
       </div>
-      <button class="btn btn-primary" :disabled="creating" @click="createCourse">
-        {{ creating ? 'Criando...' : '+ Novo curso' }}
-      </button>
+      <button class="btn btn-primary" @click="createCourse">+ Novo curso</button>
     </div>
 
     <div class="catalog-toolbar">
@@ -35,8 +33,19 @@
     </div>
 
     <div v-else class="card-grid admin-course-grid">
-      <AdminCourseCard v-for="c in filtered" :key="c.id" :course="c" />
+      <AdminCourseCard v-for="c in filtered" :key="c.id" :course="c" @edit="editing = $event" />
     </div>
+
+    <Transition name="drawer">
+      <ItemDrawer
+        v-if="editing"
+        type="course"
+        :item="editing"
+        :course="editing"
+        @close="editing = null"
+        @saved="onSaved"
+      />
+    </Transition>
 
   </main>
 </template>
@@ -46,15 +55,16 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api/http';
 import AdminCourseCard from '../components/admin/AdminCourseCard.vue';
+import ItemDrawer from '../components/admin/ItemDrawer.vue';
 
 const router = useRouter();
 
 const courses = ref([]);
 const loading = ref(true);
-const creating = ref(false);
 const error = ref('');
 const search = ref('');
 const status = ref('');
+const editing = ref(null);
 
 const filters = [
   { value: '', label: 'Todos' },
@@ -93,20 +103,17 @@ async function load() {
 }
 
 async function createCourse() {
-  creating.value = true;
-  error.value = '';
+  router.push({ name: 'admin-conteudo-novo' });
+}
 
-  try {
-    const { data } = await api.post('/admin/courses', { name: 'Novo curso', status: 'active' });
-    router.push({
-      name: 'admin-conteudo-curso',
-      params: { courseId: data.data.id },
-      query: { edit: 'course' },
-    });
-  } catch (e) {
-    error.value = e?.message || 'Não foi possível criar o curso.';
-    creating.value = false;
+function onSaved({ id, data }) {
+  const course = courses.value.find((c) => c.id === id);
+
+  if (course) {
+    Object.assign(course, data);
   }
+
+  editing.value = null;
 }
 
 onMounted(load);

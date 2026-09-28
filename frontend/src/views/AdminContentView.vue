@@ -2,7 +2,10 @@
   <main class="content">
 
     <div class="page-header">
-      <router-link class="admin-back" :to="{ name: 'admin-conteudo' }">‹ Conteúdo</router-link>
+      <router-link class="btn btn-outline btn-sm builder-back" :to="{ name: 'admin-conteudo' }">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Conteúdo
+      </router-link>
 
       <div class="admin-head-actions" v-if="course">
         <router-link class="btn btn-outline" :to="{ name: 'curso', params: { courseId: course.id } }">Ver como aluno</router-link>
@@ -323,4 +326,5 @@ watch(courseId, () => {
 </script>
 
 <style scoped>
+.builder-back{display:inline-flex;align-items:center;gap:6px;}
 </style>
