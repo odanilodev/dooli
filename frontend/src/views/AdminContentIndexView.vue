@@ -33,7 +33,17 @@
     </div>
 
     <div v-else class="card-grid admin-course-grid">
-      <AdminCourseCard v-for="c in filtered" :key="c.id" :course="c" @edit="editing = $event" />
+      <AdminCourseCard
+        v-for="c in filtered"
+        :key="c.id"
+        :course="c"
+        :busy="busyId === c.id"
+        @open="openCourse"
+        @edit="editing = $event"
+        @publish="toggleStatus($event, true)"
+        @unpublish="toggleStatus($event, false)"
+        @delete="removeCourse"
+      />
     </div>
 
     <Transition name="drawer">
@@ -65,6 +75,7 @@ const error = ref('');
 const search = ref('');
 const status = ref('');
 const editing = ref(null);
+const busyId = ref(null);
 
 const filters = [
   { value: '', label: 'Todos' },
@@ -104,6 +115,42 @@ async function load() {
 
 async function createCourse() {
   router.push({ name: 'admin-conteudo-novo' });
+}
+
+function openCourse(course) {
+  router.push({ name: 'admin-conteudo-curso', params: { courseId: course.id } });
+}
+
+async function toggleStatus(course, publish) {
+  busyId.value = course.id;
+  error.value = '';
+
+  try {
+    const { data } = await api.post(`/admin/courses/${course.id}/${publish ? 'publish' : 'unpublish'}`);
+    Object.assign(course, data.data);
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível alterar a publicação.';
+  } finally {
+    busyId.value = null;
+  }
+}
+
+async function removeCourse(course) {
+  if (!window.confirm(`Excluir o curso "${course.name}"?`)) {
+    return;
+  }
+
+  busyId.value = course.id;
+  error.value = '';
+
+  try {
+    await api.delete(`/admin/courses/${course.id}`);
+    courses.value = courses.value.filter((c) => c.id !== course.id);
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível excluir o curso.';
+  } finally {
+    busyId.value = null;
+  }
 }
 
 function onSaved({ id, data }) {
