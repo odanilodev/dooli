@@ -27,6 +27,7 @@
         @attach-module="openAttach"
         @add-topic="createTopic"
         @add-lesson="createLesson"
+        @attach-lesson="openLessonAttach"
         @remove="removeNode"
         @reorder="reorder"
       />
@@ -48,6 +49,14 @@
         @saved="onSaved"
       />
     </Transition>
+
+    <LessonPicker
+      v-if="lessonTarget"
+      :topic-id="lessonTarget.id"
+      :exclude-ids="courseLessonIds"
+      @close="lessonTarget = null"
+      @copied="onLessonCopied"
+    />
 
     <div v-if="showAttach" class="admin-modal-backdrop" @click.self="showAttach = false">
       <div class="panel admin-modal">
@@ -78,6 +87,7 @@ import { api } from '../api/http';
 import { statusLabel } from '../utils/adminLabels';
 import CurriculumBuilder from '../components/admin/CurriculumBuilder.vue';
 import ItemDrawer from '../components/admin/ItemDrawer.vue';
+import LessonPicker from '../components/admin/LessonPicker.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -91,8 +101,23 @@ const error = ref('');
 const showAttach = ref(false);
 const attaching = ref(false);
 const availableModules = ref([]);
+const lessonTarget = ref(null);
 
 const selectedItem = computed(() => (selected.value ? findNode(selected.value.type, selected.value.id) : null));
+
+const courseLessonIds = computed(() => {
+  const ids = [];
+
+  for (const module of course.value?.modules ?? []) {
+    for (const topic of module.topics ?? []) {
+      for (const lesson of topic.lessons ?? []) {
+        ids.push(lesson.id);
+      }
+    }
+  }
+
+  return ids;
+});
 
 function findNode(type, id) {
   if (!course.value) {
@@ -212,6 +237,21 @@ async function createLesson(topic) {
   } catch (e) {
     error.value = e?.message || 'Não foi possível criar a aula.';
   }
+}
+
+function openLessonAttach(topic) {
+  error.value = '';
+  lessonTarget.value = topic;
+}
+
+function onLessonCopied(lesson) {
+  const topic = lessonTarget.value;
+
+  if (topic) {
+    topic.lessons = [...(topic.lessons ?? []), lesson];
+  }
+
+  lessonTarget.value = null;
 }
 
 async function rename({ type, id, name }) {
