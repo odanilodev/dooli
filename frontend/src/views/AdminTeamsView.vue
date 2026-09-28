@@ -77,9 +77,15 @@
             <td><span class="status-count">{{ team.courses_count ?? 0 }}</span></td>
             <td><span class="status-pill" :class="team.status">{{ statusLabel(team.status) }}</span></td>
             <td class="admin-actions">
-              <button class="btn btn-outline btn-sm" @click="openTeam(team, 'students')">Alunos</button>
-              <button class="btn btn-outline btn-sm" @click="openTeam(team, 'courses')">Cursos</button>
-              <button class="btn btn-danger btn-sm" :disabled="busyId === team.id" @click="remove(team)">Excluir</button>
+              <button
+                type="button"
+                class="team-kebab"
+                :disabled="busyId === team.id"
+                :aria-expanded="menuTeam?.id === team.id"
+                aria-haspopup="menu"
+                title="Ações"
+                @click.stop="toggleMenu(team, $event)"
+              >⋯</button>
             </td>
           </tr>
         </tbody>
@@ -103,11 +109,27 @@
       />
     </Transition>
 
+    <Teleport to="body">
+      <div
+        v-if="menuTeam"
+        class="team-dropdown"
+        role="menu"
+        :style="{ top: menuPos.top + 'px', left: menuPos.left + 'px', transform: menuPos.up ? 'translateY(-100%)' : 'none' }"
+        @click.stop
+      >
+        <button type="button" role="menuitem" @click="run('details')">Detalhes</button>
+        <button type="button" role="menuitem" @click="run('students')">Alunos</button>
+        <button type="button" role="menuitem" @click="run('courses')">Cursos</button>
+        <div class="team-menu-sep"></div>
+        <button type="button" role="menuitem" class="danger" @click="run('delete')">Excluir</button>
+      </div>
+    </Teleport>
+
   </main>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { api } from '../api/http';
 import { statusLabel } from '../utils/adminLabels';
 import TeamDrawer from '../components/admin/TeamDrawer.vue';
@@ -133,6 +155,11 @@ const form = reactive({ name: '', status: 'active', sort_order: 0 });
 
 const selectedTeam = ref(null);
 const drawerTab = ref('details');
+
+const menuTeam = ref(null);
+const menuPos = reactive({ top: 0, left: 0, up: false });
+const MENU_WIDTH = 176;
+const MENU_HEIGHT = 150;
 
 let searchTimer = null;
 
@@ -241,6 +268,47 @@ function openTeam(team, tab = 'details') {
   selectedTeam.value = team;
 }
 
+function toggleMenu(team, event) {
+  if (menuTeam.value?.id === team.id) {
+    closeMenu();
+    return;
+  }
+
+  const rect = event.currentTarget.getBoundingClientRect();
+  const up = rect.bottom + MENU_HEIGHT > window.innerHeight;
+
+  menuPos.up = up;
+  menuPos.top = up ? rect.top - 6 : rect.bottom + 6;
+  menuPos.left = Math.max(8, rect.right - MENU_WIDTH);
+  menuTeam.value = team;
+}
+
+function closeMenu() {
+  menuTeam.value = null;
+}
+
+function run(action) {
+  const team = menuTeam.value;
+  closeMenu();
+
+  if (!team) {
+    return;
+  }
+
+  if (action === 'delete') {
+    remove(team);
+    return;
+  }
+
+  openTeam(team, action);
+}
+
+function onKeydown(e) {
+  if (e.key === 'Escape') {
+    closeMenu();
+  }
+}
+
 function onSaved({ id, data }) {
   const team = teams.value.find((t) => t.id === id);
 
@@ -253,9 +321,45 @@ function onSaved({ id, data }) {
   }
 }
 
-onMounted(load);
+onMounted(() => {
+  load();
+  document.addEventListener('click', closeMenu);
+  document.addEventListener('keydown', onKeydown);
+  window.addEventListener('scroll', closeMenu, true);
+  window.addEventListener('resize', closeMenu);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeMenu);
+  document.removeEventListener('keydown', onKeydown);
+  window.removeEventListener('scroll', closeMenu, true);
+  window.removeEventListener('resize', closeMenu);
+});
 </script>
 
 <style scoped>
 .status-count{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:800;}
+.team-kebab{
+  display:inline-flex;align-items:center;justify-content:center;width:30px;height:26px;padding:0;border-radius:9px;cursor:pointer;
+  background:transparent;border:1.5px solid var(--border);color:var(--text-secondary);
+  font-family:inherit;font-size:16px;line-height:1;font-weight:800;transition:border-color .14s ease,color .14s ease;
+}
+.team-kebab:hover{border-color:var(--accent);color:var(--text-primary);}
+.team-kebab:disabled{opacity:.5;cursor:wait;}
+</style>
+
+<style scoped>
+.team-dropdown{
+  position:fixed;z-index:120;min-width:176px;padding:6px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:2px;
+}
+.team-dropdown button{
+  text-align:left;background:none;border:none;color:var(--text-secondary);font-family:inherit;font-size:12.5px;font-weight:600;
+  padding:8px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;
+}
+.team-dropdown button:hover{background:var(--bg-card-alt);color:var(--text-primary);}
+.team-dropdown button.danger{color:#ef4444;}
+.team-dropdown button.danger:hover{background:rgba(239,68,68,.12);}
+.team-menu-sep{height:1px;background:var(--border);margin:4px 2px;}
 </style>
