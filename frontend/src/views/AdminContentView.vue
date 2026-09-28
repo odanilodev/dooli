@@ -2,16 +2,7 @@
   <main class="content">
 
     <div class="page-header">
-      <div class="builder-head-left">
-        <h1 class="page-title">Conteúdo</h1>
-        <CoursePicker
-          :courses="courses"
-          :current-id="courseId"
-          :current="course"
-          @select="selectCourse"
-          @create="createCourse"
-        />
-      </div>
+      <router-link class="admin-back" :to="{ name: 'admin-conteudo' }">‹ Conteúdo</router-link>
 
       <div class="admin-head-actions" v-if="course">
         <router-link class="btn btn-outline" :to="{ name: 'curso', params: { courseId: course.id } }">Ver como aluno</router-link>
@@ -39,9 +30,9 @@
     </template>
 
     <div v-else class="empty-state">
-      <strong>Nenhum curso</strong>
-      <span>Crie o primeiro curso para começar a montar o conteúdo.</span>
-      <button class="btn btn-primary" @click="createCourse">+ Novo curso</button>
+      <strong>Curso não encontrado</strong>
+      <span>Ele pode ter sido removido. Volte para a lista de conteúdos.</span>
+      <router-link class="btn btn-primary" :to="{ name: 'admin-conteudo' }">‹ Voltar para conteúdos</router-link>
     </div>
 
     <Transition name="drawer">
@@ -78,15 +69,17 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api/http';
 import { statusLabel } from '../utils/adminLabels';
-import CoursePicker from '../components/admin/CoursePicker.vue';
 import CurriculumBuilder from '../components/admin/CurriculumBuilder.vue';
 import ItemDrawer from '../components/admin/ItemDrawer.vue';
 
-const courses = ref([]);
-const courseId = ref(null);
+const route = useRoute();
+const router = useRouter();
+
+const courseId = computed(() => Number(route.params.courseId));
 const course = ref(null);
 const selected = ref(null);
 const loading = ref(true);
@@ -128,37 +121,30 @@ function findNode(type, id) {
   return null;
 }
 
-async function loadCourses() {
-  try {
-    const { data } = await api.get('/admin/courses', { params: { per_page: 100 } });
-    courses.value = data.data ?? [];
-  } catch (e) {
-    error.value = e?.message || 'Não foi possível carregar os cursos.';
-  }
-}
-
-async function loadCourse() {
+async function load() {
   if (!courseId.value) {
     course.value = null;
+    loading.value = false;
     return;
   }
+
+  loading.value = true;
+  error.value = '';
+  course.value = null;
 
   try {
     const { data } = await api.get(`/admin/courses/${courseId.value}`);
     course.value = data.data;
+
+    if (route.query.edit === 'course') {
+      openDrawer('course', course.value.id);
+      router.replace({ name: 'admin-conteudo-curso', params: { courseId: courseId.value } });
+    }
   } catch (e) {
     error.value = e?.message || 'Não foi possível carregar o curso.';
-    course.value = null;
+  } finally {
+    loading.value = false;
   }
-}
-
-async function selectCourse(id) {
-  courseId.value = id;
-  selected.value = null;
-  loading.value = true;
-  error.value = '';
-  await loadCourse();
-  loading.value = false;
 }
 
 function onSelect(target) {
@@ -174,27 +160,6 @@ async function onSaved({ type, id, data }) {
 
   if (node) {
     Object.assign(node, data);
-  }
-
-  if (type === 'course') {
-    const inList = courses.value.find((c) => c.id === id);
-
-    if (inList && node) {
-      Object.assign(inList, { name: node.name, status: node.status });
-    }
-  }
-}
-
-async function createCourse() {
-  error.value = '';
-
-  try {
-    const { data } = await api.post('/admin/courses', { name: 'Novo curso', status: 'active' });
-    await loadCourses();
-    await selectCourse(data.data.id);
-    openDrawer('course', data.data.id);
-  } catch (e) {
-    error.value = e?.message || 'Não foi possível criar o curso.';
   }
 }
 
@@ -260,7 +225,7 @@ async function rename({ type, id, name }) {
     }
   } catch (e) {
     error.value = e?.message || 'Não foi possível renomear.';
-    await loadCourse();
+    await load();
   }
 }
 
@@ -300,7 +265,7 @@ async function removeNode({ type, node }) {
     }
   } catch (e) {
     error.value = e?.message || 'Não foi possível remover o item.';
-    await loadCourse();
+    await load();
   }
 }
 
@@ -317,7 +282,7 @@ async function reorder({ level, parentId, ids }) {
     await api.put(endpoints[level], { ids });
   } catch (e) {
     error.value = e?.message || 'Não foi possível reordenar.';
-    await loadCourse();
+    await load();
   }
 }
 
@@ -342,25 +307,20 @@ async function attach(module) {
   try {
     await api.post(`/admin/courses/${courseId.value}/modules`, { module_id: module.id });
     showAttach.value = false;
-    await loadCourse();
+    await load();
     openDrawer('module', module.id);
   } catch (e) {
     error.value = e?.message || 'Não foi possível vincular o módulo.';
   }
 }
 
-onMounted(async () => {
-  loading.value = true;
-  await loadCourses();
+onMounted(load);
 
-  if (courses.value.length) {
-    await selectCourse(courses.value[0].id);
-  } else {
-    loading.value = false;
-  }
+watch(courseId, () => {
+  selected.value = null;
+  load();
 });
 </script>
 
 <style scoped>
-.builder-head-left{display:flex;flex-direction:column;gap:12px;}
 </style>
