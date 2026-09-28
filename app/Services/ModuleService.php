@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\GeneralStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Course;
+use App\Models\Lesson;
 use App\Models\Module;
 use App\Repositories\ModuleRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -15,6 +16,7 @@ class ModuleService
     public function __construct(
         private readonly ModuleRepository $modules,
         private readonly DatalogService $audit,
+        private readonly LessonService $lessons,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -55,7 +57,7 @@ class ModuleService
         DB::transaction(function () use ($module) {
             $module->courses()->detach();
             $module->topics()->each(function ($topic) {
-                $topic->lessons()->delete();
+                $topic->lessons()->get()->each(fn (Lesson $lesson) => $this->lessons->delete($lesson));
                 $topic->delete();
             });
             $module->delete();

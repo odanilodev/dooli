@@ -80,6 +80,10 @@ class LessonService
     {
         DB::transaction(function () use ($lesson) {
             $lesson->attachments()->detach();
+            $lesson->comments()->delete();
+            $lesson->ratings()->delete();
+            $lesson->timeline()->delete();
+            $lesson->videoProgresses()->delete();
             $lesson->delete();
         });
 

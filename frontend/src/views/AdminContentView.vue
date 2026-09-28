@@ -239,8 +239,11 @@ async function rename({ type, id, name }) {
 
 async function removeNode({ type, node }) {
   const labels = { module: 'o módulo', topic: 'o tópico', lesson: 'a aula' };
+  const warning = type === 'lesson'
+    ? ' Isso também apaga progresso, comentários e avaliações dos alunos nesta aula.'
+    : ' As aulas dele (com progresso, comentários e avaliações dos alunos) também serão apagadas.';
 
-  if (!window.confirm(`Remover ${labels[type]} "${node.name}"?`)) {
+  if (!window.confirm(`Remover ${labels[type]} "${node.name}"?${warning}`)) {
     return;
   }
 

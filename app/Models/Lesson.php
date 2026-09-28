@@ -71,6 +71,11 @@ class Lesson extends Model
         return $this->hasMany(Timeline::class);
     }
 
+    public function videoProgresses(): HasMany
+    {
+        return $this->hasMany(VideoProgress::class);
+    }
+
     public function isPublished(): bool
     {
         return $this->status === GeneralStatus::Active->value

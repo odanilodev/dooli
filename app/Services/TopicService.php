@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Lesson;
 use App\Models\Module;
 use App\Models\Topic;
 use App\Repositories\TopicRepository;
@@ -13,6 +14,7 @@ class TopicService
     public function __construct(
         private readonly TopicRepository $topics,
         private readonly DatalogService $audit,
+        private readonly LessonService $lessons,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -47,7 +49,7 @@ class TopicService
     public function delete(Topic $topic): void
     {
         DB::transaction(function () use ($topic) {
-            $topic->lessons()->delete();
+            $topic->lessons()->get()->each(fn (Lesson $lesson) => $this->lessons->delete($lesson));
             $topic->delete();
         });
 
