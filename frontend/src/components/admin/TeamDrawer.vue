@@ -52,17 +52,60 @@
         <template v-else-if="tab === 'students'">
           <div class="form-group">
             <label>Alunos na turma ({{ students.length }})</label>
-            <div v-if="students.length" class="td-list">
-              <div v-for="s in students" :key="s.id" class="td-row">
-                <span class="td-avatar">{{ initials(s.name) }}</span>
-                <span class="td-info">
-                  <span class="td-name">{{ s.name }}</span>
-                  <span class="td-sub">{{ s.username || s.email }}</span>
-                </span>
-                <button class="btn btn-danger btn-sm" :disabled="busyId === `u${s.id}`" @click="removeStudent(s)">Remover</button>
-              </div>
+
+            <div v-if="students.length" class="td-table-wrap">
+              <table class="td-table">
+                <thead>
+                  <tr><th>Aluno</th><th>Vínculo</th><th>Expira em</th><th></th></tr>
+                </thead>
+                <tbody>
+                  <template v-for="s in students" :key="s.id">
+                    <tr>
+                      <td>
+                        <span class="td-name">{{ s.name }}</span>
+                        <span class="td-sub">{{ s.username || s.email }}</span>
+                      </td>
+                      <td><span class="status-pill" :class="s.status">{{ enrollLabel(s.status) }}</span></td>
+                      <td><span class="td-expiry" :class="{ expired: isExpired(s) }">{{ expiryLabel(s) }}</span></td>
+                      <td class="td-actions">
+                        <button
+                          type="button"
+                          class="td-kebab"
+                          :aria-expanded="rowMenu?.id === s.id"
+                          aria-haspopup="menu"
+                          title="Ações"
+                          @click.stop="toggleRowMenu(s, $event)"
+                        >⋯</button>
+                      </td>
+                    </tr>
+
+                    <tr v-if="editingStudentId === s.id" class="td-edit-row">
+                      <td colspan="4">
+                        <div class="td-editor">
+                          <div class="form-group">
+                            <label :for="`te-exp-${s.id}`">Expira em (vazio = sem expiração)</label>
+                            <input :id="`te-exp-${s.id}`" class="form-control" type="datetime-local" v-model="editExpiry">
+                          </div>
+                          <div class="form-group">
+                            <label :for="`te-st-${s.id}`">Vínculo na turma</label>
+                            <select :id="`te-st-${s.id}`" class="form-control" v-model="editStatus">
+                              <option value="active">Ativo</option>
+                              <option value="inactive">Inativo</option>
+                            </select>
+                          </div>
+                          <div class="td-editor-actions">
+                            <button type="button" class="btn btn-outline btn-sm" @click="cancelEditStudent">Cancelar</button>
+                            <button type="button" class="btn btn-primary btn-sm" :disabled="busyId === `s${s.id}`" @click="saveStudent(s)">Salvar</button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
             </div>
             <p v-else class="form-hint">Nenhum aluno matriculado.</p>
+            <p class="form-hint">Expirar ou inativar aqui afeta só o vínculo nesta turma; a conta do aluno continua ativa.</p>
           </div>
 
           <div class="drawer-divider"></div>
@@ -134,6 +177,19 @@
         </button>
       </footer>
     </aside>
+
+    <Teleport to="body">
+      <div
+        v-if="rowMenu"
+        class="td-row-menu"
+        role="menu"
+        :style="{ top: rowMenuPos.top + 'px', left: rowMenuPos.left + 'px', transform: rowMenuPos.up ? 'translateY(-100%)' : 'none' }"
+        @click.stop
+      >
+        <button type="button" role="menuitem" @click="startEditStudent(rowMenu)">Editar vínculo</button>
+        <button type="button" role="menuitem" class="danger" @click="removeStudent(rowMenu)">Remover da turma</button>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -141,6 +197,7 @@
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { api } from '../../api/http';
 import { statusLabel } from '../../utils/adminLabels';
+import { formatDateTime, toDateTimeInput } from '../../utils/format';
 
 const props = defineProps({
   team: { type: Object, required: true },
@@ -163,6 +220,15 @@ const backdropDown = ref(false);
 const students = ref([]);
 const courses = ref([]);
 
+const editingStudentId = ref(null);
+const editExpiry = ref('');
+const editStatus = ref('active');
+
+const rowMenu = ref(null);
+const rowMenuPos = reactive({ top: 0, left: 0, up: false });
+const ROW_MENU_WIDTH = 170;
+const ROW_MENU_HEIGHT = 96;
+
 const studentSearch = ref('');
 const studentResults = ref([]);
 const searchingStudents = ref(false);
@@ -178,6 +244,70 @@ let courseTimer = null;
 
 function initials(name) {
   return (name || '?').trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+}
+
+const ENROLL_LABELS = { active: 'Ativo', inactive: 'Inativo' };
+
+function enrollLabel(status) {
+  return ENROLL_LABELS[status] ?? status ?? '';
+}
+
+function isExpired(student) {
+  return student.expired_at && new Date(student.expired_at).getTime() < Date.now();
+}
+
+function expiryLabel(student) {
+  return student.expired_at ? formatDateTime(student.expired_at) : 'Sem expiração';
+}
+
+function toggleRowMenu(student, event) {
+  if (rowMenu.value?.id === student.id) {
+    closeRowMenu();
+    return;
+  }
+
+  const rect = event.currentTarget.getBoundingClientRect();
+  const up = rect.bottom + ROW_MENU_HEIGHT > window.innerHeight;
+
+  rowMenuPos.up = up;
+  rowMenuPos.top = up ? rect.top - 6 : rect.bottom + 6;
+  rowMenuPos.left = Math.max(8, rect.right - ROW_MENU_WIDTH);
+  rowMenu.value = student;
+}
+
+function closeRowMenu() {
+  rowMenu.value = null;
+}
+
+function startEditStudent(student) {
+  closeRowMenu();
+  editingStudentId.value = student.id;
+  editExpiry.value = toDateTimeInput(student.expired_at);
+  editStatus.value = student.status ?? 'active';
+}
+
+function cancelEditStudent() {
+  editingStudentId.value = null;
+  editExpiry.value = '';
+}
+
+async function saveStudent(student) {
+  busyId.value = `s${student.id}`;
+  error.value = '';
+
+  try {
+    await api.put(`/admin/teams/${props.team.id}/students/${student.id}`, {
+      status: editStatus.value,
+      expired_at: editExpiry.value || null,
+    });
+    editingStudentId.value = null;
+    await loadStudents();
+    emit('changed');
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível salvar o vínculo.';
+  } finally {
+    busyId.value = null;
+  }
 }
 
 function sync() {
@@ -317,6 +447,7 @@ async function addStudent(student) {
 }
 
 async function removeStudent(student) {
+  closeRowMenu();
   busyId.value = `u${student.id}`;
   error.value = '';
 
@@ -365,6 +496,11 @@ async function removeCourse(course) {
 
 function onKeydown(e) {
   if (e.key === 'Escape') {
+    if (rowMenu.value) {
+      closeRowMenu();
+      return;
+    }
+
     emit('close');
   }
 }
@@ -377,6 +513,8 @@ watch(() => props.team, sync, { immediate: true });
 
 watch(() => props.team?.id, () => {
   tab.value = tabs.includes(props.initialTab) ? props.initialTab : 'details';
+  closeRowMenu();
+  cancelEditStudent();
 });
 
 onMounted(() => {
@@ -384,9 +522,15 @@ onMounted(() => {
   loadStudents();
   loadCourses();
   document.addEventListener('keydown', onKeydown);
+  document.addEventListener('click', closeRowMenu);
+  window.addEventListener('scroll', closeRowMenu, true);
 });
 
-onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown);
+  document.removeEventListener('click', closeRowMenu);
+  window.removeEventListener('scroll', closeRowMenu, true);
+});
 </script>
 
 <style scoped>
@@ -396,4 +540,34 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 .td-info{flex:1;min-width:0;display:flex;flex-direction:column;}
 .td-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .td-sub{font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.td-table-wrap{overflow-x:auto;}
+.td-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.td-table th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--text-muted);padding:0 8px 8px;}
+.td-table td{padding:9px 8px;border-top:1px solid var(--border);vertical-align:middle;}
+.td-table .td-name{display:block;font-size:12.5px;}
+.td-table .td-sub{display:block;}
+.td-expiry{font-size:11.5px;color:var(--text-secondary);white-space:nowrap;}
+.td-expiry.expired{color:#ef4444;font-weight:700;}
+.td-actions{text-align:right;}
+.td-kebab{
+  display:inline-flex;align-items:center;justify-content:center;width:28px;height:24px;padding:0;border-radius:9px;cursor:pointer;
+  background:transparent;border:1.5px solid var(--border);color:var(--text-secondary);
+  font-family:inherit;font-size:15px;line-height:1;font-weight:800;transition:border-color .14s ease,color .14s ease;
+}
+.td-kebab:hover{border-color:var(--accent);color:var(--text-primary);}
+.td-edit-row td{background:var(--bg-card-alt);}
+.td-editor{display:flex;flex-direction:column;gap:10px;padding:2px 0;}
+.td-editor-actions{display:flex;justify-content:flex-end;gap:8px;}
+.td-row-menu{
+  position:fixed;z-index:130;min-width:170px;padding:6px;background:var(--bg-card);border:1px solid var(--border);
+  border-radius:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px;
+}
+.td-row-menu button{
+  text-align:left;background:none;border:none;color:var(--text-secondary);font-family:inherit;font-size:12.5px;font-weight:600;
+  padding:8px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;
+}
+.td-row-menu button:hover{background:var(--bg-card-alt);color:var(--text-primary);}
+.td-row-menu button.danger{color:#ef4444;}
+.td-row-menu button.danger:hover{background:rgba(239,68,68,.12);}
 </style>
