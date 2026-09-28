@@ -135,10 +135,10 @@
 
             <p v-if="!(t.lessons?.length)" class="form-hint">Nenhuma aula ainda.</p>
             <div v-else class="wizard-list">
-              <div v-for="l in t.lessons" :key="l.id" class="wizard-item">
+              <div v-for="l in t.lessons" :key="l.id" class="wizard-item wizard-item-clickable" @click="openLesson(l)">
                 <span class="wizard-item-name">{{ l.name }}</span>
                 <span v-if="l.video" class="wizard-item-meta">vídeo</span>
-                <button class="wizard-remove" @click="removeLesson(l)">remover</button>
+                <button class="wizard-remove" @click.stop="removeLesson(l)">remover</button>
               </div>
             </div>
           </div>
@@ -222,6 +222,15 @@
       @copied="onLessonCopied"
     />
 
+    <ItemDrawer
+      v-if="editingLesson"
+      type="lesson"
+      :item="editingLesson"
+      :course="course"
+      @close="editingLesson = null"
+      @saved="onLessonSaved"
+    />
+
   </main>
 </template>
 
@@ -231,6 +240,7 @@ import { useRouter } from 'vue-router';
 import { api } from '../api/http';
 import { statusLabel } from '../utils/adminLabels';
 import LessonPicker from '../components/admin/LessonPicker.vue';
+import ItemDrawer from '../components/admin/ItemDrawer.vue';
 
 const router = useRouter();
 
@@ -261,6 +271,7 @@ const newTopic = reactive({ moduleId: null, name: '' });
 const linkTopic = reactive({ module: null });
 const newLesson = reactive({ topicId: null, name: '' });
 const lessonPickerTopic = ref(null);
+const editingLesson = ref(null);
 
 const modules = computed(() => course.value?.modules ?? []);
 const topicCount = computed(() => modules.value.reduce((total, m) => total + (m.topics?.length ?? 0), 0));
@@ -557,6 +568,16 @@ function onLessonCopied(lesson) {
   lessonPickerTopic.value = null;
 }
 
+function openLesson(lesson) {
+  editingLesson.value = lesson;
+}
+
+function onLessonSaved({ data }) {
+  if (editingLesson.value) {
+    Object.assign(editingLesson.value, data);
+  }
+}
+
 async function removeLesson(lesson) {
   if (!window.confirm(`Remover a aula "${lesson.name}"?`)) {
     return;
@@ -611,6 +632,8 @@ onMounted(() => nextTick(() => nameInput.value?.focus()));
   background:var(--bg-card);
 }
 .wizard-item-name{flex:1;min-width:0;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wizard-item-clickable{cursor:pointer;transition:border-color .14s ease,background .14s ease;}
+.wizard-item-clickable:hover{border-color:var(--accent);background:var(--accent-soft);}
 .wizard-item-meta{font-size:11.5px;color:var(--text-muted);flex-shrink:0;}
 .wizard-remove{background:none;border:none;color:#ef4444;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0;}
 
