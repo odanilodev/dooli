@@ -122,7 +122,6 @@
             <div class="wizard-module-head">
               <span class="wizard-topic-name">{{ t.name }}</span>
               <div class="wizard-panel-actions">
-                <button class="btn btn-outline btn-sm" @click="lessonPickerTopic = t">Copiar aula existente</button>
                 <button class="btn btn-primary btn-sm" @click="startNewLesson(t)">+ Nova aula</button>
               </div>
             </div>
@@ -214,14 +213,6 @@
       </div>
     </div>
 
-    <LessonPicker
-      v-if="lessonPickerTopic"
-      :topic-id="lessonPickerTopic.id"
-      :exclude-ids="courseLessonIds"
-      @close="lessonPickerTopic = null"
-      @copied="onLessonCopied"
-    />
-
     <ItemDrawer
       v-if="editingLesson"
       type="lesson"
@@ -239,7 +230,6 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api/http';
 import { statusLabel } from '../utils/adminLabels';
-import LessonPicker from '../components/admin/LessonPicker.vue';
 import ItemDrawer from '../components/admin/ItemDrawer.vue';
 
 const router = useRouter();
@@ -270,7 +260,6 @@ const newModule = reactive({ open: false, name: '' });
 const newTopic = reactive({ moduleId: null, name: '' });
 const linkTopic = reactive({ module: null });
 const newLesson = reactive({ topicId: null, name: '' });
-const lessonPickerTopic = ref(null);
 const editingLesson = ref(null);
 
 const modules = computed(() => course.value?.modules ?? []);
@@ -279,20 +268,6 @@ const lessonCount = computed(() => modules.value.reduce(
   (total, m) => total + (m.topics ?? []).reduce((sum, t) => sum + (t.lessons?.length ?? 0), 0),
   0,
 ));
-
-const courseLessonIds = computed(() => {
-  const ids = [];
-
-  for (const m of modules.value) {
-    for (const t of m.topics ?? []) {
-      for (const l of t.lessons ?? []) {
-        ids.push(l.id);
-      }
-    }
-  }
-
-  return ids;
-});
 
 const linkedModuleIds = computed(() => new Set(modules.value.map((m) => m.id)));
 const availableModules = computed(() => modulePool.value.filter((m) => !linkedModuleIds.value.has(m.id)));
@@ -556,16 +531,6 @@ async function createLesson(topic) {
   } finally {
     busy.value = false;
   }
-}
-
-function onLessonCopied(lesson) {
-  const topic = lessonPickerTopic.value;
-
-  if (topic) {
-    topic.lessons = [...(topic.lessons ?? []), lesson];
-  }
-
-  lessonPickerTopic.value = null;
 }
 
 function openLesson(lesson) {

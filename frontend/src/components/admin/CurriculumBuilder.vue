@@ -96,7 +96,6 @@
                       <div v-if="openMenu === `t-${topic.id}`" class="cb-menu">
                         <button @click="startRename('topic', topic)">Renomear</button>
                         <button @click="run(() => emit('add-lesson', topic))">Adicionar aula</button>
-                        <button @click="run(() => emit('attach-lesson', topic))">Copiar aula existente</button>
                         <button class="danger" @click="run(() => emit('remove', { type: 'topic', node: topic }))">Remover</button>
                       </div>
                     </span>
@@ -153,10 +152,7 @@
                     </draggable>
 
                     <p v-if="!topic.lessons?.length" class="cb-empty">Nenhuma aula ainda.</p>
-                    <div class="cb-lesson-actions">
-                      <button class="cb-add" @click.stop="emit('add-lesson', topic)">+ Adicionar aula</button>
-                      <button class="cb-add cb-add-alt" @click.stop="emit('attach-lesson', topic)">+ Copiar existente</button>
-                    </div>
+                    <button class="cb-add" @click.stop="emit('add-lesson', topic)">+ Adicionar aula</button>
                   </div>
                 </div>
               </template>
@@ -189,7 +185,7 @@ const props = defineProps({
   selected: { type: Object, default: null },
 });
 
-const emit = defineEmits(['select', 'rename', 'add-module', 'attach-module', 'add-topic', 'add-lesson', 'attach-lesson', 'remove', 'reorder']);
+const emit = defineEmits(['select', 'rename', 'add-module', 'attach-module', 'add-topic', 'add-lesson', 'remove', 'reorder']);
 
 const collapsed = reactive({});
 const openMenu = ref(null);
@@ -365,9 +361,6 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenus));
   padding:6px 8px;border-radius:8px;font-family:inherit;
 }
 .cb-add:hover{background:var(--accent-soft);}
-.cb-lesson-actions{display:flex;gap:6px;flex-wrap:wrap;}
-.cb-add-alt{color:var(--text-secondary);}
-.cb-add-alt:hover{color:var(--accent);}
 .cb-empty{font-size:12px;color:var(--text-muted);padding:2px 8px;margin:0;}
 .cb-empty-root{
   display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:36px 20px;
