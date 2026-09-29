@@ -337,6 +337,10 @@ CRUD. `credentials`/`settings` são **cifrados em repouso** e **nunca retornados
 
 ### Vídeos (`videos`)
 CRUD + `GET /videos/{video}/playback` (dados seguros de reprodução via adapter da plataforma, sem expor credenciais).
+- `POST /videos/import-url` — `{ title, url, folder_id? }`. O provedor baixa o vídeo do link; cria o registro já com `code`/`provider_status` e enfileira o sync.
+- `POST /videos/upload-credentials` — `{ title, folder_id? }`. Devolve `{ video, upload }`, onde `upload` são credenciais **temporárias** (`uploadLink`, `policy`, `x-amz-*`) para o navegador enviar o arquivo **direto ao provedor**, sem passar pelo limite de upload do PHP.
+- `POST /videos/{video}/sync` — consulta o status no provedor; quando `ready`, preenche `time` (duração) e `image` (poster).
+> Adapter real de upload/import para o VdoCipher (usa o mesmo `api_secret` do playback); sem credencial configurada responde `422 business_rule`. `provider_status`: `Pre-Upload` → `Queued` → `ready`. Após import/upload o job `SyncVideoProviderStatusJob` faz o polling em segundo plano.
 
 ### Plataformas de vídeo (`video-platforms`)
 CRUD. Configura o provedor de vídeo **por empresa** (any-platform): `code` ∈ `panda`, `vdocipher`, `vimeo`, `fastpix`, `external`. `credentials` (ex.: `api_secret` do VdoCipher, `api_key` do Panda) é **cifrado em repouso** e **nunca retornado**; a resposta expõe apenas `has_credentials`.

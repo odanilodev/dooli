@@ -29,7 +29,7 @@ Route → Middleware → FormRequest → Controller → Service → Repository �
 | Modelo de aulas | Tabela `lessons` → model **`Lesson`** (rota `/lessons`); `Class` é reservado no PHP |
 | Certificados | `certificates` = template por curso; `certificate_users` = emissão por user+team com snapshot `lessons_count` |
 | Pagamentos | `PaymentGatewayContract` + `GatewayManager` (Strategy/Factory); adapter real MercadoPago + Manual |
-| Vídeo | `VideoPlatformContract` + `VideoPlatformManager` resolvido por `videos.player`; adapter real Panda + stubs |
+| Vídeo | `VideoPlatformContract` + `VideoPlatformManager` resolvido por `videos.player`; adapters reais: Panda (playback) e VdoCipher (playback OTP + upload/import via API); stubs para os demais |
 | Webhooks | Verificação de assinatura, idempotência por `external_id`, processamento via Job |
 | Progresso | `timelines` + `actions.code` (idempotente por unique de negócio no Service) |
 | Regra de curso alterado | `CourseCompletionService` acionado pelo evento `CourseContentChanged` |
