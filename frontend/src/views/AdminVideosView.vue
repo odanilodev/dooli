@@ -6,8 +6,13 @@
         <h1 class="page-title">Vídeos</h1>
         <p class="page-subtitle">{{ meta.total ?? videos.length }} vídeo(s) cadastrado(s)</p>
       </div>
-      <button class="btn btn-primary" @click="openCreate">{{ showForm ? 'Cancelar' : 'Novo vídeo' }}</button>
+      <div class="header-actions">
+        <button class="btn btn-outline" @click="showUpload = true">Enviar ao VdoCipher</button>
+        <button class="btn btn-primary" @click="openCreate">{{ showForm ? 'Cancelar' : 'Novo vídeo' }}</button>
+      </div>
     </div>
+
+    <span v-if="notice" class="form-success show">{{ notice }}</span>
 
     <form v-if="showForm" class="panel" @submit.prevent="save">
       <h2 class="panel-title">{{ editingId ? `Editar vídeo #${editingId}` : 'Novo vídeo' }}</h2>
@@ -96,13 +101,22 @@
           <tr v-for="video in videos" :key="video.id">
             <td>
               <strong>{{ video.title }}</strong>
-              <span class="admin-sub">#{{ video.id }}<template v-if="video.code"> · {{ video.code }}</template></span>
+              <span class="admin-sub">
+                #{{ video.id }}<template v-if="video.code"> · {{ video.code }}</template>
+                <template v-if="video.provider_status"> · {{ providerStatusLabel(video.provider_status) }}</template>
+              </span>
             </td>
             <td>{{ video.player || '—' }}</td>
             <td class="admin-muted">{{ formatDuration(video.time) || '—' }}</td>
             <td><span class="status-pill" :class="video.status">{{ video.status }}</span></td>
             <td class="admin-actions">
               <button class="btn btn-outline btn-sm" @click="openEdit(video)">Editar</button>
+              <button
+                v-if="video.player === 'vdocipher' && video.code"
+                class="btn btn-outline btn-sm"
+                :disabled="busyId === video.id"
+                @click="syncVideo(video)"
+              >Sincronizar</button>
               <button class="btn btn-outline btn-sm" :disabled="busyId === video.id" @click="testPlayback(video)">Testar</button>
               <button class="btn btn-danger btn-sm" :disabled="busyId === video.id" @click="remove(video)">Excluir</button>
             </td>
@@ -125,6 +139,8 @@
       <button class="btn btn-outline btn-sm" :disabled="meta.current_page >= meta.last_page" @click="goPage(meta.current_page + 1)">Próxima</button>
     </div>
 
+    <VideoUploadModal v-if="showUpload" @close="showUpload = false" @created="onUploaded" />
+
   </main>
 </template>
 
@@ -132,6 +148,7 @@
 import { onMounted, reactive, ref, watch } from 'vue';
 import { api } from '../api/http';
 import { formatDuration } from '../utils/format';
+import VideoUploadModal from '../components/admin/VideoUploadModal.vue';
 
 const playerFilters = [
   { value: '', label: 'Todos' },
@@ -150,6 +167,46 @@ const loading = ref(true);
 const error = ref('');
 const busyId = ref(null);
 const playback = ref(null);
+const showUpload = ref(false);
+const notice = ref('');
+
+const providerStatusLabels = {
+  'Pre-Upload': 'Aguardando envio',
+  Queued: 'Processando',
+  ready: 'Pronto',
+};
+
+function providerStatusLabel(status) {
+  return providerStatusLabels[status] || status;
+}
+
+function onUploaded(video) {
+  showUpload.value = false;
+  error.value = '';
+  notice.value = `Vídeo "${video.title}" enviado. O processamento continua em segundo plano.`;
+  load();
+}
+
+async function syncVideo(video) {
+  busyId.value = video.id;
+  error.value = '';
+  notice.value = '';
+
+  try {
+    const { data } = await api.post(`/admin/videos/${video.id}/sync`);
+    const updated = data.data ?? {};
+
+    notice.value = updated.provider_status === 'ready'
+      ? `Vídeo pronto${updated.time ? ` (${formatDuration(updated.time)})` : ''}.`
+      : `Status: ${providerStatusLabel(updated.provider_status)}.`;
+
+    await load();
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível sincronizar o vídeo.';
+  } finally {
+    busyId.value = null;
+  }
+}
 
 const showForm = ref(false);
 const editingId = ref(null);
@@ -300,3 +357,7 @@ watch(search, () => {
 
 onMounted(load);
 </script>
+
+<style scoped>
+.header-actions{display:flex;gap:10px;flex-wrap:wrap;}
+</style>
