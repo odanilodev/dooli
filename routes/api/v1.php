@@ -168,6 +168,9 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::apiResource('video-platforms', AdminVideoPlatformController::class)->parameters(['video-platforms' => 'videoPlatform']);
         Route::apiResource('videos', AdminVideoController::class);
         Route::get('videos/{video}/playback', [AdminVideoController::class, 'playback']);
+        Route::post('videos/import-url', [AdminVideoController::class, 'importUrl']);
+        Route::post('videos/upload-credentials', [AdminVideoController::class, 'uploadCredentials']);
+        Route::post('videos/{video}/sync', [AdminVideoController::class, 'sync'])->whereNumber('video');
         Route::apiResource('documents', AdminDocumentController::class);
         Route::apiResource('attachments', AdminAttachmentController::class);
         Route::apiResource('banners', AdminBannerController::class);

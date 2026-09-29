@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['company_id', 'title', 'image', 'time', 'status', 'player', 'link', 'code'])]
+#[Fillable(['company_id', 'title', 'image', 'time', 'status', 'player', 'link', 'code', 'provider_status'])]
 class Video extends Model
 {
     use BelongsToCompany, HasFactory;

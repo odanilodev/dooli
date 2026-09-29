@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Api\V1\ApiController;
+use App\Http\Requests\Admin\ImportVideoUrlRequest;
 use App\Http\Requests\Admin\StoreVideoRequest;
 use App\Http\Requests\Admin\UpdateVideoRequest;
+use App\Http\Requests\Admin\VideoUploadCredentialsRequest;
 use App\Http\Resources\VideoResource;
 use App\Models\Video;
 use App\Services\VideoService;
@@ -63,5 +65,31 @@ class VideoController extends ApiController
         $this->authorize('view', $video);
 
         return ApiResponse::success($this->videos->playback($video->id));
+    }
+
+    public function importUrl(ImportVideoUrlRequest $request): JsonResponse
+    {
+        $this->authorize('create', Video::class);
+
+        return ApiResponse::success(new VideoResource($this->videos->importFromUrl($request->validated())), 201);
+    }
+
+    public function uploadCredentials(VideoUploadCredentialsRequest $request): JsonResponse
+    {
+        $this->authorize('create', Video::class);
+
+        $result = $this->videos->createUploadCredentials($request->validated());
+
+        return ApiResponse::success([
+            'video' => new VideoResource($result['video']),
+            'upload' => $result['upload'],
+        ], 201);
+    }
+
+    public function sync(Video $video): JsonResponse
+    {
+        $this->authorize('update', $video);
+
+        return ApiResponse::success(new VideoResource($this->videos->syncStatus($video->id)));
     }
 }

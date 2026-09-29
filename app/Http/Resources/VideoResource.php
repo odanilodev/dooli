@@ -15,6 +15,7 @@ class VideoResource extends JsonResource
             'image' => $this->image,
             'time' => $this->time,
             'status' => $this->status,
+            'provider_status' => $this->provider_status,
             'player' => $this->player,
             'code' => $this->code,
             'link' => $this->link,

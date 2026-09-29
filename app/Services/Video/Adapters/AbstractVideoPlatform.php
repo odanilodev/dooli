@@ -2,6 +2,7 @@
 
 namespace App\Services\Video\Adapters;
 
+use App\Exceptions\BusinessRuleException;
 use App\Models\Video;
 use App\Models\VideoPlatform;
 use App\Repositories\VideoPlatformRepository;
@@ -30,6 +31,26 @@ abstract class AbstractVideoPlatform implements VideoPlatformContract
             'duration' => $video->time,
             'warning' => "Integração '{$this->code()}' ainda não implementada; retornando link direto.",
         ];
+    }
+
+    public function supportsUpload(): bool
+    {
+        return false;
+    }
+
+    public function importFromUrl(string $url, string $title, ?string $folderId = null): array
+    {
+        throw new BusinessRuleException("Integração '{$this->code()}' ainda não suporta importação por URL.");
+    }
+
+    public function createUploadCredentials(string $title, ?string $folderId = null): array
+    {
+        throw new BusinessRuleException("Integração '{$this->code()}' ainda não suporta upload de arquivo.");
+    }
+
+    public function status(string $videoId): array
+    {
+        throw new BusinessRuleException("Integração '{$this->code()}' não expõe status de vídeo.");
     }
 
     protected function config(): ?VideoPlatform

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\VideoPlayer;
+use App\Jobs\SyncVideoProviderStatusJob;
 use App\Models\Video;
 use App\Repositories\VideoRepository;
 use App\Services\Video\VideoPlatformManager;
@@ -59,5 +61,79 @@ class VideoService
         $video = $this->videos->findOrFail($id);
 
         return $this->platforms->for($video)->playbackData($video);
+    }
+
+    /**
+     * Asks the provider to pull a video from a remote URL. The record is only
+     * created after the provider accepts it, so a failed import persists nothing.
+     */
+    public function importFromUrl(array $data): Video
+    {
+        $result = $this->platforms
+            ->make(VideoPlayer::VdoCipher->value)
+            ->importFromUrl($data['url'], $data['title'], $data['folder_id'] ?? null);
+
+        $video = $this->videos->create([
+            'title' => $data['title'],
+            'player' => VideoPlayer::VdoCipher->value,
+            'code' => $result['video_code'],
+            'provider_status' => $result['status'] ?? 'Queued',
+        ]);
+
+        $this->audit->log('video', 'import', 'video', "Vídeo importado no VdoCipher: {$video->title}");
+        SyncVideoProviderStatusJob::dispatch($video->id);
+
+        return $video;
+    }
+
+    /**
+     * Requests temporary upload credentials and creates a pending video record.
+     *
+     * @return array{video: Video, upload: array<string, mixed>}
+     */
+    public function createUploadCredentials(array $data): array
+    {
+        $result = $this->platforms
+            ->make(VideoPlayer::VdoCipher->value)
+            ->createUploadCredentials($data['title'], $data['folder_id'] ?? null);
+
+        $video = $this->videos->create([
+            'title' => $data['title'],
+            'player' => VideoPlayer::VdoCipher->value,
+            'code' => $result['video_code'],
+            'provider_status' => 'Pre-Upload',
+        ]);
+
+        $this->audit->log('video', 'upload', 'video', "Upload no VdoCipher iniciado: {$video->title}");
+
+        return ['video' => $video, 'upload' => $result['upload']];
+    }
+
+    /**
+     * Refreshes the provider status; when ready, fills duration and poster.
+     */
+    public function syncStatus(int $id): Video
+    {
+        $video = $this->videos->findOrFail($id);
+
+        if (! $video->code || $video->player !== VideoPlayer::VdoCipher->value) {
+            return $video;
+        }
+
+        $result = $this->platforms->make($video->player)->status($video->code);
+
+        $data = ['provider_status' => $result['status']];
+
+        if (($result['status'] ?? null) === 'ready') {
+            if (! empty($result['duration'])) {
+                $data['time'] = (int) $result['duration'];
+            }
+
+            if (! empty($result['thumbnail'])) {
+                $data['image'] = $result['thumbnail'];
+            }
+        }
+
+        return $this->videos->update($video, $data);
     }
 }
