@@ -69,24 +69,33 @@
             {{ showVideo ? '− Cancelar' : '+ Criar novo vídeo' }}
           </button>
 
-          <button type="button" class="drawer-link" @click="showUpload = true">
-            Enviar ao VdoCipher
-          </button>
-
           <div v-if="showVideo" class="drawer-inline">
             <input class="form-control" v-model="newVideo.title" placeholder="Título do vídeo">
-            <div class="form-row">
-              <select class="form-control" v-model="newVideo.player">
-                <option value="vdocipher">VdoCipher</option>
-                <option value="panda">Panda Video</option>
-                <option value="vimeo">Vimeo</option>
-                <option value="fastpix">FastPix</option>
-                <option value="external">Link externo</option>
-              </select>
+            <select class="form-control" v-model="newVideo.player">
+              <option value="vdocipher">VdoCipher</option>
+              <option value="panda">Panda Video</option>
+              <option value="vimeo">Vimeo</option>
+              <option value="fastpix">FastPix</option>
+              <option value="external">Link externo</option>
+            </select>
+
+            <VideoUploader
+              v-if="isInlineVdoCipher"
+              ref="inlineUploader"
+              :title="newVideo.title"
+              @state="inlineUploadState = $event"
+              @uploaded="onVideoUploaded"
+            />
+
+            <template v-else>
               <input class="form-control" v-model="newVideo.code" placeholder="Código no provedor">
-            </div>
-            <input class="form-control" v-model="newVideo.link" placeholder="Link (para player externo)">
-            <button type="button" class="btn btn-primary btn-sm" :disabled="creatingVideo" @click="createVideo">
+              <input class="form-control" v-model="newVideo.link" placeholder="Link (para player externo)">
+            </template>
+
+            <button v-if="isInlineVdoCipher" type="button" class="btn btn-primary btn-sm" :disabled="!inlineUploadState.canSubmit" @click="inlineUploader?.submit()">
+              {{ inlineUploadState.busy ? 'Enviando...' : 'Enviar e vincular' }}
+            </button>
+            <button v-else type="button" class="btn btn-primary btn-sm" :disabled="creatingVideo" @click="createVideo">
               {{ creatingVideo ? 'Criando...' : 'Criar e vincular' }}
             </button>
           </div>
@@ -181,8 +190,6 @@
         </button>
       </footer>
     </aside>
-
-    <VideoUploadModal v-if="showUpload" @close="showUpload = false" @created="onVideoUploaded" />
   </div>
 </template>
 
@@ -191,7 +198,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { api } from '../../api/http';
 import { playerLabel, statusLabel, typeLabel } from '../../utils/adminLabels';
 import { toDateTimeInput } from '../../utils/format';
-import VideoUploadModal from './VideoUploadModal.vue';
+import VideoUploader from './VideoUploader.vue';
 
 const props = defineProps({
   type: { type: String, required: true },
@@ -221,10 +228,12 @@ const documents = ref([]);
 const attachments = ref([]);
 
 const showVideo = ref(false);
-const showUpload = ref(false);
 const showDocument = ref(false);
 const showAttachment = ref(false);
 const newVideo = reactive({ title: '', player: 'vdocipher', code: '', link: '' });
+const inlineUploader = ref(null);
+const inlineUploadState = ref({ busy: false, canSubmit: false });
+const isInlineVdoCipher = computed(() => newVideo.player === 'vdocipher');
 const newDocument = reactive({ path: '', image: '' });
 const newAttachment = reactive({ path: '' });
 const creatingVideo = ref(false);
@@ -399,9 +408,11 @@ async function createVideo() {
 }
 
 function onVideoUploaded(video) {
-  showUpload.value = false;
   videos.value = [...videos.value, video];
   form.video_id = video.id;
+  newVideo.title = '';
+  newVideo.code = '';
+  newVideo.link = '';
   showVideo.value = false;
 }
 

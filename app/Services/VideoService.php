@@ -86,12 +86,18 @@ class VideoService
             ->make(VideoPlayer::VdoCipher->value)
             ->importFromUrl($data['url'], $data['title'], $data['folder_id'] ?? null);
 
-        $video = $this->videos->create([
+        $attributes = [
             'title' => $data['title'],
             'player' => VideoPlayer::VdoCipher->value,
             'code' => $result['video_code'],
             'provider_status' => $result['status'] ?? 'Queued',
-        ]);
+        ];
+
+        if (! empty($data['status'])) {
+            $attributes['status'] = $data['status'];
+        }
+
+        $video = $this->videos->create($attributes);
 
         $this->audit->log('video', 'import', 'video', "Vídeo importado no VdoCipher: {$video->title}");
         SyncVideoProviderStatusJob::dispatch($video->id);
@@ -110,12 +116,18 @@ class VideoService
             ->make(VideoPlayer::VdoCipher->value)
             ->createUploadCredentials($data['title'], $data['folder_id'] ?? null);
 
-        $video = $this->videos->create([
+        $attributes = [
             'title' => $data['title'],
             'player' => VideoPlayer::VdoCipher->value,
             'code' => $result['video_code'],
             'provider_status' => 'Pre-Upload',
-        ]);
+        ];
+
+        if (! empty($data['status'])) {
+            $attributes['status'] = $data['status'];
+        }
+
+        $video = $this->videos->create($attributes);
 
         $this->audit->log('video', 'upload', 'video', "Upload no VdoCipher iniciado: {$video->title}");
 

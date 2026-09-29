@@ -98,6 +98,54 @@ class VideoUploadTest extends TestCase
         ]);
     }
 
+    public function test_upload_credentials_honors_status(): void
+    {
+        $this->vdocipherPlatform();
+
+        Http::fake([
+            'dev.vdocipher.com/*' => Http::response([
+                'videoId' => 'VD-DRAFT',
+                'clientPayload' => [
+                    'uploadLink' => 'https://s3.example.com/bucket',
+                    'policy' => 'POLICY',
+                    'key' => 'KEY',
+                ],
+            ]),
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/videos/upload-credentials', [
+                'title' => 'Aula rascunho',
+                'status' => 'inactive',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.video.status', 'inactive');
+
+        $this->assertDatabaseHas('videos', ['code' => 'VD-DRAFT', 'status' => 'inactive']);
+    }
+
+    public function test_import_url_honors_status(): void
+    {
+        $this->vdocipherPlatform();
+
+        Queue::fake();
+
+        Http::fake([
+            'dev.vdocipher.com/*' => Http::response(['videoId' => 'VD-DRAFT-2', 'status' => 'Queued']),
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/videos/import-url', [
+                'title' => 'Importada rascunho',
+                'url' => 'https://cdn.example.com/x.mp4',
+                'status' => 'inactive',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'inactive');
+
+        $this->assertDatabaseHas('videos', ['code' => 'VD-DRAFT-2', 'status' => 'inactive']);
+    }
+
     public function test_sync_fills_duration_and_poster_when_ready(): void
     {
         $this->vdocipherPlatform();

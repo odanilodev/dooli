@@ -10,14 +10,13 @@
         <button class="btn btn-outline" :disabled="syncingAll" @click="refreshStatuses">
           {{ syncingAll ? 'Atualizando...' : 'Atualizar' }}
         </button>
-        <button class="btn btn-outline" @click="showUpload = true">Enviar ao VdoCipher</button>
         <button class="btn btn-primary" @click="openCreate">{{ showForm ? 'Cancelar' : 'Novo vídeo' }}</button>
       </div>
     </div>
 
     <span v-if="notice" class="form-success show">{{ notice }}</span>
 
-    <form v-if="showForm" class="panel" @submit.prevent="save">
+    <form v-if="showForm" class="panel" @submit.prevent="onSubmit">
       <h2 class="panel-title">{{ editingId ? `Editar vídeo #${editingId}` : 'Novo vídeo' }}</h2>
 
       <div class="form-group">
@@ -36,8 +35,9 @@
             <option value="fastpix">fastpix</option>
             <option value="external">external</option>
           </select>
+          <p v-if="form.player && !isVdoCipher" class="form-hint">Upload automático indisponível nesta integração; informe o código/link.</p>
         </div>
-        <div class="form-group">
+        <div v-if="!isVdoCipherNew" class="form-group">
           <label for="v-time">Duração (s)</label>
           <input id="v-time" class="form-control" type="number" min="0" v-model.number="form.time">
         </div>
@@ -50,26 +50,61 @@
         </div>
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="v-code">Código (code)</label>
-          <input id="v-code" class="form-control" v-model="form.code" placeholder="ID no provedor">
-        </div>
-        <div class="form-group">
-          <label for="v-link">Link</label>
-          <input id="v-link" class="form-control" v-model="form.link" placeholder="URL (para player external)">
-        </div>
+      <div v-if="isVdoCipherNew" class="form-group">
+        <label>Fonte do vídeo</label>
+        <VideoUploader
+          ref="uploader"
+          :title="form.title"
+          :status="form.status"
+          @state="uploadState = $event"
+          @uploaded="onUploaded"
+        />
       </div>
 
-      <div class="form-group">
-        <label for="v-image">Imagem (url)</label>
-        <input id="v-image" class="form-control" v-model="form.image">
-      </div>
+      <template v-else>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="v-code">Código (code)</label>
+            <input id="v-code" class="form-control" v-model="form.code" placeholder="ID no provedor">
+          </div>
+          <div class="form-group">
+            <label for="v-link">Link</label>
+            <input id="v-link" class="form-control" v-model="form.link" placeholder="URL (para player external)">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="v-image">Imagem (url)</label>
+          <input id="v-image" class="form-control" v-model="form.image">
+        </div>
+
+        <div v-if="isVdoCipher && form.code" class="form-group">
+          <label>Status no provedor</label>
+          <div class="provider-status-row">
+            <span class="provider-pill" :class="providerStatusClass(editingVideo?.provider_status)">
+              {{ providerStatusLabel(editingVideo?.provider_status) || '—' }}
+            </span>
+            <button
+              type="button"
+              class="btn btn-outline btn-sm"
+              :disabled="busyId === editingVideo?.id"
+              @click="syncEditing"
+            >{{ busyId === editingVideo?.id ? 'Sincronizando...' : 'Sincronizar' }}</button>
+          </div>
+        </div>
+      </template>
 
       <span class="form-error" :class="{ show: formError }">{{ formError }}</span>
 
       <div>
-        <button class="btn btn-primary" :disabled="saving">{{ saving ? 'Salvando...' : 'Salvar vídeo' }}</button>
+        <button
+          v-if="isVdoCipherNew"
+          type="button"
+          class="btn btn-primary"
+          :disabled="!uploadState.canSubmit"
+          @click="uploader?.submit()"
+        >{{ uploadState.busy ? 'Enviando...' : 'Enviar vídeo' }}</button>
+        <button v-else class="btn btn-primary" :disabled="saving">{{ saving ? 'Salvando...' : 'Salvar vídeo' }}</button>
       </div>
     </form>
 
@@ -144,16 +179,14 @@
       <button class="btn btn-outline btn-sm" :disabled="meta.current_page >= meta.last_page" @click="goPage(meta.current_page + 1)">Próxima</button>
     </div>
 
-    <VideoUploadModal v-if="showUpload" @close="showUpload = false" @created="onUploaded" />
-
   </main>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { api } from '../api/http';
 import { formatDuration } from '../utils/format';
-import VideoUploadModal from '../components/admin/VideoUploadModal.vue';
+import VideoUploader from '../components/admin/VideoUploader.vue';
 
 const playerFilters = [
   { value: '', label: 'Todos' },
@@ -172,9 +205,11 @@ const loading = ref(true);
 const error = ref('');
 const busyId = ref(null);
 const playback = ref(null);
-const showUpload = ref(false);
 const syncingAll = ref(false);
 const notice = ref('');
+
+const uploader = ref(null);
+const uploadState = ref({ busy: false, canSubmit: false });
 
 const providerStatusLabels = {
   'pre-upload': 'Aguardando envio',
@@ -217,7 +252,9 @@ async function refreshStatuses() {
 }
 
 function onUploaded(video) {
-  showUpload.value = false;
+  showForm.value = false;
+  editingId.value = null;
+  editingVideo.value = null;
   error.value = '';
   notice.value = `Vídeo "${video.title}" enviado. O processamento continua em segundo plano.`;
   load();
@@ -232,11 +269,17 @@ async function syncVideo(video) {
     const { data } = await api.post(`/admin/videos/${video.id}/sync`);
     const updated = data.data ?? {};
 
+    if (editingVideo.value && editingVideo.value.id === video.id) {
+      editingVideo.value = { ...editingVideo.value, ...updated };
+    }
+
     notice.value = updated.provider_status === 'ready'
       ? `Vídeo pronto${updated.time ? ` (${formatDuration(updated.time)})` : ''}.`
       : `Status: ${providerStatusLabel(updated.provider_status)}.`;
 
     await load();
+
+    return updated;
   } catch (e) {
     error.value = e?.message || 'Não foi possível sincronizar o vídeo.';
   } finally {
@@ -246,9 +289,13 @@ async function syncVideo(video) {
 
 const showForm = ref(false);
 const editingId = ref(null);
+const editingVideo = ref(null);
 const saving = ref(false);
 const formError = ref('');
 const form = reactive({ title: '', image: '', time: 0, status: 'active', player: '', code: '', link: '' });
+
+const isVdoCipher = computed(() => form.player === 'vdocipher');
+const isVdoCipherNew = computed(() => !editingId.value && isVdoCipher.value);
 
 let debounce;
 
@@ -303,6 +350,7 @@ function openCreate() {
   }
 
   editingId.value = null;
+  editingVideo.value = null;
   resetForm();
   formError.value = '';
   showForm.value = true;
@@ -310,6 +358,7 @@ function openCreate() {
 
 function openEdit(video) {
   editingId.value = video.id;
+  editingVideo.value = video;
   form.title = video.title ?? '';
   form.image = video.image ?? '';
   form.time = video.time ?? 0;
@@ -319,6 +368,24 @@ function openEdit(video) {
   form.link = video.link ?? '';
   formError.value = '';
   showForm.value = true;
+}
+
+function onSubmit() {
+  if (isVdoCipherNew.value) {
+    if (uploadState.value.canSubmit) {
+      uploader.value?.submit();
+    }
+
+    return;
+  }
+
+  save();
+}
+
+function syncEditing() {
+  if (editingVideo.value) {
+    syncVideo(editingVideo.value);
+  }
 }
 
 async function save() {
@@ -344,6 +411,7 @@ async function save() {
 
     showForm.value = false;
     editingId.value = null;
+    editingVideo.value = null;
     await load();
   } catch (e) {
     formError.value = e?.message || 'Não foi possível salvar o vídeo.';
@@ -399,4 +467,5 @@ onMounted(load);
 .provider-pill{display:inline-block;margin-top:5px;font-size:10.5px;font-weight:700;letter-spacing:.02em;padding:1px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text-secondary);}
 .provider-pill.is-pending{color:#eab308;border-color:rgba(234,179,8,.45);}
 .provider-pill.is-ready{color:#17c993;border-color:rgba(23,201,147,.45);}
+.provider-status-row{display:flex;align-items:center;gap:10px;}
 </style>

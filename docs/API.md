@@ -337,8 +337,8 @@ CRUD. `credentials`/`settings` são **cifrados em repouso** e **nunca retornados
 
 ### Vídeos (`videos`)
 CRUD + `GET /videos/{video}/playback` (dados seguros de reprodução via adapter da plataforma, sem expor credenciais).
-- `POST /videos/import-url` — `{ title, url, folder_id? }`. O provedor baixa o vídeo do link; cria o registro já com `code`/`provider_status` e enfileira o sync.
-- `POST /videos/upload-credentials` — `{ title, folder_id? }`. Devolve `{ video, upload }`, onde `upload` são credenciais **temporárias** (`uploadLink`, `policy`, `x-amz-*`) para o navegador enviar o arquivo **direto ao provedor**, sem passar pelo limite de upload do PHP.
+- `POST /videos/import-url` — `{ title, url, folder_id?, status? }`. O provedor baixa o vídeo do link; cria o registro já com `code`/`provider_status` e enfileira o sync.
+- `POST /videos/upload-credentials` — `{ title, folder_id?, status? }`. Devolve `{ video, upload }`, onde `upload` são credenciais **temporárias** (`uploadLink`, `policy`, `x-amz-*`) para o navegador enviar o arquivo **direto ao provedor**, sem passar pelo limite de upload do PHP. O upload/import é feito pelo próprio formulário de vídeo (`VideoUploader.vue`), exibido quando o player é `vdocipher`.
 - `POST /videos/{video}/sync` — consulta o status no provedor; quando `ready`, preenche `time` (duração) e `image` (poster).
 - `POST /videos/sync` — verificação em lote (botão "Atualizar"): atualiza o status dos vídeos da empresa que ainda não estão `ready`; best-effort e retorna `{ checked, ready, pending, failed }`.
 > `provider_status` é normalizado em minúsculas (`pre-upload`, `queued`, `processing`, `ready`), pois o provedor varia a caixa (ex.: `PRE-Upload`).
