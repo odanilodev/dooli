@@ -201,11 +201,11 @@ Lista os cursos **em andamento** com a próxima aula a assistir (1ª aula public
 {
   "success": true,
   "data": [
-    { "course_id": 2, "course_name": "Curso de biju", "lesson_id": 7, "lesson_name": "Aula de produção", "module_name": "Macramê", "duration": 1250, "percentage": 33.33 }
+    { "course_id": 2, "course_name": "Curso de biju", "lesson_id": 7, "lesson_name": "Aula de produção", "module_name": "Macramê", "image": "https://cdn.vdocipher.com/poster/....jpg", "duration": 1250, "resume_from": 42, "percentage": 33.33 }
   ]
 }
 ```
-> `duration` (segundos, do vídeo da aula) pode ser `null`. Cursos com 0% ou 100% não aparecem.
+> `duration` (segundos, do vídeo da aula) pode ser `null`. `resume_from` é a posição salva (segundos) para retomar; `image` é o poster do vídeo da aula (usado no card) e pode ser `null`. Cursos com 0% ou 100% não aparecem.
 
 ### GET /api/v1/me/courses/{course}/documents/{document}
 Baixa (stream) um documento da aula. Exige matrícula no curso (403). 404 se o documento não pertence ao curso ou o arquivo não existe no disco.

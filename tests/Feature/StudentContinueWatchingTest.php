@@ -23,7 +23,11 @@ class StudentContinueWatchingTest extends TestCase
         $data = $this->buildCourse($this->company->id);
         $team = $this->enroll($this->student, $data['course'], $this->company->id);
 
-        $video = Video::factory()->create(['company_id' => $this->company->id, 'time' => 1250]);
+        $video = Video::factory()->create([
+            'company_id' => $this->company->id,
+            'time' => 1250,
+            'image' => 'https://cdn.example.com/poster.jpg',
+        ]);
 
         $second = Lesson::factory()->create([
             'company_id' => $this->company->id,
@@ -54,6 +58,7 @@ class StudentContinueWatchingTest extends TestCase
             ->assertJsonPath('data.0.lesson_id', $second->id)
             ->assertJsonPath('data.0.lesson_name', $second->name)
             ->assertJsonPath('data.0.module_name', $data['module']->name)
+            ->assertJsonPath('data.0.image', 'https://cdn.example.com/poster.jpg')
             ->assertJsonPath('data.0.duration', 1250)
             ->assertJsonPath('data.0.percentage', 33.33);
     }
@@ -63,7 +68,11 @@ class StudentContinueWatchingTest extends TestCase
         $data = $this->buildCourse($this->company->id);
         $team = $this->enroll($this->student, $data['course'], $this->company->id);
 
-        $video = Video::factory()->create(['company_id' => $this->company->id, 'time' => 500]);
+        $video = Video::factory()->create([
+            'company_id' => $this->company->id,
+            'time' => 500,
+            'image' => 'https://cdn.example.com/resume.jpg',
+        ]);
 
         $second = Lesson::factory()->create([
             'company_id' => $this->company->id,
@@ -100,6 +109,7 @@ class StudentContinueWatchingTest extends TestCase
             ->assertJsonPath('data.0.lesson_id', $second->id)
             ->assertJsonPath('data.0.lesson_name', $second->name)
             ->assertJsonPath('data.0.resume_from', 42)
+            ->assertJsonPath('data.0.image', 'https://cdn.example.com/resume.jpg')
             ->assertJsonPath('data.0.duration', 500);
     }
 

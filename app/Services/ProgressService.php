@@ -196,6 +196,7 @@ class ProgressService
                 'lesson_id' => $target['lesson']->id,
                 'lesson_name' => $target['lesson']->name,
                 'module_name' => $target['lesson']->topic?->module?->name,
+                'image' => $target['lesson']->video?->image,
                 'duration' => $target['duration'],
                 'resume_from' => $target['resume_from'],
                 'percentage' => round(($completedCount / $totalLessons) * 100, 2),

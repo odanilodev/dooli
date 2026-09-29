@@ -18,6 +18,7 @@
           :sub="item.sub"
           :dur="item.dur"
           :pct="item.pct"
+          :image="item.image"
           :icon="item.icon"
           :grad="item.grad"
           :to="item.to"

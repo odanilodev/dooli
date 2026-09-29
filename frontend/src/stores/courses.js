@@ -53,6 +53,7 @@ export const useCoursesStore = defineStore('courses', () => {
         sub: item.lesson_name,
         dur: formatDuration(item.duration),
         pct: Math.round(Number(item.percentage) || 0),
+        image: item.image ?? '',
         icon: palette.icon,
         grad: palette.grad,
         to: { name: 'aula', params: { courseId: item.course_id, lessonId: item.lesson_id } },
