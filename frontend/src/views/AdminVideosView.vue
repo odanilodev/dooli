@@ -7,6 +7,9 @@
         <p class="page-subtitle">{{ meta.total ?? videos.length }} vídeo(s) cadastrado(s)</p>
       </div>
       <div class="header-actions">
+        <button class="btn btn-outline" :disabled="syncingAll" @click="refreshStatuses">
+          {{ syncingAll ? 'Atualizando...' : 'Atualizar' }}
+        </button>
         <button class="btn btn-outline" @click="showUpload = true">Enviar ao VdoCipher</button>
         <button class="btn btn-primary" @click="openCreate">{{ showForm ? 'Cancelar' : 'Novo vídeo' }}</button>
       </div>
@@ -101,10 +104,12 @@
           <tr v-for="video in videos" :key="video.id">
             <td>
               <strong>{{ video.title }}</strong>
-              <span class="admin-sub">
-                #{{ video.id }}<template v-if="video.code"> · {{ video.code }}</template>
-                <template v-if="video.provider_status"> · {{ providerStatusLabel(video.provider_status) }}</template>
-              </span>
+              <span class="admin-sub">#{{ video.id }}<template v-if="video.code"> · {{ video.code }}</template></span>
+              <span
+                v-if="video.provider_status"
+                class="provider-pill"
+                :class="providerStatusClass(video.provider_status)"
+              >{{ providerStatusLabel(video.provider_status) }}</span>
             </td>
             <td>{{ video.player || '—' }}</td>
             <td class="admin-muted">{{ formatDuration(video.time) || '—' }}</td>
@@ -168,16 +173,47 @@ const error = ref('');
 const busyId = ref(null);
 const playback = ref(null);
 const showUpload = ref(false);
+const syncingAll = ref(false);
 const notice = ref('');
 
 const providerStatusLabels = {
-  'Pre-Upload': 'Aguardando envio',
-  Queued: 'Processando',
+  'pre-upload': 'Aguardando envio',
+  preupload: 'Aguardando envio',
+  queued: 'Na fila',
+  processing: 'Processando',
   ready: 'Pronto',
 };
 
 function providerStatusLabel(status) {
-  return providerStatusLabels[status] || status;
+  if (!status) {
+    return '';
+  }
+
+  return providerStatusLabels[String(status).toLowerCase().trim()] || status;
+}
+
+function providerStatusClass(status) {
+  return String(status).toLowerCase().trim() === 'ready' ? 'is-ready' : 'is-pending';
+}
+
+async function refreshStatuses() {
+  syncingAll.value = true;
+  error.value = '';
+  notice.value = '';
+
+  try {
+    const { data } = await api.post('/admin/videos/sync');
+    const summary = data.data ?? {};
+
+    notice.value = `Verificados: ${summary.checked ?? 0} · prontos: ${summary.ready ?? 0} · processando: ${summary.pending ?? 0}`
+      + (summary.failed ? ` · falhas: ${summary.failed}` : '') + '.';
+
+    await load();
+  } catch (e) {
+    error.value = e?.message || 'Não foi possível atualizar os status.';
+  } finally {
+    syncingAll.value = false;
+  }
 }
 
 function onUploaded(video) {
@@ -360,4 +396,7 @@ onMounted(load);
 
 <style scoped>
 .header-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.provider-pill{display:inline-block;margin-top:5px;font-size:10.5px;font-weight:700;letter-spacing:.02em;padding:1px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text-secondary);}
+.provider-pill.is-pending{color:#eab308;border-color:rgba(234,179,8,.45);}
+.provider-pill.is-ready{color:#17c993;border-color:rgba(23,201,147,.45);}
 </style>

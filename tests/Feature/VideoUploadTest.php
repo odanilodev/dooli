@@ -255,6 +255,91 @@ class VideoUploadTest extends TestCase
         $this->assertDatabaseMissing('videos', ['id' => $video->id]);
     }
 
+    public function test_bulk_sync_updates_pending_videos(): void
+    {
+        $this->vdocipherPlatform();
+
+        $ready = Video::factory()->create([
+            'company_id' => $this->company->id,
+            'player' => VideoPlayer::VdoCipher->value,
+            'code' => 'VD-A',
+            'provider_status' => null,
+            'time' => 0,
+        ]);
+
+        $processing = Video::factory()->create([
+            'company_id' => $this->company->id,
+            'player' => VideoPlayer::VdoCipher->value,
+            'code' => 'VD-B',
+            'provider_status' => 'PRE-Upload',
+        ]);
+
+        $external = Video::factory()->create([
+            'company_id' => $this->company->id,
+            'player' => 'external',
+            'code' => 'EXT-1',
+        ]);
+
+        Http::fake([
+            '*VD-A*' => Http::response([
+                'status' => 'Ready',
+                'length' => 100,
+                'posters' => [['posterUrl' => 'https://cdn.example.com/p.jpg']],
+            ]),
+            '*VD-B*' => Http::response(['status' => 'Processing']),
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/videos/sync')
+            ->assertOk()
+            ->assertJsonPath('data.checked', 2)
+            ->assertJsonPath('data.ready', 1)
+            ->assertJsonPath('data.pending', 1)
+            ->assertJsonPath('data.failed', 0);
+
+        $this->assertDatabaseHas('videos', [
+            'id' => $ready->id,
+            'provider_status' => 'ready',
+            'time' => 100,
+            'image' => 'https://cdn.example.com/p.jpg',
+        ]);
+
+        $this->assertDatabaseHas('videos', [
+            'id' => $processing->id,
+            'provider_status' => 'processing',
+        ]);
+
+        $this->assertDatabaseHas('videos', ['id' => $external->id, 'provider_status' => null]);
+    }
+
+    public function test_bulk_sync_continues_when_provider_fails(): void
+    {
+        $this->vdocipherPlatform();
+
+        Video::factory()->create([
+            'company_id' => $this->company->id,
+            'player' => VideoPlayer::VdoCipher->value,
+            'code' => 'VD-X',
+        ]);
+
+        Http::fake([
+            '*VD-X*' => Http::response(['message' => 'boom'], 500),
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/videos/sync')
+            ->assertOk()
+            ->assertJsonPath('data.checked', 1)
+            ->assertJsonPath('data.failed', 1);
+    }
+
+    public function test_student_cannot_bulk_sync(): void
+    {
+        $this->withToken($this->apiLogin($this->student))
+            ->postJson('/api/v1/admin/videos/sync')
+            ->assertStatus(403);
+    }
+
     public function test_student_cannot_upload_videos(): void
     {
         $this->vdocipherPlatform();

@@ -92,4 +92,11 @@ class VideoController extends ApiController
 
         return ApiResponse::success(new VideoResource($this->videos->syncStatus($video->id)));
     }
+
+    public function syncAll(): JsonResponse
+    {
+        $this->authorize('viewAny', Video::class);
+
+        return ApiResponse::success($this->videos->syncMany());
+    }
 }

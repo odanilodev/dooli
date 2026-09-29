@@ -134,10 +134,11 @@ class VideoService
         }
 
         $result = $this->platforms->make($video->player)->status($video->code);
+        $status = $this->normalizeProviderStatus($result['status']);
 
-        $data = ['provider_status' => $result['status']];
+        $data = ['provider_status' => $status];
 
-        if (($result['status'] ?? null) === 'ready') {
+        if ($status === 'ready') {
             if (! empty($result['duration'])) {
                 $data['time'] = (int) $result['duration'];
             }
@@ -148,5 +149,54 @@ class VideoService
         }
 
         return $this->videos->update($video, $data);
+    }
+
+    /**
+     * Manually refreshes every non-ready VdoCipher video of the company
+     * (temporary "Atualizar" button). Failures don't block the batch.
+     *
+     * @return array{checked: int, ready: int, pending: int, failed: int}
+     */
+    public function syncMany(): array
+    {
+        $videos = $this->videos->query()
+            ->where('player', VideoPlayer::VdoCipher->value)
+            ->whereNotNull('code')
+            ->where(function ($query) {
+                $query->whereNull('provider_status')->orWhere('provider_status', '!=', 'ready');
+            })
+            ->get();
+
+        $summary = ['checked' => 0, 'ready' => 0, 'pending' => 0, 'failed' => 0];
+
+        foreach ($videos as $video) {
+            $summary['checked']++;
+
+            try {
+                $updated = $this->syncStatus($video->id);
+                $summary[$updated->provider_status === 'ready' ? 'ready' : 'pending']++;
+            } catch (Throwable $e) {
+                $summary['failed']++;
+
+                Log::warning('Video status refresh failed', [
+                    'video_id' => $video->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $summary;
+    }
+
+    /**
+     * The provider returns status with inconsistent casing (e.g. "PRE-Upload").
+     */
+    private function normalizeProviderStatus(?string $status): ?string
+    {
+        if ($status === null || trim($status) === '') {
+            return $status;
+        }
+
+        return strtolower(trim($status));
     }
 }
