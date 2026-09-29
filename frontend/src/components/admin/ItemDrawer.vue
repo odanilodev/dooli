@@ -69,6 +69,10 @@
             {{ showVideo ? '− Cancelar' : '+ Criar novo vídeo' }}
           </button>
 
+          <button type="button" class="drawer-link" @click="showUpload = true">
+            Enviar ao VdoCipher
+          </button>
+
           <div v-if="showVideo" class="drawer-inline">
             <input class="form-control" v-model="newVideo.title" placeholder="Título do vídeo">
             <div class="form-row">
@@ -177,6 +181,8 @@
         </button>
       </footer>
     </aside>
+
+    <VideoUploadModal v-if="showUpload" @close="showUpload = false" @created="onVideoUploaded" />
   </div>
 </template>
 
@@ -185,6 +191,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { api } from '../../api/http';
 import { playerLabel, statusLabel, typeLabel } from '../../utils/adminLabels';
 import { toDateTimeInput } from '../../utils/format';
+import VideoUploadModal from './VideoUploadModal.vue';
 
 const props = defineProps({
   type: { type: String, required: true },
@@ -214,6 +221,7 @@ const documents = ref([]);
 const attachments = ref([]);
 
 const showVideo = ref(false);
+const showUpload = ref(false);
 const showDocument = ref(false);
 const showAttachment = ref(false);
 const newVideo = reactive({ title: '', player: 'vdocipher', code: '', link: '' });
@@ -388,6 +396,13 @@ async function createVideo() {
   } finally {
     creatingVideo.value = false;
   }
+}
+
+function onVideoUploaded(video) {
+  showUpload.value = false;
+  videos.value = [...videos.value, video];
+  form.video_id = video.id;
+  showVideo.value = false;
 }
 
 async function createDocument() {

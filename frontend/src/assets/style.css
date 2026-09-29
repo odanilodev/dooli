@@ -790,7 +790,7 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 .admin-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .admin-panel-actions{display:flex;gap:8px;flex-wrap:wrap;}
 .admin-detail{min-width:0;}
-.admin-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:24px;z-index:80;}
+.admin-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:24px;z-index:100;}
 .admin-modal{max-width:520px;width:100%;max-height:80vh;overflow:auto;}
 .admin-modal-close{background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;padding:0 4px;}
 .admin-attach-list{display:flex;flex-direction:column;gap:8px;}
