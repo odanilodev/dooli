@@ -159,6 +159,9 @@ Lista produtos de loja **ativos e já lançados** (`release_at` nulo ou no passa
 ### GET /api/v1/store/products/{slug}
 Detalhe de um produto de loja ativo e já lançado (404 caso contrário).
 
+### GET /api/v1/banners
+Lista os banners **ativos** da empresa (ordenados por `sort_order`), que alimentam o hero da home. Cada item traz o conteúdo do destaque (`eyebrow`, `title`, `title_highlight`, `description`, `quote`, `cta_*`, `secondary_*`) e `image_url` (URL pública da imagem enviada, ou `null`).
+
 ### GET /api/v1/certificates/{code}/verify
 Verifica a autenticidade de um certificado pelo código público (UUID). Retorna 404 se inválido/invalidado.
 **Resposta (sem dados pessoais):**
@@ -349,8 +352,14 @@ CRUD + `GET /videos/{video}/playback` (dados seguros de reprodução via adapter
 ### Plataformas de vídeo (`video-platforms`)
 CRUD. Configura o provedor de vídeo **por empresa** (any-platform): `code` ∈ `panda`, `vdocipher`, `vimeo`, `fastpix`, `external`. `credentials` (ex.: `api_secret` do VdoCipher, `api_key` do Panda) é **cifrado em repouso** e **nunca retornado**; a resposta expõe apenas `has_credentials`.
 
-### Documentos, anexos e banners
-`documents`, `attachments`, `banners` — CRUD.
+### Documentos e anexos
+`documents`, `attachments` — CRUD.
+
+### Banners (`banners`)
+CRUD. Controlam o **hero da home**: `name`, `link`, `sort_order`, `status` e o conteúdo do destaque (`eyebrow`, `title`, `title_highlight`, `description`, `quote`, `cta_label`, `cta_link`, `secondary_label`, `secondary_link`).
+- **Imagem:** envie como `multipart/form-data` no campo `image` (`jpg/jpeg/png/webp`, máx. 4 MB). O arquivo é salvo no disco `public` em `banners/{company_id}/…` e a resposta expõe `image` (caminho) e `image_url` (URL pública). Ao substituir/excluir o banner, o arquivo antigo é removido.
+- Requer `php artisan storage:link` para servir as imagens em `/storage/...`.
+- Endpoint público correspondente: `GET /api/v1/banners` (apenas ativos).
 
 ### Certificados (modelos) (`certificates`)
 CRUD dos templates por curso (`name`, `title`, `course_id`, `grade`, `version`, `time`).

@@ -8,13 +8,17 @@ use App\Http\Requests\Admin\UpdateBannerRequest;
 use App\Http\Resources\BannerResource;
 use App\Models\Banner;
 use App\Repositories\BannerRepository;
+use App\Services\BannerService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BannerController extends ApiController
 {
-    public function __construct(private readonly BannerRepository $banners) {}
+    public function __construct(
+        private readonly BannerRepository $banners,
+        private readonly BannerService $service,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -30,7 +34,12 @@ class BannerController extends ApiController
     {
         $this->authorize('create', Banner::class);
 
-        return ApiResponse::success(new BannerResource($this->banners->create($request->validated())), 201);
+        $data = $request->validated();
+        unset($data['image']);
+
+        $banner = $this->service->create($data, $request->file('image'));
+
+        return ApiResponse::success(new BannerResource($banner), 201);
     }
 
     public function show(Banner $banner): JsonResponse
@@ -44,14 +53,17 @@ class BannerController extends ApiController
     {
         $this->authorize('update', $banner);
 
-        return ApiResponse::success(new BannerResource($this->banners->update($banner, $request->validated())));
+        $data = $request->validated();
+        unset($data['image']);
+
+        return ApiResponse::success(new BannerResource($this->service->update($banner, $data, $request->file('image'))));
     }
 
     public function destroy(Banner $banner): JsonResponse
     {
         $this->authorize('delete', $banner);
 
-        $this->banners->delete($banner);
+        $this->service->delete($banner);
 
         return ApiResponse::noContent();
     }

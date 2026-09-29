@@ -20,6 +20,7 @@ import AdminTeamsView from '../views/AdminTeamsView.vue';
 import AdminVideosView from '../views/AdminVideosView.vue';
 import AdminDocumentsView from '../views/AdminDocumentsView.vue';
 import AdminAttachmentsView from '../views/AdminAttachmentsView.vue';
+import AdminBannersView from '../views/AdminBannersView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
 import ForgotPasswordView from '../views/ForgotPasswordView.vue';
@@ -48,6 +49,7 @@ const routes = [
       { path: 'admin/videos', name: 'admin-videos', component: AdminVideosView, meta: { title: 'Vídeos (admin)', requiresAdmin: true } },
       { path: 'admin/documentos', name: 'admin-documentos', component: AdminDocumentsView, meta: { title: 'Documentos (admin)', requiresAdmin: true } },
       { path: 'admin/anexos', name: 'admin-anexos', component: AdminAttachmentsView, meta: { title: 'Anexos (admin)', requiresAdmin: true } },
+      { path: 'admin/banners', name: 'admin-banners', component: AdminBannersView, meta: { title: 'Banners (admin)', requiresAdmin: true } },
       { path: ':pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { title: 'Página não encontrada' } },
     ],
   },

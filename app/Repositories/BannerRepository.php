@@ -6,7 +6,7 @@ use App\Models\Banner;
 
 class BannerRepository extends BaseRepository
 {
-    protected array $searchable = ['name'];
+    protected array $searchable = ['name', 'title', 'eyebrow'];
 
     protected array $filterable = ['status', 'company_id'];
 

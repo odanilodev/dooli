@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\Admin\VideoPlatformController as AdminVideoPlatf
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\Public\BannerController as PublicBannerController;
 use App\Http\Controllers\Api\V1\Public\CertificateVerifyController;
 use App\Http\Controllers\Api\V1\Public\StoreController;
 use App\Http\Controllers\Api\V1\Student\CertificateController as StudentCertificateController;
@@ -47,6 +48,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['company', 'company.required', 'throttle:public'])->group(function () {
     Route::get('store/products', [StoreController::class, 'index']);
     Route::get('store/products/{slug}', [StoreController::class, 'show']);
+    Route::get('banners', [PublicBannerController::class, 'index']);
     Route::get('certificates/{code}/verify', [CertificateVerifyController::class, 'verify']);
 });
 
