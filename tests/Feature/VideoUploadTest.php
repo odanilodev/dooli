@@ -87,6 +87,10 @@ class VideoUploadTest extends TestCase
             ->assertJsonPath('data.video.provider_status', 'Pre-Upload')
             ->assertJsonPath('data.upload.uploadLink', 'https://s3.example.com/bucket');
 
+        Http::assertSent(fn ($request) => $request->method() === 'PUT'
+            && str_contains($request->url(), '/api/videos?title=Aula+local')
+            && $request->hasHeader('Authorization', 'Apisecret secret-123'));
+
         $this->assertDatabaseHas('videos', [
             'company_id' => $this->company->id,
             'code' => 'VD-UPLOAD',

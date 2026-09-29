@@ -97,9 +97,12 @@ class VdoCipherVideoPlatform extends AbstractVideoPlatform
             ]));
 
         if ($response->failed()) {
-            Log::warning('VdoCipher importUrl failed', ['status' => $response->status()]);
+            Log::warning('VdoCipher importUrl failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
 
-            throw new BusinessRuleException('Não foi possível importar o vídeo no VdoCipher.');
+            throw $this->failure('importar o vídeo', $response->status());
         }
 
         $data = $response->json();
@@ -114,16 +117,21 @@ class VdoCipherVideoPlatform extends AbstractVideoPlatform
     {
         $this->assertConfigured();
 
-        $response = $this->client()
-            ->put(self::API_BASE, array_filter([
-                'title' => $title,
-                'folderId' => $this->folderId($folderId),
-            ]));
+        // VdoCipher expects the title/folder as query parameters (not a JSON body).
+        $query = array_filter([
+            'title' => $title,
+            'folderId' => $this->folderId($folderId),
+        ]);
+
+        $response = $this->client()->put(self::API_BASE.'?'.http_build_query($query));
 
         if ($response->failed()) {
-            Log::warning('VdoCipher upload credentials failed', ['status' => $response->status()]);
+            Log::warning('VdoCipher upload credentials failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
 
-            throw new BusinessRuleException('Não foi possível iniciar o upload no VdoCipher.');
+            throw $this->failure('iniciar o upload', $response->status());
         }
 
         $data = $response->json();
@@ -141,9 +149,13 @@ class VdoCipherVideoPlatform extends AbstractVideoPlatform
         $response = $this->client()->get(sprintf(self::VIDEO_ENDPOINT, $videoId));
 
         if ($response->failed()) {
-            Log::warning('VdoCipher status fetch failed', ['video_id' => $videoId, 'status' => $response->status()]);
+            Log::warning('VdoCipher status fetch failed', [
+                'video_id' => $videoId,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
 
-            throw new BusinessRuleException('Não foi possível consultar o status no VdoCipher.');
+            throw $this->failure('sincronizar o vídeo', $response->status());
         }
 
         $data = $response->json();
@@ -171,5 +183,14 @@ class VdoCipherVideoPlatform extends AbstractVideoPlatform
     private function folderId(?string $folderId): ?string
     {
         return $folderId ?: $this->setting('folder_id');
+    }
+
+    private function failure(string $action, int $status): BusinessRuleException
+    {
+        if (in_array($status, [401, 403], true)) {
+            return new BusinessRuleException('api_secret do VdoCipher inválido ou expirado. Verifique em Plataformas de vídeo.');
+        }
+
+        return new BusinessRuleException("Não foi possível {$action} no VdoCipher (HTTP {$status}).");
     }
 }
