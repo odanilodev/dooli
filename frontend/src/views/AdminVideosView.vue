@@ -214,7 +214,7 @@ const uploadState = ref({ busy: false, canSubmit: false });
 const providerStatusLabels = {
   'pre-upload': 'Aguardando envio',
   preupload: 'Aguardando envio',
-  queued: 'Na fila',
+  queued: 'Processando',
   processing: 'Processando',
   ready: 'Pronto',
 };
