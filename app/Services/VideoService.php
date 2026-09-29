@@ -8,6 +8,8 @@ use App\Models\Video;
 use App\Repositories\VideoRepository;
 use App\Services\Video\VideoPlatformManager;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class VideoService
 {
@@ -48,6 +50,17 @@ class VideoService
 
     public function delete(Video $video): void
     {
+        if ($video->player && $video->code) {
+            try {
+                $this->platforms->make($video->player)->delete($video->code);
+            } catch (Throwable $e) {
+                Log::warning('Video provider delete failed', [
+                    'video_id' => $video->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
         $video->delete();
 
         $this->audit->log('video', 'delete', 'video', "Vídeo excluído: {$video->title}");

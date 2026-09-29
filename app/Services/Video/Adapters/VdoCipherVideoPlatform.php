@@ -5,6 +5,7 @@ namespace App\Services\Video\Adapters;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Video;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -102,7 +103,7 @@ class VdoCipherVideoPlatform extends AbstractVideoPlatform
                 'body' => $response->body(),
             ]);
 
-            throw $this->failure('importar o vídeo', $response->status());
+            throw $this->failure('importar o vídeo', $response);
         }
 
         $data = $response->json();
@@ -131,7 +132,7 @@ class VdoCipherVideoPlatform extends AbstractVideoPlatform
                 'body' => $response->body(),
             ]);
 
-            throw $this->failure('iniciar o upload', $response->status());
+            throw $this->failure('iniciar o upload', $response);
         }
 
         $data = $response->json();
@@ -155,7 +156,7 @@ class VdoCipherVideoPlatform extends AbstractVideoPlatform
                 'body' => $response->body(),
             ]);
 
-            throw $this->failure('sincronizar o vídeo', $response->status());
+            throw $this->failure('sincronizar o vídeo', $response);
         }
 
         $data = $response->json();
@@ -165,6 +166,23 @@ class VdoCipherVideoPlatform extends AbstractVideoPlatform
             'duration' => isset($data['length']) ? (int) $data['length'] : null,
             'thumbnail' => $data['posters'][0]['posterUrl'] ?? null,
         ];
+    }
+
+    public function delete(string $videoId): void
+    {
+        $this->assertConfigured();
+
+        $response = $this->client()->delete(self::API_BASE.'?'.http_build_query(['videos' => $videoId]));
+
+        if ($response->failed()) {
+            Log::warning('VdoCipher video delete failed', [
+                'video_id' => $videoId,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            throw $this->failure('excluir o vídeo', $response);
+        }
     }
 
     private function client(): PendingRequest
@@ -185,10 +203,18 @@ class VdoCipherVideoPlatform extends AbstractVideoPlatform
         return $folderId ?: $this->setting('folder_id');
     }
 
-    private function failure(string $action, int $status): BusinessRuleException
+    private function failure(string $action, Response $response): BusinessRuleException
     {
-        if (in_array($status, [401, 403], true)) {
-            return new BusinessRuleException('api_secret do VdoCipher inválido ou expirado. Verifique em Plataformas de vídeo.');
+        $status = $response->status();
+
+        if ($status === 401) {
+            return new BusinessRuleException('api_secret do VdoCipher inválido. Verifique em Plataformas de vídeo.');
+        }
+
+        $message = $response->json('message');
+
+        if (is_string($message) && trim($message) !== '') {
+            return new BusinessRuleException('VdoCipher: '.preg_replace('/\s+/', ' ', trim($message)));
         }
 
         return new BusinessRuleException("Não foi possível {$action} no VdoCipher (HTTP {$status}).");

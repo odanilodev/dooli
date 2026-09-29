@@ -177,6 +177,84 @@ class VideoUploadTest extends TestCase
         ]);
     }
 
+    public function test_provider_quota_error_is_surfaced(): void
+    {
+        $this->vdocipherPlatform();
+
+        Http::fake([
+            'dev.vdocipher.com/*' => Http::response([
+                'message' => "You have reached the trial limit of 4 videos.\n        Either remove the previously uploaded videos or subscribe.",
+            ], 403),
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/videos/upload-credentials', ['title' => 'Aula'])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'business_rule')
+            ->assertJsonPath('message', 'VdoCipher: You have reached the trial limit of 4 videos. Either remove the previously uploaded videos or subscribe.');
+
+        $this->assertDatabaseCount('videos', 0);
+    }
+
+    public function test_invalid_secret_reports_friendly_message(): void
+    {
+        $this->vdocipherPlatform();
+
+        Http::fake([
+            'dev.vdocipher.com/*' => Http::response(['message' => 'unauthorized'], 401),
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/videos/upload-credentials', ['title' => 'Aula'])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'api_secret do VdoCipher inválido. Verifique em Plataformas de vídeo.');
+    }
+
+    public function test_deleting_video_also_deletes_it_on_provider(): void
+    {
+        $this->vdocipherPlatform();
+
+        $video = Video::factory()->create([
+            'company_id' => $this->company->id,
+            'player' => VideoPlayer::VdoCipher->value,
+            'code' => 'VD-DEL',
+        ]);
+
+        Http::fake([
+            'dev.vdocipher.com/*' => Http::response('', 200),
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->deleteJson("/api/v1/admin/videos/{$video->id}")
+            ->assertNoContent();
+
+        Http::assertSent(fn ($request) => $request->method() === 'DELETE'
+            && str_contains($request->url(), 'videos=VD-DEL'));
+
+        $this->assertDatabaseMissing('videos', ['id' => $video->id]);
+    }
+
+    public function test_provider_delete_failure_still_deletes_locally(): void
+    {
+        $this->vdocipherPlatform();
+
+        $video = Video::factory()->create([
+            'company_id' => $this->company->id,
+            'player' => VideoPlayer::VdoCipher->value,
+            'code' => 'VD-FAIL',
+        ]);
+
+        Http::fake([
+            'dev.vdocipher.com/*' => Http::response(['message' => 'boom'], 500),
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->deleteJson("/api/v1/admin/videos/{$video->id}")
+            ->assertNoContent();
+
+        $this->assertDatabaseMissing('videos', ['id' => $video->id]);
+    }
+
     public function test_student_cannot_upload_videos(): void
     {
         $this->vdocipherPlatform();

@@ -42,4 +42,9 @@ interface VideoPlatformContract
      * @return array{status: ?string, duration: ?int, thumbnail: ?string}
      */
     public function status(string $videoId): array;
+
+    /**
+     * Deletes a video on the provider, freeing provider quotas (best-effort).
+     */
+    public function delete(string $videoId): void;
 }

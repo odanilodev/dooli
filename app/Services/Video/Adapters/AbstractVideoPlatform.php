@@ -53,6 +53,11 @@ abstract class AbstractVideoPlatform implements VideoPlatformContract
         throw new BusinessRuleException("Integração '{$this->code()}' não expõe status de vídeo.");
     }
 
+    public function delete(string $videoId): void
+    {
+        // No-op for platforms without a real integration (nothing to remove remotely).
+    }
+
     protected function config(): ?VideoPlatform
     {
         return $this->platforms->findActiveByCode($this->code());
