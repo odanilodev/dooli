@@ -1,7 +1,8 @@
 <template>
   <router-link :to="to" class="card card-course" style="display:block;">
     <div class="card-thumb" :style="{ background: grad }">
-      <span class="glow" style="top:-30px;right:-20px;left:auto;"></span>
+      <img v-if="image" class="card-img" :src="image" :alt="title">
+      <span v-else class="glow" style="top:-30px;right:-20px;left:auto;"></span>
       <svg class="icon thumb-icon-tl" width="20" height="20" viewBox="0 0 24 24"><path :d="icon" /></svg>
       <span class="badge-label">{{ badge }}</span>
       <span class="pct-badge">{{ pct }}%</span>
@@ -22,6 +23,7 @@ defineProps({
   badge: { type: String, default: '' },
   icon: { type: String, required: true },
   grad: { type: String, required: true },
+  image: { type: String, default: '' },
   to: { type: [String, Object], default: '/cursos' },
 });
 </script>
