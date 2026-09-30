@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/auth';
 import AppLayout from '../layouts/AppLayout.vue';
 import AuthLayout from '../layouts/AuthLayout.vue';
 
-import DashboardView from '../views/DashboardView.vue';
+import HomeView from '../views/HomeView.vue';
 import CoursesView from '../views/CoursesView.vue';
 import LessonView from '../views/LessonView.vue';
 import StoreView from '../views/StoreView.vue';
@@ -33,7 +33,7 @@ const routes = [
     component: AppLayout,
     meta: { requiresAuth: true },
     children: [
-      { path: '', name: 'dashboard', component: DashboardView, meta: { title: 'Início' } },
+      { path: '', name: 'dashboard', component: HomeView, meta: { title: 'Início' } },
       { path: 'cursos', name: 'cursos', component: CoursesView, meta: { title: 'Meus cursos', searchPlaceholder: 'Buscar nos meus cursos...' } },
       { path: 'cursos/:courseId', name: 'curso', component: LessonView, meta: { title: 'Curso', searchPlaceholder: 'Buscar no curso...' } },
       { path: 'cursos/:courseId/aula/:lessonId', name: 'aula', component: LessonView, meta: { title: 'Aula', searchPlaceholder: 'Buscar no curso...' } },

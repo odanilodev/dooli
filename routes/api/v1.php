@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Admin\CertificateController as AdminCertificateC
 use App\Http\Controllers\Api\V1\Admin\CommentController as AdminCommentController;
 use App\Http\Controllers\Api\V1\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Api\V1\Admin\CourseController as AdminCourseController;
+use App\Http\Controllers\Api\V1\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Api\V1\Admin\DatalogController as AdminDatalogController;
 use App\Http\Controllers\Api\V1\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Api\V1\Admin\GatewayController as AdminGatewayController;
@@ -129,6 +130,8 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     | Administrative area
     */
     Route::middleware(['role:admin', 'throttle:admin'])->prefix('admin')->group(function () {
+        Route::get('dashboard', [AdminDashboardController::class, 'index']);
+
         Route::apiResource('courses', AdminCourseController::class);
         Route::post('courses/{course}/publish', [AdminCourseController::class, 'publish']);
         Route::post('courses/{course}/unpublish', [AdminCourseController::class, 'unpublish']);

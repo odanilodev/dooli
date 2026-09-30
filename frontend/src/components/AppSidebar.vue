@@ -11,23 +11,12 @@
     </router-link>
 
     <nav class="nav">
-      <router-link to="/" class="nav-link" :class="{ active: $route.name === 'dashboard' }" @click="close">
-        <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/></svg>
-        <span>Início</span>
-      </router-link>
-      <router-link to="/cursos" class="nav-link" :class="{ active: ['cursos', 'curso', 'aula'].includes($route.name) }" @click="close">
-        <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/></svg>
-        <span>Meus cursos</span>
-      </router-link>
-      <router-link to="/perfil" class="nav-link" :class="{ active: $route.name === 'perfil' }" @click="close">
-        <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
-        <span>Meu perfil</span>
-      </router-link>
-      <router-link to="/configuracoes" class="nav-link" :class="{ active: $route.name === 'configuracoes' }" @click="close">
-        <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
-        <span>Configurações</span>
-      </router-link>
       <template v-if="auth.isAdmin">
+        <router-link to="/" class="nav-link" :class="{ active: $route.name === 'dashboard' }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/></svg>
+          <span>Dashboard</span>
+        </router-link>
+
         <span class="nav-group-label">Administração</span>
         <router-link to="/admin/conteudo" class="nav-link" :class="{ active: ['admin-conteudo', 'admin-conteudo-novo', 'admin-conteudo-curso'].includes($route.name) }" @click="close">
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5A2.5 2.5 0 0 1 4 20.5z"/></svg>
@@ -56,6 +45,35 @@
         <router-link to="/admin/video-platforms" class="nav-link" :class="{ active: $route.name === 'admin-video-platforms' }" @click="close">
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10 9.5l5 2.5-5 2.5V9.5z" fill="currentColor" stroke="none"/></svg>
           <span>Plataformas de vídeo</span>
+        </router-link>
+
+        <span class="nav-group-label">Conta</span>
+        <router-link to="/perfil" class="nav-link" :class="{ active: $route.name === 'perfil' }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
+          <span>Meu perfil</span>
+        </router-link>
+        <router-link to="/configuracoes" class="nav-link" :class="{ active: $route.name === 'configuracoes' }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+          <span>Configurações</span>
+        </router-link>
+      </template>
+
+      <template v-else>
+        <router-link to="/" class="nav-link" :class="{ active: $route.name === 'dashboard' }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/></svg>
+          <span>Início</span>
+        </router-link>
+        <router-link to="/cursos" class="nav-link" :class="{ active: ['cursos', 'curso', 'aula'].includes($route.name) }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/></svg>
+          <span>Meus cursos</span>
+        </router-link>
+        <router-link to="/perfil" class="nav-link" :class="{ active: $route.name === 'perfil' }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
+          <span>Meu perfil</span>
+        </router-link>
+        <router-link to="/configuracoes" class="nav-link" :class="{ active: $route.name === 'configuracoes' }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+          <span>Configurações</span>
         </router-link>
       </template>
     </nav>
