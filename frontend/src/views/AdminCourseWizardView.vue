@@ -217,6 +217,7 @@
       :item="editingLesson"
       :course="course"
       :focus="drawerFocus"
+      :close-on-save="closeLessonOnSave"
       @close="editingLesson = null"
       @saved="onLessonSaved"
     />
@@ -262,6 +263,7 @@ const linkTopic = reactive({ module: null });
 const newLesson = reactive({ topicId: null, name: '' });
 const editingLesson = ref(null);
 const drawerFocus = ref(null);
+const closeLessonOnSave = ref(false);
 const backdropDown = ref(false);
 
 function onBackdropDown(e) {
@@ -526,6 +528,7 @@ async function createLesson(topic) {
     newLesson.name = '';
     newLesson.topicId = null;
     drawerFocus.value = 'description';
+    closeLessonOnSave.value = true;
     editingLesson.value = lesson;
   } catch (e) {
     toast.error(e?.message || 'Não foi possível criar a aula.');
@@ -536,6 +539,7 @@ async function createLesson(topic) {
 
 function openLesson(lesson) {
   drawerFocus.value = null;
+  closeLessonOnSave.value = false;
   editingLesson.value = lesson;
 }
 

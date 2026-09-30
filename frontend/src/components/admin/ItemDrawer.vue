@@ -214,6 +214,7 @@ const props = defineProps({
   item: { type: Object, required: true },
   course: { type: Object, default: null },
   focus: { type: String, default: null },
+  closeOnSave: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['close', 'saved']);
@@ -387,6 +388,10 @@ async function save() {
 
     toast.success('Salvo.');
     emit('saved', { type: props.type, id: props.item.id, data: result });
+
+    if (props.closeOnSave) {
+      emit('close');
+    }
   } catch (e) {
     toast.error(e?.message || 'Não foi possível salvar.');
   } finally {

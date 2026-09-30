@@ -42,7 +42,8 @@
         :type="selected.type"
         :item="selectedItem"
         :course="course"
-        @close="selected = null"
+        :close-on-save="closeOnSave"
+        @close="closeDrawer"
         @saved="onSaved"
       />
     </Transition>
@@ -107,6 +108,7 @@ const toast = useToast();
 const courseId = computed(() => Number(route.params.courseId));
 const course = ref(null);
 const selected = ref(null);
+const closeOnSave = ref(false);
 const loading = ref(true);
 
 const showAttach = ref(false);
@@ -178,11 +180,18 @@ async function load() {
 }
 
 function onSelect(target) {
+  closeOnSave.value = false;
   selected.value = target;
 }
 
-function openDrawer(type, id) {
+function closeDrawer() {
+  selected.value = null;
+  closeOnSave.value = false;
+}
+
+function openDrawer(type, id, options = {}) {
   selected.value = { type, id };
+  closeOnSave.value = options.closeOnSave === true;
 }
 
 async function onSaved({ type, id, data }) {
@@ -232,7 +241,7 @@ async function createLesson(topic) {
     });
     const lesson = { ...data.data, attachments: data.data.attachments ?? [] };
     topic.lessons = [...(topic.lessons ?? []), lesson];
-    openDrawer('lesson', lesson.id);
+    openDrawer('lesson', lesson.id, { closeOnSave: true });
   } catch (e) {
     toast.error(e?.message || 'Não foi possível criar a aula.');
   }
