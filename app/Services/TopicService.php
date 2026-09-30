@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\PrerequisiteConflictException;
 use App\Models\Lesson;
 use App\Models\Module;
 use App\Models\Topic;
@@ -15,6 +16,7 @@ class TopicService
         private readonly TopicRepository $topics,
         private readonly DatalogService $audit,
         private readonly LessonService $lessons,
+        private readonly LessonOrderService $orders,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -58,15 +60,29 @@ class TopicService
 
     /**
      * @param  array<int, int>  $topicIds
+     * @return array<int, int> lesson ids whose prerequisite lock was removed
      */
-    public function reorder(Module $module, array $topicIds): void
+    public function reorder(Module $module, array $topicIds, bool $force = false): array
     {
-        DB::transaction(function () use ($module, $topicIds) {
+        return DB::transaction(function () use ($module, $topicIds, $force) {
             foreach ($topicIds as $position => $topicId) {
                 $module->topics()->whereKey($topicId)->update(['sort_order' => $position]);
             }
-        });
 
-        $this->audit->log('module', 'reorder_topics', 'module', "Tópicos reordenados no módulo {$module->name}");
+            $module->loadMissing('courses');
+            $courseIds = $module->courses->pluck('id')->all();
+
+            $conflicts = $this->orders->conflictsForCourses($courseIds);
+
+            if ($conflicts !== [] && ! $force) {
+                throw new PrerequisiteConflictException($conflicts);
+            }
+
+            $cleared = $this->orders->clearPrerequisites(array_column($conflicts, 'lesson_id'));
+
+            $this->audit->log('module', 'reorder_topics', 'module', "Tópicos reordenados no módulo {$module->name}");
+
+            return $cleared;
+        });
     }
 }

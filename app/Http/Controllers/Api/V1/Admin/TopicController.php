@@ -66,8 +66,8 @@ class TopicController extends ApiController
     {
         $this->authorize('update', $module);
 
-        $this->topics->reorder($module, $request->validated('ids'));
+        $cleared = $this->topics->reorder($module, $request->validated('ids'), $request->boolean('force'));
 
-        return ApiResponse::success(['message' => 'Tópicos reordenados.']);
+        return ApiResponse::success(['message' => 'Tópicos reordenados.', 'cleared' => $cleared]);
     }
 }

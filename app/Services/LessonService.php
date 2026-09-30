@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\GeneralStatus;
 use App\Events\CourseContentChanged;
+use App\Exceptions\PrerequisiteConflictException;
 use App\Models\Lesson;
 use App\Models\Topic;
 use App\Repositories\LessonRepository;
@@ -15,6 +16,7 @@ class LessonService
     public function __construct(
         private readonly LessonRepository $lessons,
         private readonly DatalogService $audit,
+        private readonly LessonOrderService $orders,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -35,28 +37,40 @@ class LessonService
 
     public function create(array $data): Lesson
     {
-        $lesson = $this->lessons->create($data);
+        return DB::transaction(function () use ($data) {
+            if (! array_key_exists('sort_order', $data) || $data['sort_order'] === null) {
+                $data['sort_order'] = $this->nextSortOrder((int) $data['topic_id']);
+            }
 
-        $this->audit->log('lesson', 'create', 'lesson', "Aula criada: {$lesson->name}");
+            $lesson = $this->lessons->create($data);
 
-        $this->dispatchContentChange($lesson);
+            $this->orders->assertValidPrerequisite($lesson, $lesson->required_lesson_id);
 
-        return $lesson;
+            $this->audit->log('lesson', 'create', 'lesson', "Aula criada: {$lesson->name}");
+
+            $this->dispatchContentChange($lesson);
+
+            return $lesson;
+        });
     }
 
     public function update(Lesson $lesson, array $data): Lesson
     {
-        $wasPublished = $lesson->status === GeneralStatus::Active->value;
+        return DB::transaction(function () use ($lesson, $data) {
+            $wasPublished = $lesson->status === GeneralStatus::Active->value;
 
-        $lesson = $this->lessons->update($lesson, $data);
+            $lesson = $this->lessons->update($lesson, $data);
 
-        $this->audit->log('lesson', 'update', 'lesson', "Aula atualizada: {$lesson->name}");
+            $this->orders->assertValidPrerequisite($lesson, $lesson->required_lesson_id);
 
-        if (! $wasPublished && $lesson->status === GeneralStatus::Active->value) {
-            $this->dispatchContentChange($lesson);
-        }
+            $this->audit->log('lesson', 'update', 'lesson', "Aula atualizada: {$lesson->name}");
 
-        return $lesson;
+            if (! $wasPublished && $lesson->status === GeneralStatus::Active->value) {
+                $this->dispatchContentChange($lesson);
+            }
+
+            return $lesson;
+        });
     }
 
     public function publish(Lesson $lesson): Lesson
@@ -92,16 +106,35 @@ class LessonService
 
     /**
      * @param  array<int, int>  $lessonIds
+     * @return array<int, int> lesson ids whose prerequisite lock was removed
      */
-    public function reorder(Topic $topic, array $lessonIds): void
+    public function reorder(Topic $topic, array $lessonIds, bool $force = false): array
     {
-        DB::transaction(function () use ($topic, $lessonIds) {
+        return DB::transaction(function () use ($topic, $lessonIds, $force) {
             foreach ($lessonIds as $position => $lessonId) {
                 $topic->lessons()->whereKey($lessonId)->update(['sort_order' => $position]);
             }
-        });
 
-        $this->audit->log('lesson', 'reorder', 'topic', "Aulas reordenadas no tópico {$topic->name}");
+            $topic->loadMissing('module.courses');
+            $courseIds = $topic->module?->courses?->pluck('id')->all() ?? [];
+
+            $conflicts = $this->orders->conflictsForCourses($courseIds);
+
+            if ($conflicts !== [] && ! $force) {
+                throw new PrerequisiteConflictException($conflicts);
+            }
+
+            $cleared = $this->orders->clearPrerequisites(array_column($conflicts, 'lesson_id'));
+
+            $this->audit->log('lesson', 'reorder', 'topic', "Aulas reordenadas no tópico {$topic->name}");
+
+            return $cleared;
+        });
+    }
+
+    private function nextSortOrder(int $topicId): int
+    {
+        return (int) Lesson::query()->where('topic_id', $topicId)->max('sort_order') + 1;
     }
 
     private function dispatchContentChange(Lesson $lesson): void

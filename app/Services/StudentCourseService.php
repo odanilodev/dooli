@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ActionCode;
 use App\Enums\GeneralStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Exceptions\UnauthorizedCourseAccessException;
@@ -9,13 +10,19 @@ use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\Team;
 use App\Models\User;
+use App\Repositories\ActionRepository;
+use App\Repositories\TimelineRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class StudentCourseService
 {
-    public function __construct(private readonly DatalogService $audit) {}
+    public function __construct(
+        private readonly DatalogService $audit,
+        private readonly TimelineRepository $timeline,
+        private readonly ActionRepository $actions,
+    ) {}
 
     public function myCourses(User $user, int $perPage = 20): LengthAwarePaginator
     {
@@ -104,6 +111,39 @@ class StudentCourseService
         }
 
         return $team;
+    }
+
+    /**
+     * A lesson with a prerequisite can only be opened/completed after that
+     * prerequisite lesson was completed by the student in this course/team.
+     */
+    public function assertLessonUnlocked(User $user, Lesson $lesson, int $courseId, int $teamId): void
+    {
+        $requiredLessonId = $lesson->required_lesson_id;
+
+        if (! $requiredLessonId) {
+            return;
+        }
+
+        $completedAction = $this->actions->findByCode(ActionCode::Completed->value);
+
+        if (! $completedAction) {
+            return;
+        }
+
+        $completed = $this->timeline->existsFor(
+            $user->id,
+            (int) $requiredLessonId,
+            $courseId,
+            $teamId,
+            $completedAction->id,
+        );
+
+        if (! $completed) {
+            $requiredName = Lesson::query()->whereKey($requiredLessonId)->value('name') ?? 'aula anterior';
+
+            throw new BusinessRuleException("Conclua a aula \"{$requiredName}\" para liberar esta aula.");
+        }
     }
 
     public function courseContent(User $user, int $courseId): Course

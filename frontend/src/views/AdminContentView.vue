@@ -68,6 +68,28 @@
       </div>
     </div>
 
+    <div v-if="reorderConflicts.length" class="admin-modal-backdrop" @mousedown="onBackdropDown" @click.self="backdropDown && cancelReorder()">
+      <div class="panel admin-modal">
+        <div class="admin-panel-head">
+          <h2 class="panel-title">Travas de pré-requisito vão ser removidas</h2>
+          <button class="admin-modal-close" @click="cancelReorder">×</button>
+        </div>
+
+        <p class="page-subtitle">Com esta nova ordem, as aulas abaixo ficariam antes da aula que exigem concluir. Para não travar o aluno, a trava será removida:</p>
+
+        <ul class="admin-conflict-list">
+          <li v-for="conflict in reorderConflicts" :key="conflict.lesson_id">
+            <strong>{{ conflict.lesson_name }}</strong> — exigia <em>{{ conflict.required_lesson_name }}</em>
+          </li>
+        </ul>
+
+        <div class="admin-modal-actions">
+          <button class="btn btn-outline" @click="cancelReorder">Cancelar</button>
+          <button class="btn btn-danger" @click="confirmReorder">Reordenar e remover travas</button>
+        </div>
+      </div>
+    </div>
+
   </main>
 </template>
 
@@ -92,6 +114,8 @@ const showAttach = ref(false);
 const attaching = ref(false);
 const availableModules = ref([]);
 const backdropDown = ref(false);
+const reorderConflicts = ref([]);
+const pendingReorder = ref(null);
 
 function onBackdropDown(e) {
   backdropDown.value = e.target === e.currentTarget;
@@ -282,6 +306,17 @@ async function removeNode({ type, node }) {
 
 async function reorder({ level, parentId, ids }) {
   error.value = '';
+  pendingReorder.value = { level, parentId, ids };
+
+  await sendReorder(false);
+}
+
+async function sendReorder(force) {
+  if (!pendingReorder.value) {
+    return;
+  }
+
+  const { level, parentId, ids } = pendingReorder.value;
 
   const endpoints = {
     module: `/admin/courses/${parentId}/modules/reorder`,
@@ -290,11 +325,41 @@ async function reorder({ level, parentId, ids }) {
   };
 
   try {
-    await api.put(endpoints[level], { ids });
+    const { data } = await api.put(endpoints[level], { ids, force });
+    const cleared = data?.data?.cleared ?? [];
+
+    for (const lessonId of cleared) {
+      const node = findNode('lesson', lessonId);
+
+      if (node) {
+        node.required_lesson_id = null;
+      }
+    }
+
+    reorderConflicts.value = [];
+    pendingReorder.value = null;
   } catch (e) {
+    if (e?.status === 409 && e?.errors?.conflicts?.length) {
+      reorderConflicts.value = e.errors.conflicts;
+
+      return;
+    }
+
     error.value = e?.message || 'Não foi possível reordenar.';
+    reorderConflicts.value = [];
+    pendingReorder.value = null;
     await load();
   }
+}
+
+async function confirmReorder() {
+  await sendReorder(true);
+}
+
+function cancelReorder() {
+  reorderConflicts.value = [];
+  pendingReorder.value = null;
+  load();
 }
 
 async function openAttach() {

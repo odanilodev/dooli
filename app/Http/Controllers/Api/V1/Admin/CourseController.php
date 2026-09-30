@@ -111,8 +111,8 @@ class CourseController extends ApiController
     {
         $this->authorize('update', $course);
 
-        $this->modules->reorder($course, $request->validated('ids'));
+        $cleared = $this->modules->reorder($course, $request->validated('ids'), $request->boolean('force'));
 
-        return ApiResponse::success(['message' => 'Módulos reordenados.']);
+        return ApiResponse::success(['message' => 'Módulos reordenados.', 'cleared' => $cleared]);
     }
 }

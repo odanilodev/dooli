@@ -16,6 +16,7 @@ class ReorderRequest extends FormRequest
         return [
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['integer', 'distinct'],
+            'force' => ['sometimes', 'boolean'],
         ];
     }
 }

@@ -27,6 +27,7 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
             attachments: lesson.attachments ?? [],
             webinar_link: lesson.webinar_link ?? null,
             webinar_starts_at: lesson.webinar_starts_at ?? null,
+            requiredLessonId: lesson.required_lesson_id ?? null,
             moduleId: module.id,
             moduleName: module.name,
             topicId: topic.id,
@@ -56,6 +57,30 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
 
   function isCompleted(lessonId) {
     return completedIds.value.has(Number(lessonId));
+  }
+
+  function lessonById(lessonId) {
+    return lessons.value.find((lesson) => lesson.id === Number(lessonId)) ?? null;
+  }
+
+  function isLocked(lessonId) {
+    const lesson = lessonById(lessonId);
+
+    if (!lesson?.requiredLessonId) {
+      return false;
+    }
+
+    return !completedIds.value.has(Number(lesson.requiredLessonId));
+  }
+
+  function requiredLessonName(lessonId) {
+    const lesson = lessonById(lessonId);
+
+    if (!lesson?.requiredLessonId) {
+      return null;
+    }
+
+    return lessonById(lesson.requiredLessonId)?.name ?? null;
   }
 
   function selectLesson(lessonId) {
@@ -136,6 +161,8 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
     prevLesson,
     nextLesson,
     isCompleted,
+    isLocked,
+    requiredLessonName,
     load,
     selectLesson,
     completeLesson,

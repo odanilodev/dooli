@@ -138,6 +138,7 @@
                           <span v-if="lesson.video" class="cb-chip">Vídeo</span>
                           <span v-if="lesson.document" class="cb-chip">Doc</span>
                           <span v-if="lesson.attachments?.length" class="cb-chip">{{ lesson.attachments.length }} anexo(s)</span>
+                          <span v-if="lesson.required_lesson_id" class="cb-chip req">Pré-req</span>
                           <span v-if="lesson.status !== 'active'" class="cb-chip draft">Rascunho</span>
 
                           <span class="cb-menu-wrap" @click.stop>
@@ -331,6 +332,7 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenus));
 .cb-chip.live{background:rgba(239,68,68,.15);color:#ef4444;}
 .cb-chip.soon{background:rgba(245,158,11,.15);color:#f59e0b;}
 .cb-chip.draft{background:rgba(148,163,184,.18);color:#94a3b8;}
+.cb-chip.req{background:rgba(59,130,246,.15);color:#3b82f6;}
 .cb-chip i{width:6px;height:6px;border-radius:50%;background:currentColor;}
 
 .cb-menu-wrap{position:relative;flex-shrink:0;}

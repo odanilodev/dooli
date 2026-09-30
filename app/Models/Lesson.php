@@ -17,7 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'company_id', 'name', 'topic_id', 'description', 'content',
-    'sort_order', 'status', 'video_id', 'document_id', 'webinar_link', 'webinar_starts_at', 'published_at',
+    'sort_order', 'status', 'video_id', 'document_id', 'required_lesson_id',
+    'webinar_link', 'webinar_starts_at', 'published_at',
 ])]
 class Lesson extends Model
 {
@@ -29,6 +30,7 @@ class Lesson extends Model
     {
         return [
             'sort_order' => 'integer',
+            'required_lesson_id' => 'integer',
             'webinar_starts_at' => 'datetime',
             'published_at' => 'datetime',
         ];
@@ -47,6 +49,16 @@ class Lesson extends Model
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class);
+    }
+
+    public function requiredLesson(): BelongsTo
+    {
+        return $this->belongsTo(Lesson::class, 'required_lesson_id');
+    }
+
+    public function dependentLessons(): HasMany
+    {
+        return $this->hasMany(Lesson::class, 'required_lesson_id');
     }
 
     public function attachments(): BelongsToMany

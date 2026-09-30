@@ -27,6 +27,7 @@ class UpdateLessonRequest extends FormRequest
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
             'video_id' => ['nullable', 'integer', $this->companyExists('videos')],
             'document_id' => ['nullable', 'integer', $this->companyExists('documents')],
+            'required_lesson_id' => ['nullable', 'integer', $this->companyExists('lessons')],
             'webinar_link' => ['nullable', 'url', 'max:255'],
             'webinar_starts_at' => ['nullable', 'date'],
             'published_at' => ['nullable', 'date'],

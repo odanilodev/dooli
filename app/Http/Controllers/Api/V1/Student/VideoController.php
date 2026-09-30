@@ -25,6 +25,8 @@ class VideoController extends ApiController
 
         $lessonModel = Lesson::query()->with('video')->findOrFail($lesson);
 
+        $this->studentCourses->assertLessonUnlocked($request->user(), $lessonModel, $course, $team->id);
+
         abort_unless($lessonModel->video, 404, 'Aula sem vídeo.');
 
         $data = $this->videos->playback($lessonModel->video->id);

@@ -46,6 +46,8 @@ class ProgressService
             throw new BusinessRuleException('Aula não pertence a este curso.');
         }
 
+        $this->studentCourses->assertLessonUnlocked($user, $lesson, $dto->courseId, $team->id);
+
         $action = $this->actions->findByCode(ActionCode::Completed->value);
 
         if (! $action) {

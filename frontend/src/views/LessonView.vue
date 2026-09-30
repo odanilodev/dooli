@@ -31,7 +31,17 @@
 
         <!-- VIDEO -->
         <div class="video-block">
-          <div v-if="currentLesson.webinar_link && !liveSoon" class="video-stage has-player">
+          <div v-if="isCurrentLocked" class="video-stage video-stage-locked">
+            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+            <div class="video-overlay-text">
+              <div class="l1">Aula bloqueada</div>
+              <div class="l2">Conclua "{{ lockedPrerequisiteName }}" para liberar</div>
+            </div>
+            <button v-if="prerequisiteLesson" class="btn btn-primary" @click="goLesson(prerequisiteLesson.id, true)">
+              Ir para "{{ prerequisiteLesson.name }}"
+            </button>
+          </div>
+          <div v-else-if="currentLesson.webinar_link && !liveSoon" class="video-stage has-player">
             <iframe
               :src="currentLesson.webinar_link"
               class="video-frame"
@@ -113,9 +123,9 @@
             <p v-if="currentLesson.content" class="desc-text" v-html="currentLesson.content"></p>
             <p v-else-if="currentLesson.description" class="desc-text" style="white-space:pre-line;">{{ currentLesson.description }}</p>
             <p v-else class="desc-text">Sem descrição para esta aula.</p>
-            <button class="btn btn-primary" :disabled="isCurrentCompleted || completing" @click="markCompleted">
+            <button class="btn btn-primary" :disabled="isCurrentCompleted || completing || isCurrentLocked" @click="markCompleted">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-              <span>{{ isCurrentCompleted ? 'Aula concluída' : (completing ? 'Salvando...' : 'Marcar como concluída') }}</span>
+              <span>{{ isCurrentCompleted ? 'Aula concluída' : (isCurrentLocked ? 'Aula bloqueada' : (completing ? 'Salvando...' : 'Marcar como concluída')) }}</span>
             </button>
           </div>
           <p v-if="completeError" class="form-error show">{{ completeError }}</p>
@@ -253,6 +263,8 @@
 
           <div class="divider"></div>
 
+          <p v-if="navNotice" class="form-error show" style="margin:0 0 8px;">{{ navNotice }}</p>
+
           <div class="module-list">
             <template v-for="module in modules" :key="module.id">
               <button
@@ -279,7 +291,7 @@
                     v-for="lesson in topic.lessons"
                     :key="lesson.id"
                     class="lesson-row"
-                    :class="{ current: currentLesson.id === lesson.id }"
+                    :class="{ current: currentLesson.id === lesson.id, locked: store.isLocked(lesson.id) }"
                     role="button"
                     tabindex="0"
                     style="cursor:pointer;"
@@ -287,9 +299,10 @@
                     @keydown.enter="goLesson(lesson.id)"
                   >
                     <span class="lesson-icon">
-                      <svg v-if="store.isCompleted(lesson.id)" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+                      <svg v-if="store.isLocked(lesson.id)" class="lock-mark" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+                      <svg v-else-if="store.isCompleted(lesson.id)" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
                       <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
-                      <svg v-if="currentLesson.id === lesson.id" class="play-mark" width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M9 6l7 6-7 6V6z"/></svg>
+                      <svg v-if="currentLesson.id === lesson.id && !store.isLocked(lesson.id)" class="play-mark" width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M9 6l7 6-7 6V6z"/></svg>
                     </span>
                     <span class="name">{{ lesson.name }}</span>
                     <span class="mins" v-if="store.isCompleted(lesson.id)">✓</span>
@@ -305,7 +318,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             Aula anterior
           </button>
-          <button class="btn btn-primary" :disabled="!store.nextLesson" @click="goLesson(store.nextLesson?.id)">
+          <button class="btn btn-primary" :disabled="!store.nextLesson || isNextLocked" @click="goLesson(store.nextLesson?.id)">
             Próxima aula
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
@@ -336,6 +349,7 @@ const activeTab = ref('descricao');
 const openModule = ref(null);
 const completing = ref(false);
 const completeError = ref('');
+const navNotice = ref('');
 const commentText = ref('');
 const commentError = ref('');
 const ratingError = ref('');
@@ -360,6 +374,15 @@ const lessonIdParam = computed(() => (route.params.lessonId ? Number(route.param
 const currentLesson = computed(() => store.currentLesson);
 const modules = computed(() => store.course?.modules ?? []);
 const isCurrentCompleted = computed(() => (currentLesson.value ? store.isCompleted(currentLesson.value.id) : false));
+
+const lockedPrerequisiteName = computed(() => (currentLesson.value ? store.requiredLessonName(currentLesson.value.id) : null));
+const prerequisiteLesson = computed(() => {
+  const requiredId = currentLesson.value?.requiredLessonId;
+
+  return requiredId ? store.lessons.find((lesson) => lesson.id === Number(requiredId)) ?? null : null;
+});
+const isCurrentLocked = computed(() => (currentLesson.value ? store.isLocked(currentLesson.value.id) : false));
+const isNextLocked = computed(() => (store.nextLesson ? store.isLocked(store.nextLesson.id) : false));
 
 const myRating = computed(() => {
   const userId = auth.user?.id;
@@ -739,11 +762,21 @@ async function submitComment() {
   }
 }
 
-function goLesson(lessonId) {
+function goLesson(lessonId, force = false) {
   if (!lessonId) {
     return;
   }
 
+  if (!force && store.isLocked(lessonId)) {
+    const name = store.requiredLessonName(lessonId);
+    navNotice.value = name
+      ? `Conclua a aula "${name}" para liberar esta aula.`
+      : 'Conclua a aula anterior para liberar esta aula.';
+
+    return;
+  }
+
+  navNotice.value = '';
   router.push({ name: 'aula', params: { courseId: courseId.value, lessonId } });
 }
 

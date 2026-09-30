@@ -92,9 +92,9 @@ class LessonController extends ApiController
     {
         $this->authorize('update', $topic);
 
-        $this->lessons->reorder($topic, $request->validated('ids'));
+        $cleared = $this->lessons->reorder($topic, $request->validated('ids'), $request->boolean('force'));
 
-        return ApiResponse::success(['message' => 'Aulas reordenadas.']);
+        return ApiResponse::success(['message' => 'Aulas reordenadas.', 'cleared' => $cleared]);
     }
 
     /**

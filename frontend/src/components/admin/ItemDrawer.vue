@@ -50,6 +50,17 @@
               <label :for="`dw-content`">Conteúdo (HTML)</label>
               <textarea :id="`dw-content`" class="form-control" rows="6" v-model="form.content" placeholder="<p>Conteúdo da aula...</p>"></textarea>
             </div>
+
+            <div class="form-group">
+              <label :for="`dw-required`">Pré-requisito (aula obrigatória)</label>
+              <select :id="`dw-required`" class="form-control" v-model="form.required_lesson_id">
+                <option value="">Nenhuma</option>
+                <option v-for="lesson in prerequisiteOptions" :key="lesson.id" :value="lesson.id">
+                  {{ lesson.moduleName }} › {{ lesson.topicName }} › {{ lesson.name }}
+                </option>
+              </select>
+              <p class="form-hint">O aluno só libera esta aula após concluir a aula escolhida. Só aparecem aulas anteriores na ordem do curso.</p>
+            </div>
           </template>
 
           <p v-if="type === 'topic'" class="form-hint">Módulo: {{ course?.modules?.find((m) => m.id === item.module_id)?.name || `#${item.module_id}` }}</p>
@@ -218,7 +229,7 @@ const backdropDown = ref(false);
 
 const form = reactive({
   name: '', description: '', image: '', status: 'active', sort_order: 0,
-  content: '', video_id: '', document_id: '',
+  content: '', video_id: '', document_id: '', required_lesson_id: '',
   webinar_link: '', webinar_starts_at: '', published_at: '',
 });
 const selectedAttachments = ref([]);
@@ -234,6 +245,31 @@ const newVideo = reactive({ title: '', player: 'vdocipher', code: '', link: '' }
 const inlineUploader = ref(null);
 const inlineUploadState = ref({ busy: false, canSubmit: false });
 const isInlineVdoCipher = computed(() => newVideo.player === 'vdocipher');
+
+const courseLessons = computed(() => {
+  const flat = [];
+
+  for (const module of props.course?.modules ?? []) {
+    for (const topic of module.topics ?? []) {
+      for (const lesson of topic.lessons ?? []) {
+        flat.push({ id: lesson.id, name: lesson.name, moduleName: module.name, topicName: topic.name });
+      }
+    }
+  }
+
+  return flat;
+});
+
+const prerequisiteOptions = computed(() => {
+  if (props.type !== 'lesson') {
+    return [];
+  }
+
+  const flat = courseLessons.value;
+  const index = flat.findIndex((lesson) => lesson.id === props.item.id);
+
+  return index === -1 ? flat.filter((lesson) => lesson.id !== props.item.id) : flat.slice(0, index);
+});
 const newDocument = reactive({ path: '', image: '' });
 const newAttachment = reactive({ path: '' });
 const creatingVideo = ref(false);
@@ -273,6 +309,7 @@ function sync() {
   form.content = data.content ?? '';
   form.video_id = data.video?.id ?? '';
   form.document_id = data.document?.id ?? '';
+  form.required_lesson_id = data.required_lesson_id ?? '';
   form.webinar_link = data.webinar_link ?? '';
   form.webinar_starts_at = toDateTimeInput(data.webinar_starts_at);
   form.published_at = toDateTimeInput(data.published_at);
@@ -321,6 +358,7 @@ function basePayload() {
     status: form.status,
     video_id: form.video_id === '' ? null : Number(form.video_id),
     document_id: form.document_id === '' ? null : Number(form.document_id),
+    required_lesson_id: form.required_lesson_id === '' ? null : Number(form.required_lesson_id),
     webinar_link: form.webinar_link || null,
     webinar_starts_at: form.webinar_starts_at || null,
     published_at: form.published_at || null,

@@ -220,6 +220,7 @@ Dados de reprodução (embed assinado) do vídeo da aula. Exige matrícula no cu
 { "success": true, "data": { "platform": "vdocipher", "embed_url": "https://player.vdocipher.com/v2/?otp=...&playbackInfo=...", "video_code": "abc123", "duration": 1250, "resume_from": 137 } }
 ```
 > O backend gera o OTP/URL temporária via adapter da plataforma configurada em `video_platforms` (por empresa). O segredo da API nunca é enviado ao cliente. Sem credencial configurada, devolve o link direto + `warning`. `resume_from` é a posição (segundos) salva do aluno para retomar o vídeo.
+> **Pré-requisito:** se a aula tem `required_lesson_id` e o aluno ainda não concluiu essa aula no curso/team, responde **422** (`business_rule`) — a aula fica travada.
 > **Aulas ao vivo** não usam este endpoint: quando a aula tem `webinar_link`, o frontend embute a URL (iframe). Cada aula em `GET /me/courses/{course}` traz `webinar_link` e `webinar_starts_at` (ISO, nullable): no futuro → card "EM BREVE"; passado/nulo → player ao vivo com selo "AO VIVO".
 
 ### POST /api/v1/me/progress/video-position
@@ -240,6 +241,7 @@ Salva a posição de reprodução (retomar de onde parou). Exige matrícula (403
 { "lesson_id": 10, "course_id": 1, "team_id": 1, "module_id": 2 }
 ```
 Idempotente: repetir a conclusão não duplica o registro em `timelines`.
+> **Pré-requisito:** se a aula tem `required_lesson_id` e o aluno ainda não concluiu essa aula no curso/team, responde **422** (`business_rule`).
 **Resposta:**
 ```json
 { "success": true, "data": { "already_completed": false, "progress": { "percentage": 10.0 } } }
@@ -288,12 +290,14 @@ Módulos do curso: `POST /courses/{course}/modules` (`module_id`, `sort_order`),
 CRUD + `PUT /modules/{module}/topics/reorder` (`ids: []`).
 
 ### Tópicos (`topics`)
-CRUD + `PUT /topics/{topic}/lessons/reorder` (`ids: []`).
+CRUD + `PUT /topics/{topic}/lessons/reorder` (`ids: []`, `force?: bool`).
 
 ### Aulas (`lessons`)
 CRUD + `POST /lessons/{lesson}/publish`, `POST /lessons/{lesson}/unpublish`, `attachment_ids[]` opcional.
+> **Pré-requisito (trava):** `required_lesson_id` (nullable) aponta para outra aula do **mesmo curso** que precisa ser concluída antes. Só são aceitas aulas **anteriores** na ordem do curso (validação 422 `business_rule`). Ao criar, a aula entra no fim do tópico. O bloqueio do aluno é validado no backend em `me/courses/{course}/lessons/{lesson}/video` e `me/progress/complete` (422).
 > **Aula ao vivo:** `webinar_link` (URL de embed, ex.: `https://player.vdocipher.com/live-v2?liveId=...`) + `webinar_starts_at` (data/hora agendada, nullable). A aula com `webinar_link` é renderizada como live no player do aluno (iframe), sem passar pelo fluxo de OTP/`videos`. Antes de `webinar_starts_at` o frontend mostra um card "EM BREVE"; depois (ou sem data) mostra o iframe com selo "AO VIVO".
 > Ao publicar/criar aulas em um curso com alunos concluídos, o backend dispara a regra de recálculo de certificados (ver `docs/ARCHITECTURE.md`).
+> **Reordenação** (`modules/reorder`, `topics/reorder`, `lessons/reorder`): se a nova ordem deixar o pré-requisito de alguma aula depois dela, o backend responde **409** `prerequisite_conflict` com `errors.conflicts[]` (`lesson_id`, `lesson_name`, `required_lesson_id`, `required_lesson_name`) e **não** aplica nada. Reenviar com `force: true` aplica a ordem e **remove essas travas**, devolvendo `data.cleared` (ids das aulas destravadas).
 
 ### Turmas (`teams`)
 CRUD +
