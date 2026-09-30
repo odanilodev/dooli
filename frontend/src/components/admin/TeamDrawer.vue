@@ -21,9 +21,6 @@
       </nav>
 
       <div class="drawer-body">
-        <span class="form-error" :class="{ show: error }">{{ error }}</span>
-        <div class="form-success" :class="{ show: saved }">Salvo.</div>
-
         <!-- DETALHES -->
         <template v-if="tab === 'details'">
           <div class="form-group">
@@ -196,6 +193,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { api } from '../../api/http';
+import { useToast } from '../../composables/useToast';
 import { statusLabel } from '../../utils/adminLabels';
 import { formatDateTime, toDateTimeInput } from '../../utils/format';
 
@@ -205,14 +203,13 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'saved', 'changed']);
+const toast = useToast();
 
 const tabs = ['details', 'students', 'courses'];
 const tabLabels = { details: 'Detalhes', students: 'Alunos', courses: 'Cursos' };
 
 const tab = ref(tabs.includes(props.initialTab) ? props.initialTab : 'details');
 const form = reactive({ name: '', status: 'active', sort_order: 0 });
-const error = ref('');
-const saved = ref(false);
 const saving = ref(false);
 const busyId = ref(null);
 const backdropDown = ref(false);
@@ -293,7 +290,6 @@ function cancelEditStudent() {
 
 async function saveStudent(student) {
   busyId.value = `s${student.id}`;
-  error.value = '';
 
   try {
     await api.put(`/admin/teams/${props.team.id}/students/${student.id}`, {
@@ -303,8 +299,9 @@ async function saveStudent(student) {
     editingStudentId.value = null;
     await loadStudents();
     emit('changed');
+    toast.success('Vínculo salvo.');
   } catch (e) {
-    error.value = e?.message || 'Não foi possível salvar o vínculo.';
+    toast.error(e?.message || 'Não foi possível salvar o vínculo.');
   } finally {
     busyId.value = null;
   }
@@ -323,7 +320,7 @@ async function loadStudents() {
     const enrolled = new Set(students.value.map((s) => s.id));
     studentResults.value = studentResults.value.filter((s) => !enrolled.has(s.id));
   } catch (e) {
-    error.value = e?.message || 'Não foi possível carregar os alunos.';
+    toast.error(e?.message || 'Não foi possível carregar os alunos.');
   }
 }
 
@@ -334,7 +331,7 @@ async function loadCourses() {
     const linked = new Set(courses.value.map((c) => c.id));
     courseResults.value = courseResults.value.filter((c) => !linked.has(c.id));
   } catch (e) {
-    error.value = e?.message || 'Não foi possível carregar os cursos.';
+    toast.error(e?.message || 'Não foi possível carregar os cursos.');
   }
 }
 
@@ -370,7 +367,7 @@ function searchStudents() {
       const enrolled = new Set(students.value.map((s) => s.id));
       studentResults.value = (data.data ?? []).filter((u) => !enrolled.has(u.id));
     } catch (e) {
-      error.value = e?.message || 'Não foi possível buscar alunos.';
+      toast.error(e?.message || 'Não foi possível buscar alunos.');
     } finally {
       searchingStudents.value = false;
     }
@@ -394,7 +391,7 @@ function searchCourses() {
       const linked = new Set(courses.value.map((c) => c.id));
       courseResults.value = (data.data ?? []).filter((c) => !linked.has(c.id));
     } catch (e) {
-      error.value = e?.message || 'Não foi possível buscar cursos.';
+      toast.error(e?.message || 'Não foi possível buscar cursos.');
     } finally {
       searchingCourses.value = false;
     }
@@ -403,12 +400,11 @@ function searchCourses() {
 
 async function saveDetails() {
   if (!form.name.trim()) {
-    error.value = 'Informe o nome.';
+    toast.error('Informe o nome.');
     return;
   }
 
   saving.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.put(`/admin/teams/${props.team.id}`, {
@@ -416,11 +412,10 @@ async function saveDetails() {
       status: form.status,
       sort_order: form.sort_order,
     });
-    saved.value = true;
-    setTimeout(() => { saved.value = false; }, 1800);
+    toast.success('Detalhes salvos.');
     emit('saved', { id: props.team.id, data: data.data ?? {} });
   } catch (e) {
-    error.value = e?.message || 'Não foi possível salvar.';
+    toast.error(e?.message || 'Não foi possível salvar.');
   } finally {
     saving.value = false;
   }
@@ -428,7 +423,6 @@ async function saveDetails() {
 
 async function addStudent(student) {
   busyId.value = `a${student.id}`;
-  error.value = '';
 
   try {
     await api.post(`/admin/teams/${props.team.id}/students`, {
@@ -439,8 +433,9 @@ async function addStudent(student) {
     studentResults.value = [];
     await loadStudents();
     emit('changed');
+    toast.success('Aluno adicionado.');
   } catch (e) {
-    error.value = e?.message || 'Não foi possível adicionar o aluno.';
+    toast.error(e?.message || 'Não foi possível adicionar o aluno.');
   } finally {
     busyId.value = null;
   }
@@ -449,14 +444,14 @@ async function addStudent(student) {
 async function removeStudent(student) {
   closeRowMenu();
   busyId.value = `u${student.id}`;
-  error.value = '';
 
   try {
     await api.delete(`/admin/teams/${props.team.id}/students/${student.id}`);
     await loadStudents();
     emit('changed');
+    toast.success('Aluno removido.');
   } catch (e) {
-    error.value = e?.message || 'Não foi possível remover o aluno.';
+    toast.error(e?.message || 'Não foi possível remover o aluno.');
   } finally {
     busyId.value = null;
   }
@@ -464,7 +459,6 @@ async function removeStudent(student) {
 
 async function addCourse(course) {
   busyId.value = `ac${course.id}`;
-  error.value = '';
 
   try {
     await api.post(`/admin/teams/${props.team.id}/courses`, { course_id: course.id });
@@ -472,8 +466,9 @@ async function addCourse(course) {
     courseResults.value = [];
     await loadCourses();
     emit('changed');
+    toast.success('Curso associado.');
   } catch (e) {
-    error.value = e?.message || 'Não foi possível associar o curso.';
+    toast.error(e?.message || 'Não foi possível associar o curso.');
   } finally {
     busyId.value = null;
   }
@@ -481,14 +476,14 @@ async function addCourse(course) {
 
 async function removeCourse(course) {
   busyId.value = `c${course.id}`;
-  error.value = '';
 
   try {
     await api.delete(`/admin/teams/${props.team.id}/courses/${course.id}`);
     await loadCourses();
     emit('changed');
+    toast.success('Curso desassociado.');
   } catch (e) {
-    error.value = e?.message || 'Não foi possível desassociar o curso.';
+    toast.error(e?.message || 'Não foi possível desassociar o curso.');
   } finally {
     busyId.value = null;
   }

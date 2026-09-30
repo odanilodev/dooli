@@ -32,8 +32,6 @@
         </div>
       </div>
 
-      <span class="form-error" :class="{ show: formError }">{{ formError }}</span>
-
       <div>
         <button class="btn btn-primary" :disabled="saving">{{ saving ? 'Criando...' : 'Criar turma' }}</button>
       </div>
@@ -51,8 +49,6 @@
       </div>
       <input class="form-control admin-search" type="search" v-model="search" @input="onSearchInput" placeholder="Buscar turma...">
     </div>
-
-    <span class="form-error" :class="{ show: error }">{{ error }}</span>
 
     <p v-if="loading" class="page-subtitle">Carregando...</p>
 
@@ -131,8 +127,11 @@
 <script setup>
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { api } from '../api/http';
+import { useToast } from '../composables/useToast';
 import { statusLabel } from '../utils/adminLabels';
 import TeamDrawer from '../components/admin/TeamDrawer.vue';
+
+const toast = useToast();
 
 const filters = [
   { value: '', label: 'Todas' },
@@ -145,12 +144,10 @@ const meta = ref({ current_page: 1, last_page: 1, total: 0 });
 const status = ref('');
 const search = ref('');
 const loading = ref(true);
-const error = ref('');
 const busyId = ref(null);
 
 const showForm = ref(false);
 const saving = ref(false);
-const formError = ref('');
 const form = reactive({ name: '', status: 'active', sort_order: 0 });
 
 const selectedTeam = ref(null);
@@ -171,7 +168,6 @@ function resetForm() {
 
 async function load() {
   loading.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.get('/admin/teams', {
@@ -186,7 +182,7 @@ async function load() {
     teams.value = data.data ?? [];
     meta.value = data.meta ?? { current_page: 1, last_page: 1, total: 0 };
   } catch (e) {
-    error.value = e?.message || 'Não foi possível carregar as turmas.';
+    toast.error(e?.message || 'Não foi possível carregar as turmas.');
   } finally {
     loading.value = false;
   }
@@ -218,13 +214,11 @@ function openCreate() {
   }
 
   resetForm();
-  formError.value = '';
   showForm.value = true;
 }
 
 async function save() {
   saving.value = true;
-  formError.value = '';
 
   try {
     const { data } = await api.post('/admin/teams', {
@@ -235,11 +229,12 @@ async function save() {
 
     showForm.value = false;
     resetForm();
+    toast.success('Turma criada.');
     await load();
     drawerTab.value = 'details';
     selectedTeam.value = data.data;
   } catch (e) {
-    formError.value = e?.message || 'Não foi possível criar a turma.';
+    toast.error(e?.message || 'Não foi possível criar a turma.');
   } finally {
     saving.value = false;
   }
@@ -251,13 +246,13 @@ async function remove(team) {
   }
 
   busyId.value = team.id;
-  error.value = '';
 
   try {
     await api.delete(`/admin/teams/${team.id}`);
+    toast.success('Turma excluída.');
     await load();
   } catch (e) {
-    error.value = e?.message || 'Não foi possível excluir a turma.';
+    toast.error(e?.message || 'Não foi possível excluir a turma.');
   } finally {
     busyId.value = null;
   }

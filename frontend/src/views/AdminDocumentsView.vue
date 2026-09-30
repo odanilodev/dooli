@@ -32,8 +32,6 @@
         </div>
       </div>
 
-      <span class="form-error" :class="{ show: formError }">{{ formError }}</span>
-
       <div>
         <button class="btn btn-primary" :disabled="saving">{{ saving ? 'Salvando...' : 'Salvar documento' }}</button>
       </div>
@@ -50,8 +48,6 @@
         >{{ tab.label }}</button>
       </div>
     </div>
-
-    <span class="form-error" :class="{ show: error }">{{ error }}</span>
 
     <p v-if="loading" class="page-subtitle">Carregando...</p>
 
@@ -94,6 +90,9 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { api } from '../api/http';
+import { useToast } from '../composables/useToast';
+
+const toast = useToast();
 
 const statusFilters = [
   { value: '', label: 'Todos' },
@@ -105,13 +104,11 @@ const documents = ref([]);
 const meta = ref({ current_page: 1, last_page: 1, total: 0 });
 const status = ref('');
 const loading = ref(true);
-const error = ref('');
 const busyId = ref(null);
 
 const showForm = ref(false);
 const editingId = ref(null);
 const saving = ref(false);
-const formError = ref('');
 const form = reactive({ path: '', image: '', status: 'active' });
 
 function resetForm() {
@@ -122,7 +119,6 @@ function resetForm() {
 
 async function load() {
   loading.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.get('/admin/documents', {
@@ -136,7 +132,7 @@ async function load() {
     documents.value = data.data ?? [];
     meta.value = data.meta ?? { current_page: 1, last_page: 1, total: 0 };
   } catch (e) {
-    error.value = e?.message || 'Não foi possível carregar os documentos.';
+    toast.error(e?.message || 'Não foi possível carregar os documentos.');
   } finally {
     loading.value = false;
   }
@@ -161,7 +157,6 @@ function openCreate() {
 
   editingId.value = null;
   resetForm();
-  formError.value = '';
   showForm.value = true;
 }
 
@@ -170,13 +165,11 @@ function openEdit(document) {
   form.path = document.path ?? '';
   form.image = document.image ?? '';
   form.status = document.status ?? 'active';
-  formError.value = '';
   showForm.value = true;
 }
 
 async function save() {
   saving.value = true;
-  formError.value = '';
 
   try {
     const payload = { path: form.path, image: form.image || null, status: form.status };
@@ -189,9 +182,10 @@ async function save() {
 
     showForm.value = false;
     editingId.value = null;
+    toast.success('Documento salvo.');
     await load();
   } catch (e) {
-    formError.value = e?.message || 'Não foi possível salvar o documento.';
+    toast.error(e?.message || 'Não foi possível salvar o documento.');
   } finally {
     saving.value = false;
   }
@@ -206,9 +200,10 @@ async function remove(document) {
 
   try {
     await api.delete(`/admin/documents/${document.id}`);
+    toast.success('Documento excluído.');
     await load();
   } catch (e) {
-    error.value = e?.message || 'Não foi possível excluir o documento.';
+    toast.error(e?.message || 'Não foi possível excluir o documento.');
   } finally {
     busyId.value = null;
   }

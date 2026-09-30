@@ -5,33 +5,24 @@
       <p>Crie uma nova senha para acessar sua conta.</p>
     </div>
 
-    <div class="form-success" :class="{ show: success }">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-      Senha redefinida! Redirecionando para o login...
+    <div class="form-group">
+      <label for="reset-email">E-mail</label>
+      <input class="form-control" type="email" id="reset-email" v-model="form.email" placeholder="voce@email.com" required>
     </div>
 
-    <div class="form-error" :class="{ show: error }">{{ error }}</div>
+    <div class="form-group">
+      <label for="reset-password">Nova senha</label>
+      <input class="form-control" type="password" id="reset-password" v-model="form.password" placeholder="••••••••" autocomplete="new-password" required>
+    </div>
 
-    <template v-if="!success">
-      <div class="form-group">
-        <label for="reset-email">E-mail</label>
-        <input class="form-control" type="email" id="reset-email" v-model="form.email" placeholder="voce@email.com" required>
-      </div>
+    <div class="form-group">
+      <label for="reset-password-confirm">Confirmar nova senha</label>
+      <input class="form-control" type="password" id="reset-password-confirm" v-model="form.password_confirmation" placeholder="••••••••" autocomplete="new-password" required>
+    </div>
 
-      <div class="form-group">
-        <label for="reset-password">Nova senha</label>
-        <input class="form-control" type="password" id="reset-password" v-model="form.password" placeholder="••••••••" autocomplete="new-password" required>
-      </div>
-
-      <div class="form-group">
-        <label for="reset-password-confirm">Confirmar nova senha</label>
-        <input class="form-control" type="password" id="reset-password-confirm" v-model="form.password_confirmation" placeholder="••••••••" autocomplete="new-password" required>
-      </div>
-
-      <button type="submit" class="btn btn-primary btn-block" :disabled="loading">
-        {{ loading ? 'Salvando...' : 'Redefinir senha' }}
-      </button>
-    </template>
+    <button type="submit" class="btn btn-primary btn-block" :disabled="loading">
+      {{ loading ? 'Salvando...' : 'Redefinir senha' }}
+    </button>
 
     <p class="auth-switch">Lembrou a senha? <router-link to="/login">Voltar para o login</router-link></p>
   </form>
@@ -41,10 +32,12 @@
 import { reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useToast } from '../composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
+const toast = useToast();
 
 const form = reactive({
   token: typeof route.query.token === 'string' ? route.query.token : '',
@@ -54,24 +47,20 @@ const form = reactive({
 });
 
 const loading = ref(false);
-const success = ref(false);
-const error = ref('');
 
 async function submit() {
-  error.value = '';
-
   if (!form.token) {
-    error.value = 'Link inválido ou expirado. Solicite um novo.';
+    toast.error('Link inválido ou expirado. Solicite um novo.');
     return;
   }
 
   if (!form.email.trim() || !form.password.trim()) {
-    error.value = 'Informe o e-mail e a nova senha.';
+    toast.error('Informe o e-mail e a nova senha.');
     return;
   }
 
   if (form.password !== form.password_confirmation) {
-    error.value = 'As senhas não conferem.';
+    toast.error('As senhas não conferem.');
     return;
   }
 
@@ -79,10 +68,10 @@ async function submit() {
 
   try {
     await auth.resetPassword({ ...form });
-    success.value = true;
+    toast.success('Senha redefinida! Redirecionando para o login...');
     setTimeout(() => router.push('/login'), 1500);
   } catch (e) {
-    error.value = e?.message || 'Não foi possível redefinir a senha.';
+    toast.error(e?.message || 'Não foi possível redefinir a senha.');
   } finally {
     loading.value = false;
   }

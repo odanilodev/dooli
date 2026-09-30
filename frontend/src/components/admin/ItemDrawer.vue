@@ -21,9 +21,6 @@
       </nav>
 
       <div class="drawer-body">
-        <span class="form-error" :class="{ show: error }">{{ error }}</span>
-        <div class="form-success" :class="{ show: saved }">Salvo.</div>
-
         <!-- DETALHES -->
         <template v-if="tab === 'details'">
           <div class="form-group">
@@ -207,6 +204,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { api } from '../../api/http';
+import { useToast } from '../../composables/useToast';
 import { playerLabel, statusLabel, typeLabel } from '../../utils/adminLabels';
 import { toDateTimeInput } from '../../utils/format';
 import VideoUploader from './VideoUploader.vue';
@@ -219,11 +217,10 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'saved']);
+const toast = useToast();
 
 const tab = ref('details');
 const saving = ref(false);
-const saved = ref(false);
-const error = ref('');
 const busy = ref(false);
 const backdropDown = ref(false);
 
@@ -315,7 +312,6 @@ function sync() {
   form.published_at = toDateTimeInput(data.published_at);
   selectedAttachments.value = (data.attachments ?? []).map((a) => a.id);
   tab.value = 'details';
-  error.value = '';
 }
 
 async function ensureReferences() {
@@ -370,12 +366,11 @@ const endpoints = { course: 'courses', module: 'modules', topic: 'topics', lesso
 
 async function save() {
   if (!form.name.trim()) {
-    error.value = 'Informe o nome.';
+    toast.error('Informe o nome.');
     return;
   }
 
   saving.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.put(`/admin/${endpoints[props.type]}/${props.item.id}`, basePayload());
@@ -390,11 +385,10 @@ async function save() {
       };
     }
 
-    saved.value = true;
-    setTimeout(() => { saved.value = false; }, 1800);
+    toast.success('Salvo.');
     emit('saved', { type: props.type, id: props.item.id, data: result });
   } catch (e) {
-    error.value = e?.message || 'Não foi possível salvar.';
+    toast.error(e?.message || 'Não foi possível salvar.');
   } finally {
     saving.value = false;
   }
@@ -402,14 +396,13 @@ async function save() {
 
 async function togglePublish() {
   busy.value = true;
-  error.value = '';
 
   try {
     const action = published.value ? 'unpublish' : 'publish';
     const { data } = await api.post(`/admin/${endpoints[props.type]}/${props.item.id}/${action}`);
     emit('saved', { type: props.type, id: props.item.id, data: data.data ?? {} });
   } catch (e) {
-    error.value = e?.message || 'Não foi possível alterar a publicação.';
+    toast.error(e?.message || 'Não foi possível alterar a publicação.');
   } finally {
     busy.value = false;
   }
@@ -417,12 +410,11 @@ async function togglePublish() {
 
 async function createVideo() {
   if (!newVideo.title.trim()) {
-    error.value = 'Informe o título do vídeo.';
+    toast.error('Informe o título do vídeo.');
     return;
   }
 
   creatingVideo.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.post('/admin/videos', {
@@ -439,7 +431,7 @@ async function createVideo() {
     newVideo.link = '';
     showVideo.value = false;
   } catch (e) {
-    error.value = e?.message || 'Não foi possível criar o vídeo.';
+    toast.error(e?.message || 'Não foi possível criar o vídeo.');
   } finally {
     creatingVideo.value = false;
   }
@@ -456,12 +448,11 @@ function onVideoUploaded(video) {
 
 async function createDocument() {
   if (!newDocument.path.trim()) {
-    error.value = 'Informe o caminho do documento.';
+    toast.error('Informe o caminho do documento.');
     return;
   }
 
   creatingDocument.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.post('/admin/documents', {
@@ -475,7 +466,7 @@ async function createDocument() {
     newDocument.image = '';
     showDocument.value = false;
   } catch (e) {
-    error.value = e?.message || 'Não foi possível criar o documento.';
+    toast.error(e?.message || 'Não foi possível criar o documento.');
   } finally {
     creatingDocument.value = false;
   }
@@ -483,12 +474,11 @@ async function createDocument() {
 
 async function createAttachment() {
   if (!newAttachment.path.trim()) {
-    error.value = 'Informe o caminho do anexo.';
+    toast.error('Informe o caminho do anexo.');
     return;
   }
 
   creatingAttachment.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.post('/admin/attachments', {
@@ -500,7 +490,7 @@ async function createAttachment() {
     newAttachment.path = '';
     showAttachment.value = false;
   } catch (e) {
-    error.value = e?.message || 'Não foi possível criar o anexo.';
+    toast.error(e?.message || 'Não foi possível criar o anexo.');
   } finally {
     creatingAttachment.value = false;
   }

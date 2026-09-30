@@ -5,13 +5,6 @@
       <p>Entre com sua conta para continuar seus estudos.</p>
     </div>
 
-    <div class="form-success" :class="{ show: success }">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-      Login efetuado! Redirecionando...
-    </div>
-
-    <div class="form-error" :class="{ show: error }">{{ error }}</div>
-
     <div class="form-group">
       <label for="login-email">E-mail</label>
       <input class="form-control" type="email" id="login-email" v-model="form.email" placeholder="voce@email.com" required>
@@ -30,7 +23,7 @@
       <router-link to="/recuperar-senha">Esqueci minha senha</router-link>
     </div>
 
-    <button type="submit" class="btn btn-primary btn-block" :disabled="success || auth.loading">
+    <button type="submit" class="btn btn-primary btn-block" :disabled="auth.loading">
       {{ auth.loading ? 'Entrando...' : 'Entrar' }}
     </button>
 
@@ -39,34 +32,32 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useToast } from '../composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
+const toast = useToast();
 
 const form = reactive({ email: '', password: '', remember: false });
-const success = ref(false);
-const error = ref('');
 
 async function submit() {
-  error.value = '';
-
   if (!form.email.trim() || !form.password.trim()) {
-    error.value = 'Informe e-mail e senha.';
+    toast.error('Informe e-mail e senha.');
     return;
   }
 
   try {
     await auth.login({ email: form.email.trim(), password: form.password });
-    success.value = true;
+    toast.success('Login efetuado! Redirecionando...');
 
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/';
     setTimeout(() => router.push(redirect), 500);
   } catch (e) {
-    error.value = e?.message || 'Não foi possível entrar.';
+    toast.error(e?.message || 'Não foi possível entrar.');
   }
 }
 </script>

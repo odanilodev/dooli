@@ -14,8 +14,6 @@
       </div>
     </div>
 
-    <span v-if="notice" class="form-success show">{{ notice }}</span>
-
     <form v-if="showForm" class="panel" @submit.prevent="onSubmit">
       <h2 class="panel-title">{{ editingId ? `Editar vídeo #${editingId}` : 'Novo vídeo' }}</h2>
 
@@ -94,8 +92,6 @@
         </div>
       </template>
 
-      <span class="form-error" :class="{ show: formError }">{{ formError }}</span>
-
       <div>
         <button
           v-if="isVdoCipherNew"
@@ -120,8 +116,6 @@
       </div>
       <input class="form-control admin-search" type="search" v-model="search" placeholder="Buscar vídeo...">
     </div>
-
-    <span class="form-error" :class="{ show: error }">{{ error }}</span>
 
     <p v-if="loading" class="page-subtitle">Carregando...</p>
 
@@ -185,8 +179,11 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { api } from '../api/http';
+import { useToast } from '../composables/useToast';
 import { formatDuration } from '../utils/format';
 import VideoUploader from '../components/admin/VideoUploader.vue';
+
+const toast = useToast();
 
 const playerFilters = [
   { value: '', label: 'Todos' },
@@ -202,11 +199,9 @@ const meta = ref({ current_page: 1, last_page: 1, total: 0 });
 const search = ref('');
 const player = ref('');
 const loading = ref(true);
-const error = ref('');
 const busyId = ref(null);
 const playback = ref(null);
 const syncingAll = ref(false);
-const notice = ref('');
 
 const uploader = ref(null);
 const uploadState = ref({ busy: false, canSubmit: false });
@@ -233,19 +228,17 @@ function providerStatusClass(status) {
 
 async function refreshStatuses() {
   syncingAll.value = true;
-  error.value = '';
-  notice.value = '';
 
   try {
     const { data } = await api.post('/admin/videos/sync');
     const summary = data.data ?? {};
 
-    notice.value = `Verificados: ${summary.checked ?? 0} · prontos: ${summary.ready ?? 0} · processando: ${summary.pending ?? 0}`
-      + (summary.failed ? ` · falhas: ${summary.failed}` : '') + '.';
+    toast.success(`Verificados: ${summary.checked ?? 0} · prontos: ${summary.ready ?? 0} · processando: ${summary.pending ?? 0}`
+      + (summary.failed ? ` · falhas: ${summary.failed}` : '') + '.');
 
     await load();
   } catch (e) {
-    error.value = e?.message || 'Não foi possível atualizar os status.';
+    toast.error(e?.message || 'Não foi possível atualizar os status.');
   } finally {
     syncingAll.value = false;
   }
@@ -255,15 +248,12 @@ function onUploaded(video) {
   showForm.value = false;
   editingId.value = null;
   editingVideo.value = null;
-  error.value = '';
-  notice.value = `Vídeo "${video.title}" enviado. O processamento continua em segundo plano.`;
+  toast.success(`Vídeo "${video.title}" enviado. O processamento continua em segundo plano.`);
   load();
 }
 
 async function syncVideo(video) {
   busyId.value = video.id;
-  error.value = '';
-  notice.value = '';
 
   try {
     const { data } = await api.post(`/admin/videos/${video.id}/sync`);
@@ -273,15 +263,15 @@ async function syncVideo(video) {
       editingVideo.value = { ...editingVideo.value, ...updated };
     }
 
-    notice.value = updated.provider_status === 'ready'
+    toast.success(updated.provider_status === 'ready'
       ? `Vídeo pronto${updated.time ? ` (${formatDuration(updated.time)})` : ''}.`
-      : `Status: ${providerStatusLabel(updated.provider_status)}.`;
+      : `Status: ${providerStatusLabel(updated.provider_status)}.`);
 
     await load();
 
     return updated;
   } catch (e) {
-    error.value = e?.message || 'Não foi possível sincronizar o vídeo.';
+    toast.error(e?.message || 'Não foi possível sincronizar o vídeo.');
   } finally {
     busyId.value = null;
   }
@@ -291,7 +281,6 @@ const showForm = ref(false);
 const editingId = ref(null);
 const editingVideo = ref(null);
 const saving = ref(false);
-const formError = ref('');
 const form = reactive({ title: '', image: '', time: 0, status: 'active', player: '', code: '', link: '' });
 
 const isVdoCipher = computed(() => form.player === 'vdocipher');
@@ -311,7 +300,6 @@ function resetForm() {
 
 async function load() {
   loading.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.get('/admin/videos', {
@@ -326,7 +314,7 @@ async function load() {
     videos.value = data.data ?? [];
     meta.value = data.meta ?? { current_page: 1, last_page: 1, total: 0 };
   } catch (e) {
-    error.value = e?.message || 'Não foi possível carregar os vídeos.';
+    toast.error(e?.message || 'Não foi possível carregar os vídeos.');
   } finally {
     loading.value = false;
   }
@@ -352,7 +340,6 @@ function openCreate() {
   editingId.value = null;
   editingVideo.value = null;
   resetForm();
-  formError.value = '';
   showForm.value = true;
 }
 
@@ -366,7 +353,6 @@ function openEdit(video) {
   form.player = video.player ?? '';
   form.code = video.code ?? '';
   form.link = video.link ?? '';
-  formError.value = '';
   showForm.value = true;
 }
 
@@ -390,7 +376,6 @@ function syncEditing() {
 
 async function save() {
   saving.value = true;
-  formError.value = '';
 
   try {
     const payload = {
@@ -412,9 +397,10 @@ async function save() {
     showForm.value = false;
     editingId.value = null;
     editingVideo.value = null;
+    toast.success('Vídeo salvo.');
     await load();
   } catch (e) {
-    formError.value = e?.message || 'Não foi possível salvar o vídeo.';
+    toast.error(e?.message || 'Não foi possível salvar o vídeo.');
   } finally {
     saving.value = false;
   }
@@ -422,13 +408,12 @@ async function save() {
 
 async function testPlayback(video) {
   busyId.value = video.id;
-  error.value = '';
 
   try {
     const { data } = await api.get(`/admin/videos/${video.id}/playback`);
     playback.value = { id: video.id, data: data.data ?? data };
   } catch (e) {
-    error.value = e?.message || 'Não foi possível testar o playback.';
+    toast.error(e?.message || 'Não foi possível testar o playback.');
   } finally {
     busyId.value = null;
   }
@@ -443,9 +428,10 @@ async function remove(video) {
 
   try {
     await api.delete(`/admin/videos/${video.id}`);
+    toast.success('Vídeo excluído.');
     await load();
   } catch (e) {
-    error.value = e?.message || 'Não foi possível excluir o vídeo.';
+    toast.error(e?.message || 'Não foi possível excluir o vídeo.');
   } finally {
     busyId.value = null;
   }

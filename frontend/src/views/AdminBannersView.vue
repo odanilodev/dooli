@@ -91,8 +91,6 @@
         <img :src="imagePreview" alt="Pré-visualização do banner">
       </div>
 
-      <span class="form-error" :class="{ show: formError }">{{ formError }}</span>
-
       <div>
         <button class="btn btn-primary" :disabled="saving">{{ saving ? 'Salvando...' : 'Salvar banner' }}</button>
       </div>
@@ -109,8 +107,6 @@
         >{{ tab.label }}</button>
       </div>
     </div>
-
-    <span class="form-error" :class="{ show: error }">{{ error }}</span>
 
     <p v-if="loading" class="page-subtitle">Carregando...</p>
 
@@ -157,6 +153,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { api } from '../api/http';
+import { useToast } from '../composables/useToast';
+
+const toast = useToast();
 
 const statusFilters = [
   { value: '', label: 'Todos' },
@@ -168,13 +167,11 @@ const banners = ref([]);
 const meta = ref({ current_page: 1, last_page: 1, total: 0 });
 const status = ref('');
 const loading = ref(true);
-const error = ref('');
 const busyId = ref(null);
 
 const showForm = ref(false);
 const editingId = ref(null);
 const saving = ref(false);
-const formError = ref('');
 const form = reactive({
   name: '',
   eyebrow: '',
@@ -213,7 +210,6 @@ function resetForm() {
 
 async function load() {
   loading.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.get('/admin/banners', {
@@ -227,7 +223,7 @@ async function load() {
     banners.value = data.data ?? [];
     meta.value = data.meta ?? { current_page: 1, last_page: 1, total: 0 };
   } catch (e) {
-    error.value = e?.message || 'Não foi possível carregar os banners.';
+    toast.error(e?.message || 'Não foi possível carregar os banners.');
   } finally {
     loading.value = false;
   }
@@ -258,7 +254,6 @@ function openCreate() {
 
   editingId.value = null;
   resetForm();
-  formError.value = '';
   showForm.value = true;
 }
 
@@ -278,13 +273,11 @@ function openEdit(banner) {
   form.status = banner.status ?? 'active';
   form.imageFile = null;
   form.imagePreview = banner.image_url ?? '';
-  formError.value = '';
   showForm.value = true;
 }
 
 async function save() {
   saving.value = true;
-  formError.value = '';
 
   try {
     const payload = {
@@ -325,9 +318,10 @@ async function save() {
     showForm.value = false;
     editingId.value = null;
     resetForm();
+    toast.success('Banner salvo.');
     await load();
   } catch (e) {
-    formError.value = e?.message || 'Não foi possível salvar o banner.';
+    toast.error(e?.message || 'Não foi possível salvar o banner.');
   } finally {
     saving.value = false;
   }
@@ -342,9 +336,10 @@ async function remove(banner) {
 
   try {
     await api.delete(`/admin/banners/${banner.id}`);
+    toast.success('Banner excluído.');
     await load();
   } catch (e) {
-    error.value = e?.message || 'Não foi possível excluir o banner.';
+    toast.error(e?.message || 'Não foi possível excluir o banner.');
   } finally {
     busyId.value = null;
   }

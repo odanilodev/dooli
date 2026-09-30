@@ -65,7 +65,7 @@
               :duration="videoDuration"
               :resume-from="videoResumeFrom"
               @progress="onVideoProgress"
-              @error="videoError = $event"
+              @error="onVideoError"
             />
           </div>
           <div v-else-if="videoLoading" class="video-stage video-stage-loading">
@@ -107,9 +107,7 @@
             <button aria-label="Configurações"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" stroke="#fff"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></button>
             <button aria-label="Tela cheia"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" stroke="#fff"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
           </div>
-          <p v-if="videoError" class="form-error show" style="padding:10px 14px 0;">{{ videoError }}</p>
         </div>
-
         <!-- TABS -->
         <div class="tabs">
           <button class="tab" :class="{ active: activeTab === 'descricao' }" @click="activeTab = 'descricao'">Descrição</button>
@@ -128,7 +126,6 @@
               <span>{{ isCurrentCompleted ? 'Aula concluída' : (isCurrentLocked ? 'Aula bloqueada' : (completing ? 'Salvando...' : 'Marcar como concluída')) }}</span>
             </button>
           </div>
-          <p v-if="completeError" class="form-error show">{{ completeError }}</p>
         </div>
 
         <div v-else-if="activeTab === 'materiais'" class="tab-panel simple active">
@@ -145,7 +142,6 @@
             </ul>
           </template>
           <template v-else>Nenhum material adicional para esta aula.</template>
-          <p v-if="materialError" class="form-error show" style="margin-top:12px;">{{ materialError }}</p>
         </div>
 
         <div v-else-if="activeTab === 'comentarios'" class="tab-panel active">
@@ -159,7 +155,6 @@
               @keydown.ctrl.enter="submitComment"
             ></textarea>
             <div class="comment-form-actions">
-              <span v-if="commentError" class="form-error show" style="margin:0;">{{ commentError }}</span>
               <button
                 class="btn btn-primary"
                 :disabled="comments.posting || !commentText.trim()"
@@ -225,7 +220,6 @@
               {{ ratings.posting ? 'Enviando...' : 'Enviar avaliação' }}
             </button>
           </div>
-          <p v-if="ratingError" class="form-error show" style="margin:0;">{{ ratingError }}</p>
 
           <div v-if="ratings.loading" class="comment-empty">Carregando avaliações...</div>
           <div v-else-if="ratings.error" class="comment-empty">{{ ratings.error }}</div>
@@ -262,8 +256,6 @@
           </div>
 
           <div class="divider"></div>
-
-          <p v-if="navNotice" class="form-error show" style="margin:0 0 8px;">{{ navNotice }}</p>
 
           <div class="module-list">
             <template v-for="module in modules" :key="module.id">
@@ -336,6 +328,7 @@ import { useCommentsStore } from '../stores/comments';
 import { useRatingsStore } from '../stores/ratings';
 import { useAuthStore } from '../stores/auth';
 import { api, getToken } from '../api/http';
+import { useToast } from '../composables/useToast';
 import VideoPlayer from '../components/VideoPlayer.vue';
 
 const route = useRoute();
@@ -344,25 +337,19 @@ const store = useCoursePlayerStore();
 const comments = useCommentsStore();
 const ratings = useRatingsStore();
 const auth = useAuthStore();
+const toast = useToast();
 
 const activeTab = ref('descricao');
 const openModule = ref(null);
 const completing = ref(false);
-const completeError = ref('');
-const navNotice = ref('');
 const commentText = ref('');
-const commentError = ref('');
-const ratingError = ref('');
 const selectedStars = ref(0);
 const hoverStars = ref(0);
-const materialError = ref('');
 const downloadingId = ref(null);
 const videoEmbedUrl = ref(null);
 const videoPlatform = ref(null);
 const videoDuration = ref(0);
 const videoResumeFrom = ref(0);
-const videoError = ref('');
-const videoLoading = ref(false);
 const now = ref(Date.now());
 
 let videoLessonId = null;
@@ -429,7 +416,6 @@ function resetVideoState() {
   videoPlatform.value = null;
   videoDuration.value = 0;
   videoResumeFrom.value = 0;
-  videoError.value = '';
   videoLessonId = null;
 }
 
@@ -459,7 +445,6 @@ async function loadVideoPlayback(lessonId) {
   videoPlatform.value = null;
   videoDuration.value = 0;
   videoResumeFrom.value = 0;
-  videoError.value = '';
 
   const requestId = ++videoRequestId;
 
@@ -483,13 +468,17 @@ async function loadVideoPlayback(lessonId) {
 
     // A lesson without a video is a valid state, not an error.
     if (e?.status !== 404) {
-      videoError.value = e?.message || 'Não foi possível carregar o vídeo.';
+      toast.error(e?.message || 'Não foi possível carregar o vídeo.');
     }
   } finally {
     if (requestId === videoRequestId) {
       videoLoading.value = false;
     }
   }
+}
+
+function onVideoError(message) {
+  toast.error(message || 'Não foi possível carregar o vídeo.');
 }
 
 let lastVideoSentAt = 0;
@@ -610,10 +599,8 @@ watch(currentLesson, (lesson) => {
   comments.reset();
   ratings.reset();
   commentText.value = '';
-  commentError.value = '';
   selectedStars.value = 0;
   hoverStars.value = 0;
-  ratingError.value = '';
 
   if (lesson) {
     openModule.value = lesson.moduleId;
@@ -686,8 +673,6 @@ function formatRating(value) {
 }
 
 async function submitRating() {
-  ratingError.value = '';
-
   if (!selectedStars.value || !currentLesson.value || !store.course || !store.progress) {
     return;
   }
@@ -703,8 +688,9 @@ async function submitRating() {
 
     selectedStars.value = 0;
     hoverStars.value = 0;
+    toast.success('Avaliação enviada.');
   } catch (e) {
-    ratingError.value = e?.message || 'Não foi possível enviar sua avaliação.';
+    toast.error(e?.message || 'Não foi possível enviar sua avaliação.');
   }
 }
 
@@ -713,7 +699,6 @@ function fileName(path) {
 }
 
 async function downloadMaterial(type, material) {
-  materialError.value = '';
   downloadingId.value = material.id;
 
   const segment = type === 'document' ? 'documents' : 'attachments';
@@ -732,15 +717,13 @@ async function downloadMaterial(type, material) {
     link.remove();
     URL.revokeObjectURL(url);
   } catch (e) {
-    materialError.value = e?.message || 'Não foi possível baixar o arquivo.';
+    toast.error(e?.message || 'Não foi possível baixar o arquivo.');
   } finally {
     downloadingId.value = null;
   }
 }
 
 async function submitComment() {
-  commentError.value = '';
-
   const content = commentText.value.trim();
 
   if (!content || !currentLesson.value || !store.course || !store.progress) {
@@ -757,8 +740,9 @@ async function submitComment() {
     });
 
     commentText.value = '';
+    toast.success('Comentário enviado.');
   } catch (e) {
-    commentError.value = e?.message || 'Não foi possível enviar seu comentário.';
+    toast.error(e?.message || 'Não foi possível enviar seu comentário.');
   }
 }
 
@@ -769,14 +753,13 @@ function goLesson(lessonId, force = false) {
 
   if (!force && store.isLocked(lessonId)) {
     const name = store.requiredLessonName(lessonId);
-    navNotice.value = name
+    toast.warning(name
       ? `Conclua a aula "${name}" para liberar esta aula.`
-      : 'Conclua a aula anterior para liberar esta aula.';
+      : 'Conclua a aula anterior para liberar esta aula.');
 
     return;
   }
 
-  navNotice.value = '';
   router.push({ name: 'aula', params: { courseId: courseId.value, lessonId } });
 }
 
@@ -816,12 +799,12 @@ async function markCompleted() {
   }
 
   completing.value = true;
-  completeError.value = '';
 
   try {
     await store.completeLesson(currentLesson.value.id);
+    toast.success('Aula concluída.');
   } catch (e) {
-    completeError.value = e?.message || 'Não foi possível concluir a aula.';
+    toast.error(e?.message || 'Não foi possível concluir a aula.');
   } finally {
     completing.value = false;
   }

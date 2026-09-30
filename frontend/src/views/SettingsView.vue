@@ -15,10 +15,6 @@
           <h2 class="panel-title">Conta</h2>
           <p class="panel-desc">Dados usados para login e comunicação.</p>
         </div>
-        <div class="form-success" :class="{ show: accountSaved }">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-          Conta atualizada com sucesso.
-        </div>
         <div class="form-group">
           <label for="c-email">E-mail</label>
           <input class="form-control" type="email" id="c-email" v-model="account.email" required>
@@ -36,10 +32,6 @@
         <div>
           <h2 class="panel-title">Segurança</h2>
           <p class="panel-desc">Altere sua senha periodicamente para manter a conta segura.</p>
-        </div>
-        <div class="form-success" :class="{ show: passwordSaved }">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-          Senha alterada com sucesso.
         </div>
         <div class="form-group">
           <label for="c-current-pass">Senha atual</label>
@@ -126,33 +118,31 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed } from 'vue';
+import { reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTheme } from '../composables/useTheme';
+import { useToast } from '../composables/useToast';
 
 const router = useRouter();
 const { theme, setTheme } = useTheme();
+const toast = useToast();
 
 const account = reactive({
   email: 'victorhugomarquezin@gmail.com',
   phone: '(11) 99999-0000',
 });
-const accountSaved = ref(false);
 function saveAccount() {
-  accountSaved.value = true;
-  setTimeout(() => { accountSaved.value = false; }, 2500);
+  toast.success('Conta atualizada.');
 }
 
 const password = reactive({ current: '', next: '', confirm: '' });
-const passwordSaved = ref(false);
 const passwordMismatch = computed(() => password.next && password.confirm && password.next !== password.confirm);
 function changePassword() {
   if (passwordMismatch.value) return;
-  passwordSaved.value = true;
   password.current = '';
   password.next = '';
   password.confirm = '';
-  setTimeout(() => { passwordSaved.value = false; }, 2500);
+  toast.success('Senha alterada.');
 }
 
 const notifications = reactive({ newsletter: true, reminders: true, push: false });

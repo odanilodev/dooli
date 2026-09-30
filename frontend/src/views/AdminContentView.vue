@@ -13,8 +13,6 @@
       </div>
     </div>
 
-    <span class="form-error" :class="{ show: error }">{{ error }}</span>
-
     <p v-if="loading" class="page-subtitle">Carregando...</p>
 
     <template v-else-if="course">
@@ -97,18 +95,19 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api/http';
+import { useToast } from '../composables/useToast';
 import { statusLabel } from '../utils/adminLabels';
 import CurriculumBuilder from '../components/admin/CurriculumBuilder.vue';
 import ItemDrawer from '../components/admin/ItemDrawer.vue';
 
 const route = useRoute();
 const router = useRouter();
+const toast = useToast();
 
 const courseId = computed(() => Number(route.params.courseId));
 const course = ref(null);
 const selected = ref(null);
 const loading = ref(true);
-const error = ref('');
 
 const showAttach = ref(false);
 const attaching = ref(false);
@@ -161,7 +160,6 @@ async function load() {
   }
 
   loading.value = true;
-  error.value = '';
   course.value = null;
 
   try {
@@ -173,7 +171,7 @@ async function load() {
       router.replace({ name: 'admin-conteudo-curso', params: { courseId: courseId.value } });
     }
   } catch (e) {
-    error.value = e?.message || 'Não foi possível carregar o curso.';
+    toast.error(e?.message || 'Não foi possível carregar o curso.');
   } finally {
     loading.value = false;
   }
@@ -196,7 +194,6 @@ async function onSaved({ type, id, data }) {
 }
 
 async function createModule() {
-  error.value = '';
 
   try {
     const { data } = await api.post('/admin/modules', { name: 'Novo módulo', status: 'active' });
@@ -205,12 +202,11 @@ async function createModule() {
     course.value.modules = [...(course.value.modules ?? []), module];
     openDrawer('module', module.id);
   } catch (e) {
-    error.value = e?.message || 'Não foi possível criar o módulo.';
+    toast.error(e?.message || 'Não foi possível criar o módulo.');
   }
 }
 
 async function createTopic(module) {
-  error.value = '';
 
   try {
     const { data } = await api.post('/admin/topics', {
@@ -222,12 +218,11 @@ async function createTopic(module) {
     module.topics = [...(module.topics ?? []), topic];
     openDrawer('topic', topic.id);
   } catch (e) {
-    error.value = e?.message || 'Não foi possível criar o tópico.';
+    toast.error(e?.message || 'Não foi possível criar o tópico.');
   }
 }
 
 async function createLesson(topic) {
-  error.value = '';
 
   try {
     const { data } = await api.post('/admin/lessons', {
@@ -239,12 +234,11 @@ async function createLesson(topic) {
     topic.lessons = [...(topic.lessons ?? []), lesson];
     openDrawer('lesson', lesson.id);
   } catch (e) {
-    error.value = e?.message || 'Não foi possível criar a aula.';
+    toast.error(e?.message || 'Não foi possível criar a aula.');
   }
 }
 
 async function rename({ type, id, name }) {
-  error.value = '';
 
   const paths = { module: 'modules', topic: 'topics', lesson: 'lessons' };
 
@@ -256,7 +250,7 @@ async function rename({ type, id, name }) {
       node.name = name;
     }
   } catch (e) {
-    error.value = e?.message || 'Não foi possível renomear.';
+    toast.error(e?.message || 'Não foi possível renomear.');
     await load();
   }
 }
@@ -271,7 +265,6 @@ async function removeNode({ type, node }) {
     return;
   }
 
-  error.value = '';
 
   try {
     if (type === 'module') {
@@ -299,13 +292,12 @@ async function removeNode({ type, node }) {
       selected.value = null;
     }
   } catch (e) {
-    error.value = e?.message || 'Não foi possível remover o item.';
+    toast.error(e?.message || 'Não foi possível remover o item.');
     await load();
   }
 }
 
 async function reorder({ level, parentId, ids }) {
-  error.value = '';
   pendingReorder.value = { level, parentId, ids };
 
   await sendReorder(false);
@@ -345,7 +337,7 @@ async function sendReorder(force) {
       return;
     }
 
-    error.value = e?.message || 'Não foi possível reordenar.';
+    toast.error(e?.message || 'Não foi possível reordenar.');
     reorderConflicts.value = [];
     pendingReorder.value = null;
     await load();
@@ -371,14 +363,13 @@ async function openAttach() {
     const linked = new Set((course.value.modules ?? []).map((m) => m.id));
     availableModules.value = (data.data ?? []).filter((m) => !linked.has(m.id));
   } catch (e) {
-    error.value = e?.message || 'Não foi possível carregar os módulos.';
+    toast.error(e?.message || 'Não foi possível carregar os módulos.');
   } finally {
     attaching.value = false;
   }
 }
 
 async function attach(module) {
-  error.value = '';
 
   try {
     await api.post(`/admin/courses/${courseId.value}/modules`, { module_id: module.id });
@@ -386,7 +377,7 @@ async function attach(module) {
     await load();
     openDrawer('module', module.id);
   } catch (e) {
-    error.value = e?.message || 'Não foi possível vincular o módulo.';
+    toast.error(e?.message || 'Não foi possível vincular o módulo.');
   }
 }
 

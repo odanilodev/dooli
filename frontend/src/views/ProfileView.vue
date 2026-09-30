@@ -54,13 +54,6 @@
           <p class="panel-desc">Essas informações aparecem no seu perfil e certificados.</p>
         </div>
 
-        <div class="form-success" :class="{ show: profileSuccess }">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-          Alterações salvas com sucesso.
-        </div>
-
-        <div class="form-error" :class="{ show: profileError }">{{ profileError }}</div>
-
         <div class="form-row">
           <div class="form-group">
             <label for="p-name">Nome completo</label>
@@ -105,13 +98,6 @@
           <p class="panel-desc">Ao trocar a senha, os outros dispositivos conectados serão desconectados.</p>
         </div>
 
-        <div class="form-success" :class="{ show: passwordSuccess }">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-          Senha alterada com sucesso.
-        </div>
-
-        <div class="form-error" :class="{ show: passwordError }">{{ passwordError }}</div>
-
         <div class="form-group">
           <label for="p-current">Senha atual</label>
           <input class="form-control" type="password" id="p-current" v-model="passwordForm.current_password" autocomplete="current-password">
@@ -142,22 +128,18 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useProfileStore } from '../stores/profile';
+import { useToast } from '../composables/useToast';
 
 const auth = useAuthStore();
 const store = useProfileStore();
+const toast = useToast();
 
 const profile = computed(() => store.profile);
 
 const form = reactive({ name: '', username: '', email: '', phone: '', city: '', address: '' });
 const passwordForm = reactive({ current_password: '', password: '', password_confirmation: '' });
 
-const profileError = ref('');
-const profileSuccess = ref(false);
-const passwordError = ref('');
-const passwordSuccess = ref(false);
 const savingPassword = ref(false);
-
-let hideTimer = null;
 
 function fillForm(source) {
   form.name = source?.name ?? '';
@@ -186,11 +168,8 @@ onMounted(async () => {
 });
 
 async function save() {
-  profileError.value = '';
-  profileSuccess.value = false;
-
   if (!form.name.trim() || !form.email.trim()) {
-    profileError.value = 'Informe nome e e-mail.';
+    toast.error('Informe nome e e-mail.');
     return;
   }
 
@@ -204,25 +183,20 @@ async function save() {
   try {
     const updated = await store.update(payload);
     fillForm(updated);
-    profileSuccess.value = true;
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(() => { profileSuccess.value = false; }, 2500);
+    toast.success('Alterações salvas.');
   } catch (e) {
-    profileError.value = firstError(e) || e?.message || 'Não foi possível salvar suas informações.';
+    toast.error(firstError(e) || e?.message || 'Não foi possível salvar suas informações.');
   }
 }
 
 async function changePassword() {
-  passwordError.value = '';
-  passwordSuccess.value = false;
-
   if (!passwordForm.current_password || !passwordForm.password) {
-    passwordError.value = 'Informe a senha atual e a nova senha.';
+    toast.error('Informe a senha atual e a nova senha.');
     return;
   }
 
   if (passwordForm.password !== passwordForm.password_confirmation) {
-    passwordError.value = 'As senhas não conferem.';
+    toast.error('As senhas não conferem.');
     return;
   }
 
@@ -230,12 +204,12 @@ async function changePassword() {
 
   try {
     await store.updatePassword({ ...passwordForm });
-    passwordSuccess.value = true;
     passwordForm.current_password = '';
     passwordForm.password = '';
     passwordForm.password_confirmation = '';
+    toast.success('Senha alterada.');
   } catch (e) {
-    passwordError.value = firstError(e) || e?.message || 'Não foi possível alterar a senha.';
+    toast.error(firstError(e) || e?.message || 'Não foi possível alterar a senha.');
   } finally {
     savingPassword.value = false;
   }

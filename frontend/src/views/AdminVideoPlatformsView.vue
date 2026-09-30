@@ -8,8 +8,6 @@
       </div>
     </div>
 
-    <span class="form-error" :class="{ show: error }">{{ error }}</span>
-
     <p v-if="loading" class="page-subtitle">Carregando...</p>
 
     <div v-else class="vp-grid">
@@ -25,11 +23,6 @@
             <p class="panel-desc">código: {{ p.code }}</p>
           </div>
           <span class="vp-badge" :class="p.status === 'active' ? 'on' : 'off'">{{ p.status }}</span>
-        </div>
-
-        <div class="form-success" :class="{ show: savedId === p.id }">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-          Configuração salva.
         </div>
 
         <div class="form-group">
@@ -77,14 +70,15 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { api } from '../api/http';
+import { useToast } from '../composables/useToast';
+
+const toast = useToast();
 
 const platforms = ref([]);
 const forms = reactive({});
 const rowErrors = reactive({});
 const loading = ref(true);
-const error = ref('');
 const savingId = ref(null);
-const savedId = ref(null);
 
 function credentialKey(platform) {
   return platform.code === 'panda' ? 'api_key' : 'api_secret';
@@ -92,7 +86,6 @@ function credentialKey(platform) {
 
 async function load() {
   loading.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.get('/admin/video-platforms', { params: { per_page: 50 } });
@@ -106,7 +99,7 @@ async function load() {
       };
     }
   } catch (e) {
-    error.value = e?.message || 'Não foi possível carregar as plataformas.';
+    toast.error(e?.message || 'Não foi possível carregar as plataformas.');
   } finally {
     loading.value = false;
   }
@@ -136,12 +129,7 @@ async function save(platform) {
     platform.settings = updated.settings;
     forms[platform.id].api_secret = '';
 
-    savedId.value = platform.id;
-    setTimeout(() => {
-      if (savedId.value === platform.id) {
-        savedId.value = null;
-      }
-    }, 2500);
+    toast.success('Configuração salva.');
   } catch (e) {
     rowErrors[platform.id] = e?.message || 'Não foi possível salvar.';
   } finally {

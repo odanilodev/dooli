@@ -5,19 +5,12 @@
       <p>Informe seu e-mail e enviaremos um link para redefinir sua senha.</p>
     </div>
 
-    <div class="form-success" :class="{ show: success }">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-      Se o e-mail estiver cadastrado, enviaremos o link de redefinição.
-    </div>
-
-    <div class="form-error" :class="{ show: error }">{{ error }}</div>
-
     <div class="form-group">
       <label for="forgot-email">E-mail</label>
-      <input class="form-control" type="email" id="forgot-email" v-model="email" placeholder="voce@email.com" required :disabled="success">
+      <input class="form-control" type="email" id="forgot-email" v-model="email" placeholder="voce@email.com" required :disabled="loading">
     </div>
 
-    <button type="submit" class="btn btn-primary btn-block" :disabled="loading || success">
+    <button type="submit" class="btn btn-primary btn-block" :disabled="loading">
       {{ loading ? 'Enviando...' : 'Enviar link' }}
     </button>
 
@@ -28,19 +21,17 @@
 <script setup>
 import { ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
+import { useToast } from '../composables/useToast';
 
 const auth = useAuthStore();
+const toast = useToast();
 
 const email = ref('');
 const loading = ref(false);
-const success = ref(false);
-const error = ref('');
 
 async function submit() {
-  error.value = '';
-
   if (!email.value.trim()) {
-    error.value = 'Informe seu e-mail.';
+    toast.error('Informe seu e-mail.');
     return;
   }
 
@@ -48,9 +39,9 @@ async function submit() {
 
   try {
     await auth.forgotPassword(email.value.trim());
-    success.value = true;
+    toast.success('Se o e-mail estiver cadastrado, enviaremos o link de redefinição.');
   } catch (e) {
-    error.value = e?.message || 'Não foi possível enviar o link.';
+    toast.error(e?.message || 'Não foi possível enviar o link.');
   } finally {
     loading.value = false;
   }

@@ -22,8 +22,6 @@
       <input class="form-control admin-search" type="search" v-model="search" placeholder="Buscar curso...">
     </div>
 
-    <span class="form-error" :class="{ show: error }">{{ error }}</span>
-
     <p v-if="loading" class="page-subtitle">Carregando...</p>
 
     <div v-else-if="!filtered.length" class="empty-state">
@@ -64,14 +62,15 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api/http';
+import { useToast } from '../composables/useToast';
 import AdminCourseCard from '../components/admin/AdminCourseCard.vue';
 import ItemDrawer from '../components/admin/ItemDrawer.vue';
 
 const router = useRouter();
+const toast = useToast();
 
 const courses = ref([]);
 const loading = ref(true);
-const error = ref('');
 const search = ref('');
 const status = ref('');
 const editing = ref(null);
@@ -101,13 +100,12 @@ function normalize(str) {
 
 async function load() {
   loading.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.get('/admin/courses', { params: { per_page: 100 } });
     courses.value = data.data ?? [];
   } catch (e) {
-    error.value = e?.message || 'Não foi possível carregar os cursos.';
+    toast.error(e?.message || 'Não foi possível carregar os cursos.');
   } finally {
     loading.value = false;
   }
@@ -123,13 +121,13 @@ function openCourse(course) {
 
 async function toggleStatus(course, publish) {
   busyId.value = course.id;
-  error.value = '';
 
   try {
     const { data } = await api.post(`/admin/courses/${course.id}/${publish ? 'publish' : 'unpublish'}`);
     Object.assign(course, data.data);
+    toast.success(publish ? 'Curso publicado.' : 'Curso despublicado.');
   } catch (e) {
-    error.value = e?.message || 'Não foi possível alterar a publicação.';
+    toast.error(e?.message || 'Não foi possível alterar a publicação.');
   } finally {
     busyId.value = null;
   }
@@ -141,13 +139,13 @@ async function removeCourse(course) {
   }
 
   busyId.value = course.id;
-  error.value = '';
 
   try {
     await api.delete(`/admin/courses/${course.id}`);
     courses.value = courses.value.filter((c) => c.id !== course.id);
+    toast.success('Curso excluído.');
   } catch (e) {
-    error.value = e?.message || 'Não foi possível excluir o curso.';
+    toast.error(e?.message || 'Não foi possível excluir o curso.');
   } finally {
     busyId.value = null;
   }

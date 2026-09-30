@@ -22,8 +22,6 @@
         </li>
       </ol>
 
-      <span class="form-error" :class="{ show: error }">{{ error }}</span>
-
       <!-- Passo 1 -->
       <section v-if="step === 1" class="panel wizard-panel">
         <h2 class="panel-title">Dados do curso</h2>
@@ -230,10 +228,12 @@
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api/http';
+import { useToast } from '../composables/useToast';
 import { statusLabel } from '../utils/adminLabels';
 import ItemDrawer from '../components/admin/ItemDrawer.vue';
 
 const router = useRouter();
+const toast = useToast();
 
 const steps = [
   { key: 'dados', label: 'Dados' },
@@ -246,7 +246,6 @@ const steps = [
 const step = ref(1);
 const courseId = ref(null);
 const course = ref(null);
-const error = ref('');
 const busy = ref(false);
 
 const form = reactive({ name: '', description: '', image: '', status: 'active' });
@@ -312,7 +311,7 @@ async function ensurePools() {
     modulePool.value = m.data.data ?? [];
     topicPool.value = t.data.data ?? [];
   } catch (e) {
-    error.value = e?.message || 'Não foi possível carregar módulos e tópicos.';
+    toast.error(e?.message || 'Não foi possível carregar módulos e tópicos.');
   } finally {
     loadingPool.value = false;
   }
@@ -324,11 +323,10 @@ async function loadCourse() {
 }
 
 async function next() {
-  error.value = '';
 
   if (step.value === 1) {
     if (!form.name.trim()) {
-      error.value = 'Informe o nome do curso.';
+      toast.error('Informe o nome do curso.');
       return;
     }
 
@@ -352,7 +350,7 @@ async function next() {
       await loadCourse();
       step.value = 2;
     } catch (e) {
-      error.value = e?.message || 'Não foi possível salvar o curso.';
+      toast.error(e?.message || 'Não foi possível salvar o curso.');
     } finally {
       busy.value = false;
     }
@@ -379,7 +377,6 @@ async function createModule() {
   }
 
   busy.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.post('/admin/modules', { name, status: 'active' });
@@ -389,7 +386,7 @@ async function createModule() {
     newModule.open = false;
     await loadCourse();
   } catch (e) {
-    error.value = e?.message || 'Não foi possível criar o módulo.';
+    toast.error(e?.message || 'Não foi possível criar o módulo.');
   } finally {
     busy.value = false;
   }
@@ -417,14 +414,13 @@ async function openModulePicker() {
 
 async function attachModule(module) {
   busy.value = true;
-  error.value = '';
 
   try {
     await api.post(`/admin/courses/${courseId.value}/modules`, { module_id: module.id });
     showModules.value = false;
     await loadCourse();
   } catch (e) {
-    error.value = e?.message || 'Não foi possível vincular o módulo.';
+    toast.error(e?.message || 'Não foi possível vincular o módulo.');
   } finally {
     busy.value = false;
   }
@@ -436,13 +432,12 @@ async function detachModule(module) {
   }
 
   busy.value = true;
-  error.value = '';
 
   try {
     await api.delete(`/admin/courses/${courseId.value}/modules/${module.id}`);
     await loadCourse();
   } catch (e) {
-    error.value = e?.message || 'Não foi possível remover o módulo.';
+    toast.error(e?.message || 'Não foi possível remover o módulo.');
   } finally {
     busy.value = false;
   }
@@ -456,7 +451,6 @@ async function createTopic(module) {
   }
 
   busy.value = true;
-  error.value = '';
 
   try {
     await api.post('/admin/topics', { name, module_id: module.id, status: 'active' });
@@ -464,7 +458,7 @@ async function createTopic(module) {
     newTopic.moduleId = null;
     await loadCourse();
   } catch (e) {
-    error.value = e?.message || 'Não foi possível criar o tópico.';
+    toast.error(e?.message || 'Não foi possível criar o tópico.');
   } finally {
     busy.value = false;
   }
@@ -477,14 +471,13 @@ async function openTopicPicker(module) {
 
 async function linkTopicTo(topic) {
   busy.value = true;
-  error.value = '';
 
   try {
     await api.put(`/admin/topics/${topic.id}`, { module_id: linkTopic.module.id });
     linkTopic.module = null;
     await loadCourse();
   } catch (e) {
-    error.value = e?.message || 'Não foi possível vincular o tópico.';
+    toast.error(e?.message || 'Não foi possível vincular o tópico.');
   } finally {
     busy.value = false;
   }
@@ -496,13 +489,12 @@ async function removeTopic(topic) {
   }
 
   busy.value = true;
-  error.value = '';
 
   try {
     await api.delete(`/admin/topics/${topic.id}`);
     await loadCourse();
   } catch (e) {
-    error.value = e?.message || 'Não foi possível remover o tópico.';
+    toast.error(e?.message || 'Não foi possível remover o tópico.');
   } finally {
     busy.value = false;
   }
@@ -526,7 +518,6 @@ async function createLesson(topic) {
   }
 
   busy.value = true;
-  error.value = '';
 
   try {
     const { data } = await api.post('/admin/lessons', { name, topic_id: topic.id, status: 'active' });
@@ -537,7 +528,7 @@ async function createLesson(topic) {
     drawerFocus.value = 'description';
     editingLesson.value = lesson;
   } catch (e) {
-    error.value = e?.message || 'Não foi possível criar a aula.';
+    toast.error(e?.message || 'Não foi possível criar a aula.');
   } finally {
     busy.value = false;
   }
@@ -560,13 +551,12 @@ async function removeLesson(lesson) {
   }
 
   busy.value = true;
-  error.value = '';
 
   try {
     await api.delete(`/admin/lessons/${lesson.id}`);
     await loadCourse();
   } catch (e) {
-    error.value = e?.message || 'Não foi possível remover a aula.';
+    toast.error(e?.message || 'Não foi possível remover a aula.');
   } finally {
     busy.value = false;
   }
