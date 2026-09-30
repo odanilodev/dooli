@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureCompanyContext;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\EnsureUserIsActive;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'company' => SetCompanyContext::class,
             'company.required' => EnsureCompanyContext::class,
             'role' => EnsureUserHasRole::class,
+            'admin.access' => EnsureAdminAccess::class,
             'active' => EnsureUserIsActive::class,
         ]);
 

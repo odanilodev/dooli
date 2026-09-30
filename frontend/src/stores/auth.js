@@ -11,6 +11,9 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => Boolean(token.value));
   const role = computed(() => user.value?.user_type?.name || null);
   const isAdmin = computed(() => user.value?.user_type?.code === 'admin');
+  const canAccessAdmin = computed(
+    () => isAdmin.value || (user.value?.user_type?.permission_menu?.length ?? 0) > 0,
+  );
   const initials = computed(() => {
     const name = user.value?.name?.trim();
 
@@ -116,6 +119,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     role,
     isAdmin,
+    canAccessAdmin,
     initials,
     login,
     forgotPassword,

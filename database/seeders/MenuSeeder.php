@@ -7,22 +7,89 @@ use Illuminate\Database\Seeder;
 
 class MenuSeeder extends Seeder
 {
+    /**
+     * @var list<array{0: string, 1: ?string, 2: ?string}>
+     */
+    private const ADMIN_ITEMS = [
+        ['Conteúdo', '/admin/conteudo', 'content'],
+        ['Turmas', '/admin/turmas', 'teams'],
+        ['Vídeos', '/admin/videos', 'videos'],
+        ['Documentos', '/admin/documentos', 'documents'],
+        ['Anexos', '/admin/anexos', 'attachments'],
+        ['Banners', '/admin/banners', 'banners'],
+        ['Plataformas de vídeo', '/admin/video-platforms', 'video-platforms'],
+        ['Menus', '/admin/menus', 'menu'],
+        ['Usuários', '/admin/usuarios', 'users'],
+        ['Tipos de usuário', '/admin/tipos-de-usuario', 'user-types'],
+    ];
+
+    /**
+     * @var list<array{0: string, 1: ?string, 2: ?string}>
+     */
+    private const ACCOUNT_ITEMS = [
+        ['Meu perfil', '/perfil', 'profile'],
+        ['Configurações', '/configuracoes', 'settings'],
+    ];
+
     public function run(): void
     {
-        $menus = [
-            ['name' => 'Dashboard', 'link' => '/dashboard', 'icon' => 'home', 'sort_order' => 1],
-            ['name' => 'Cursos', 'link' => '/courses', 'icon' => 'book', 'sort_order' => 2],
-            ['name' => 'Turmas', 'link' => '/teams', 'icon' => 'users', 'sort_order' => 3],
-            ['name' => 'Alunos', 'link' => '/students', 'icon' => 'user', 'sort_order' => 4],
-            ['name' => 'Pedidos', 'link' => '/orders', 'icon' => 'shopping-cart', 'sort_order' => 5],
-            ['name' => 'Cupons', 'link' => '/coupons', 'icon' => 'tag', 'sort_order' => 6],
-            ['name' => 'Pagamentos', 'link' => '/payments', 'icon' => 'credit-card', 'sort_order' => 7],
-            ['name' => 'Certificados', 'link' => '/certificates', 'icon' => 'award', 'sort_order' => 8],
-            ['name' => 'Configurações', 'link' => '/settings', 'icon' => 'settings', 'sort_order' => 9],
+        $names = [
+            'Dashboard',
+            'Administração',
+            'Conta',
+            ...array_column(self::ADMIN_ITEMS, 0),
+            ...array_column(self::ACCOUNT_ITEMS, 0),
         ];
 
-        foreach ($menus as $menu) {
-            Menu::query()->updateOrCreate(['name' => $menu['name']], $menu);
+        Menu::query()->whereNotIn('name', $names)->delete();
+
+        $this->menu('Dashboard', [
+            'type' => 'link',
+            'link' => '/',
+            'icon' => 'dashboard',
+            'sort_order' => 1,
+            'sub' => null,
+        ]);
+
+        $admin = $this->menu('Administração', [
+            'type' => 'section',
+            'link' => null,
+            'icon' => null,
+            'sort_order' => 2,
+            'sub' => null,
+        ]);
+
+        foreach (self::ADMIN_ITEMS as $index => [$name, $link, $icon]) {
+            $this->menu($name, [
+                'type' => 'link',
+                'link' => $link,
+                'icon' => $icon,
+                'sort_order' => $index + 1,
+                'sub' => (string) $admin->id,
+            ]);
         }
+
+        $account = $this->menu('Conta', [
+            'type' => 'section',
+            'link' => null,
+            'icon' => null,
+            'sort_order' => 3,
+            'sub' => null,
+        ]);
+
+        foreach (self::ACCOUNT_ITEMS as $index => [$name, $link, $icon]) {
+            $this->menu($name, [
+                'type' => 'link',
+                'link' => $link,
+                'icon' => $icon,
+                'sort_order' => $index + 1,
+                'sub' => (string) $account->id,
+            ]);
+        }
+    }
+
+    private function menu(string $name, array $attributes): Menu
+    {
+        return Menu::query()->updateOrCreate(['name' => $name], $attributes);
     }
 }

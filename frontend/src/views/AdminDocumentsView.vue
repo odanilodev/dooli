@@ -37,6 +37,8 @@
       </div>
     </form>
 
+    <template v-if="!showForm">
+
     <div class="catalog-toolbar">
       <div class="filter-tabs">
         <button
@@ -83,6 +85,8 @@
       <span class="admin-muted">Página {{ meta.current_page }} de {{ meta.last_page }}</span>
       <button class="btn btn-outline btn-sm" :disabled="meta.current_page >= meta.last_page" @click="goPage(meta.current_page + 1)">Próxima</button>
     </div>
+
+    </template>
 
   </main>
 </template>

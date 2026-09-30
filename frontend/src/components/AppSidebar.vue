@@ -11,51 +11,8 @@
     </router-link>
 
     <nav class="nav">
-      <template v-if="auth.isAdmin">
-        <router-link to="/" class="nav-link" :class="{ active: $route.name === 'dashboard' }" @click="close">
-          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/></svg>
-          <span>Dashboard</span>
-        </router-link>
-
-        <span class="nav-group-label">Administração</span>
-        <router-link to="/admin/conteudo" class="nav-link" :class="{ active: ['admin-conteudo', 'admin-conteudo-novo', 'admin-conteudo-curso'].includes($route.name) }" @click="close">
-          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5A2.5 2.5 0 0 1 4 20.5z"/></svg>
-          <span>Conteúdo</span>
-        </router-link>
-        <router-link to="/admin/turmas" class="nav-link" :class="{ active: $route.name === 'admin-turmas' }" @click="close">
-          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5"/><path d="M16 5.5a3 3 0 0 1 0 5.9"/><path d="M17.5 13.7c2.2.6 3.9 2.5 3.9 5.3"/></svg>
-          <span>Turmas</span>
-        </router-link>
-        <router-link to="/admin/videos" class="nav-link" :class="{ active: $route.name === 'admin-videos' }" @click="close">
-          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>
-          <span>Vídeos</span>
-        </router-link>
-        <router-link to="/admin/documentos" class="nav-link" :class="{ active: $route.name === 'admin-documentos' }" @click="close">
-          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5"/></svg>
-          <span>Documentos</span>
-        </router-link>
-        <router-link to="/admin/anexos" class="nav-link" :class="{ active: $route.name === 'admin-anexos' }" @click="close">
-          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5 12.5 20a5 5 0 0 1-7-7l8-8a3.5 3.5 0 0 1 5 5l-8 8a2 2 0 0 1-3-3l7-7"/></svg>
-          <span>Anexos</span>
-        </router-link>
-        <router-link to="/admin/banners" class="nav-link" :class="{ active: $route.name === 'admin-banners' }" @click="close">
-          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="m4 18 5-4.5 3.5 3L16 13l4 4"/></svg>
-          <span>Banners</span>
-        </router-link>
-        <router-link to="/admin/video-platforms" class="nav-link" :class="{ active: $route.name === 'admin-video-platforms' }" @click="close">
-          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10 9.5l5 2.5-5 2.5V9.5z" fill="currentColor" stroke="none"/></svg>
-          <span>Plataformas de vídeo</span>
-        </router-link>
-
-        <span class="nav-group-label">Conta</span>
-        <router-link to="/perfil" class="nav-link" :class="{ active: $route.name === 'perfil' }" @click="close">
-          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
-          <span>Meu perfil</span>
-        </router-link>
-        <router-link to="/configuracoes" class="nav-link" :class="{ active: $route.name === 'configuracoes' }" @click="close">
-          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
-          <span>Configurações</span>
-        </router-link>
+      <template v-if="auth.canAccessAdmin">
+        <NavItem v-for="node in menuTree" :key="node.id" :node="node" />
       </template>
 
       <template v-else>
@@ -78,8 +35,6 @@
       </template>
     </nav>
 
-    <div class="sidebar-spacer"></div>
-
     <div class="help-card">
       <span class="help-icon">
         <svg class="icon" width="17" height="17" viewBox="0 0 24 24"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/><path d="M20 19v1a3 3 0 0 1-3 3h-3"/></svg>
@@ -92,16 +47,109 @@
 </template>
 
 <script setup>
+import { computed, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useSidebar } from '../composables/useSidebar';
 import { useAuthStore } from '../stores/auth';
+import { useMenusStore } from '../stores/menus';
+import { useNavMenu } from '../composables/useNavMenu';
+import NavItem from './NavItem.vue';
 
 const { isOpen, close } = useSidebar();
 const auth = useAuthStore();
-</script>
+const menus = useMenusStore();
+const route = useRoute();
+const { openPath, isActive } = useNavMenu();
 
-<style scoped>
-.nav-group-label{
-  font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;
-  color:var(--text-muted);margin:14px 0 2px;padding-left:12px;
+const FALLBACK_MENU = [
+  { id: 'fb-dashboard', name: 'Dashboard', type: 'link', depth: 0, link: '/', icon: 'dashboard', children: [] },
+  {
+    id: 'fb-admin',
+    name: 'Administração',
+    type: 'section',
+    depth: 0,
+    link: null,
+    icon: null,
+    children: [
+      { id: 'fb-content', name: 'Conteúdo', type: 'link', depth: 1, link: '/admin/conteudo', icon: 'content' },
+      { id: 'fb-teams', name: 'Turmas', type: 'link', depth: 1, link: '/admin/turmas', icon: 'teams' },
+      { id: 'fb-videos', name: 'Vídeos', type: 'link', depth: 1, link: '/admin/videos', icon: 'videos' },
+      { id: 'fb-documents', name: 'Documentos', type: 'link', depth: 1, link: '/admin/documentos', icon: 'documents' },
+      { id: 'fb-attachments', name: 'Anexos', type: 'link', depth: 1, link: '/admin/anexos', icon: 'attachments' },
+      { id: 'fb-banners', name: 'Banners', type: 'link', depth: 1, link: '/admin/banners', icon: 'banners' },
+      { id: 'fb-video-platforms', name: 'Plataformas de vídeo', type: 'link', depth: 1, link: '/admin/video-platforms', icon: 'video-platforms' },
+      { id: 'fb-menus', name: 'Menus', type: 'link', depth: 1, link: '/admin/menus', icon: 'menu' },
+      { id: 'fb-users', name: 'Usuários', type: 'link', depth: 1, link: '/admin/usuarios', icon: 'users' },
+      { id: 'fb-user-types', name: 'Tipos de usuário', type: 'link', depth: 1, link: '/admin/tipos-de-usuario', icon: 'user-types' },
+    ],
+  },
+  {
+    id: 'fb-account',
+    name: 'Conta',
+    type: 'section',
+    depth: 0,
+    link: null,
+    icon: null,
+    children: [
+      { id: 'fb-profile', name: 'Meu perfil', type: 'link', depth: 1, link: '/perfil', icon: 'profile' },
+      { id: 'fb-settings', name: 'Configurações', type: 'link', depth: 1, link: '/configuracoes', icon: 'settings' },
+    ],
+  },
+];
+
+const menuTree = computed(() => {
+  const base = menus.tree.length ? menus.tree : FALLBACK_MENU;
+
+  return auth.isAdmin ? base : filterAdminOnly(base);
+});
+
+const ADMIN_ONLY_LINKS = ['/admin/menus', '/admin/usuarios', '/admin/tipos-de-usuario'];
+
+function filterAdminOnly(nodes) {
+  return nodes
+    .filter((node) => !ADMIN_ONLY_LINKS.includes(node.link))
+    .map((node) => ({
+      ...node,
+      children: node.children ? filterAdminOnly(node.children) : [],
+    }))
+    .filter((node) => !['section', 'dropdown'].includes(node.type) || (node.children && node.children.length));
 }
-</style>
+
+function findTrail(nodes, trail = []) {
+  for (const node of nodes) {
+    const nextTrail = node.type === 'dropdown' ? [...trail, [node.depth, node.id]] : trail;
+
+    if (isActive(node.link)) {
+      return nextTrail;
+    }
+
+    if (node.children && node.children.length) {
+      const found = findTrail(node.children, nextTrail);
+
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+}
+
+watch(
+  [() => route.path, menuTree],
+  () => {
+    const trail = findTrail(menuTree.value);
+
+    if (trail && trail.length) {
+      openPath(trail);
+    }
+  },
+  { immediate: true },
+);
+
+onMounted(() => {
+  if (auth.canAccessAdmin && !menus.loaded) {
+    menus.fetchMyMenus();
+  }
+});
+</script>

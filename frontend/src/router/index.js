@@ -21,6 +21,9 @@ import AdminVideosView from '../views/AdminVideosView.vue';
 import AdminDocumentsView from '../views/AdminDocumentsView.vue';
 import AdminAttachmentsView from '../views/AdminAttachmentsView.vue';
 import AdminBannersView from '../views/AdminBannersView.vue';
+import AdminUsersView from '../views/AdminUsersView.vue';
+import AdminUserTypesView from '../views/AdminUserTypesView.vue';
+import AdminMenusView from '../views/AdminMenusView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
 import ForgotPasswordView from '../views/ForgotPasswordView.vue';
@@ -41,15 +44,18 @@ const routes = [
       { path: 'loja/:slug', name: 'loja-produto', component: StoreProductView, meta: { title: 'Produto', searchPlaceholder: 'Buscar na loja...' } },
       { path: 'perfil', name: 'perfil', component: ProfileView, meta: { title: 'Meu perfil' } },
       { path: 'configuracoes', name: 'configuracoes', component: SettingsView, meta: { title: 'Configurações' } },
-      { path: 'admin/video-platforms', name: 'admin-video-platforms', component: AdminVideoPlatformsView, meta: { title: 'Plataformas de vídeo', requiresAdmin: true } },
-      { path: 'admin/conteudo', name: 'admin-conteudo', component: AdminContentIndexView, meta: { title: 'Conteúdo (admin)', requiresAdmin: true } },
-      { path: 'admin/conteudo/novo', name: 'admin-conteudo-novo', component: AdminCourseWizardView, meta: { title: 'Novo curso (admin)', requiresAdmin: true } },
-      { path: 'admin/conteudo/:courseId', name: 'admin-conteudo-curso', component: AdminContentView, meta: { title: 'Curso (admin)', requiresAdmin: true } },
-      { path: 'admin/turmas', name: 'admin-turmas', component: AdminTeamsView, meta: { title: 'Turmas (admin)', requiresAdmin: true } },
-      { path: 'admin/videos', name: 'admin-videos', component: AdminVideosView, meta: { title: 'Vídeos (admin)', requiresAdmin: true } },
-      { path: 'admin/documentos', name: 'admin-documentos', component: AdminDocumentsView, meta: { title: 'Documentos (admin)', requiresAdmin: true } },
-      { path: 'admin/anexos', name: 'admin-anexos', component: AdminAttachmentsView, meta: { title: 'Anexos (admin)', requiresAdmin: true } },
-      { path: 'admin/banners', name: 'admin-banners', component: AdminBannersView, meta: { title: 'Banners (admin)', requiresAdmin: true } },
+      { path: 'admin/video-platforms', name: 'admin-video-platforms', component: AdminVideoPlatformsView, meta: { title: 'Plataformas de vídeo', requiresAdminMenu: true } },
+      { path: 'admin/conteudo', name: 'admin-conteudo', component: AdminContentIndexView, meta: { title: 'Conteúdo (admin)', requiresAdminMenu: true } },
+      { path: 'admin/conteudo/novo', name: 'admin-conteudo-novo', component: AdminCourseWizardView, meta: { title: 'Novo curso (admin)', requiresAdminMenu: true } },
+      { path: 'admin/conteudo/:courseId', name: 'admin-conteudo-curso', component: AdminContentView, meta: { title: 'Curso (admin)', requiresAdminMenu: true } },
+      { path: 'admin/turmas', name: 'admin-turmas', component: AdminTeamsView, meta: { title: 'Turmas (admin)', requiresAdminMenu: true } },
+      { path: 'admin/videos', name: 'admin-videos', component: AdminVideosView, meta: { title: 'Vídeos (admin)', requiresAdminMenu: true } },
+      { path: 'admin/documentos', name: 'admin-documentos', component: AdminDocumentsView, meta: { title: 'Documentos (admin)', requiresAdminMenu: true } },
+      { path: 'admin/anexos', name: 'admin-anexos', component: AdminAttachmentsView, meta: { title: 'Anexos (admin)', requiresAdminMenu: true } },
+      { path: 'admin/banners', name: 'admin-banners', component: AdminBannersView, meta: { title: 'Banners (admin)', requiresAdminMenu: true } },
+      { path: 'admin/usuarios', name: 'admin-usuarios', component: AdminUsersView, meta: { title: 'Usuários (admin)', requiresAdmin: true } },
+      { path: 'admin/tipos-de-usuario', name: 'admin-tipos-de-usuario', component: AdminUserTypesView, meta: { title: 'Tipos de usuário (admin)', requiresAdmin: true } },
+      { path: 'admin/menus', name: 'admin-menus', component: AdminMenusView, meta: { title: 'Menus (admin)', requiresAdmin: true } },
       { path: ':pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { title: 'Página não encontrada' } },
     ],
   },
@@ -129,6 +135,10 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta?.requiresAdmin && !auth.isAdmin) {
+    return { name: 'dashboard' };
+  }
+
+  if (to.meta?.requiresAdminMenu && !auth.canAccessAdmin) {
     return { name: 'dashboard' };
   }
 

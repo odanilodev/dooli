@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Admin\DatalogController as AdminDatalogControlle
 use App\Http\Controllers\Api\V1\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Api\V1\Admin\GatewayController as AdminGatewayController;
 use App\Http\Controllers\Api\V1\Admin\LessonController as AdminLessonController;
+use App\Http\Controllers\Api\V1\Admin\MenuController as AdminMenuController;
 use App\Http\Controllers\Api\V1\Admin\ModuleController as AdminModuleController;
 use App\Http\Controllers\Api\V1\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Api\V1\Admin\OrderController as AdminOrderController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Api\V1\Admin\VideoController as AdminVideoController;
 use App\Http\Controllers\Api\V1\Admin\VideoPlatformController as AdminVideoPlatformController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
+use App\Http\Controllers\Api\V1\MyMenuController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\Public\BannerController as PublicBannerController;
 use App\Http\Controllers\Api\V1\Public\CertificateVerifyController;
@@ -91,6 +93,8 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     Route::put('me/profile', [ProfileController::class, 'update']);
     Route::put('me/password', [ProfileController::class, 'updatePassword']);
 
+    Route::get('me/menus', [MyMenuController::class, 'index']);
+
     /*
     | Student area
     */
@@ -129,7 +133,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     /*
     | Administrative area
     */
-    Route::middleware(['role:admin', 'throttle:admin'])->prefix('admin')->group(function () {
+    Route::middleware(['admin.access', 'throttle:admin'])->prefix('admin')->group(function () {
         Route::get('dashboard', [AdminDashboardController::class, 'index']);
 
         Route::apiResource('courses', AdminCourseController::class);
@@ -160,6 +164,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
 
         Route::apiResource('users', AdminUserController::class);
         Route::apiResource('user-types', AdminUserTypeController::class);
+        Route::apiResource('menus', AdminMenuController::class);
 
         Route::apiResource('coupons', AdminCouponController::class);
         Route::apiResource('store-products', AdminStoreProductController::class);
