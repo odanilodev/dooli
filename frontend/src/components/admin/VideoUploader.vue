@@ -15,8 +15,15 @@
 
     <template v-else>
       <div class="form-group">
-        <label :for="uid + '-file'">Arquivo</label>
-        <input :id="uid + '-file'" class="form-control" type="file" accept="video/*" :disabled="busy" @change="onFileChange">
+        <label>Arquivo</label>
+        <FilePicker
+          accept="video/*"
+          title="Escolher vídeo"
+          hint="ou arraste e solte"
+          :file-name="file?.name"
+          :disabled="busy"
+          @change="onFilePicked"
+        />
         <p class="form-hint">O envio vai direto para o VdoCipher, sem passar pelo limite de upload do servidor.</p>
       </div>
     </template>
@@ -33,6 +40,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { api } from '../../api/http';
+import FilePicker from './FilePicker.vue';
 
 const props = defineProps({
   title: { type: String, default: '' },
@@ -63,8 +71,8 @@ watch([busy, canSubmit, mode], () => {
   emit('state', { busy: busy.value, canSubmit: canSubmit.value, mode: mode.value });
 }, { immediate: true });
 
-function onFileChange(event) {
-  file.value = event.target.files?.[0] ?? null;
+function onFilePicked(selected) {
+  file.value = selected;
 }
 
 async function submit() {

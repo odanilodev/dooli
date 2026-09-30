@@ -82,8 +82,14 @@
           <input id="b-sort" type="number" min="0" class="form-control" v-model="form.sort_order">
         </div>
         <div class="form-group">
-          <label for="b-image">Imagem</label>
-          <input id="b-image" type="file" accept="image/png,image/jpeg,image/webp" class="form-control" @change="onFileChange">
+          <label>Imagem</label>
+          <FilePicker
+            accept="image/png,image/jpeg,image/webp"
+            title="Escolher imagem"
+            hint="ou arraste e solte · 2560×800 (16:5) · PNG/JPG/WebP · até 4 MB"
+            :file-name="form.imageFile?.name"
+            @change="onImagePicked"
+          />
         </div>
       </div>
 
@@ -154,6 +160,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
+import FilePicker from '../components/admin/FilePicker.vue';
 
 const toast = useToast();
 
@@ -205,6 +212,11 @@ function resetForm() {
   form.sort_order = 0;
   form.status = 'active';
   form.imageFile = null;
+
+  if (form.imagePreview.startsWith('blob:')) {
+    URL.revokeObjectURL(form.imagePreview);
+  }
+
   form.imagePreview = '';
 }
 
@@ -240,8 +252,11 @@ function goPage(page) {
   load();
 }
 
-function onFileChange(event) {
-  const file = event.target.files?.[0] ?? null;
+function onImagePicked(file) {
+  if (form.imagePreview.startsWith('blob:')) {
+    URL.revokeObjectURL(form.imagePreview);
+  }
+
   form.imageFile = file;
   form.imagePreview = file ? URL.createObjectURL(file) : '';
 }
@@ -272,6 +287,11 @@ function openEdit(banner) {
   form.sort_order = banner.sort_order ?? 0;
   form.status = banner.status ?? 'active';
   form.imageFile = null;
+
+  if (form.imagePreview.startsWith('blob:')) {
+    URL.revokeObjectURL(form.imagePreview);
+  }
+
   form.imagePreview = banner.image_url ?? '';
   showForm.value = true;
 }
