@@ -8,14 +8,18 @@ use App\Enums\GeneralStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Course;
 use App\Repositories\CourseRepository;
+use App\Support\CompanyContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class CourseService
 {
     public function __construct(
         private readonly CourseRepository $courses,
         private readonly DatalogService $audit,
+        private readonly CompanyContext $context,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20, array $with = []): LengthAwarePaginator
@@ -39,18 +43,36 @@ class CourseService
         return $this->courses->findWithContent($id);
     }
 
-    public function create(CreateCourseDTO $dto): Course
+    public function create(CreateCourseDTO $dto, ?UploadedFile $image = null): Course
     {
-        $course = $this->courses->create($dto->toArray());
+        $data = $dto->toArray();
+
+        if ($image) {
+            $data['image'] = $this->storeImage($image, (int) $this->context->id());
+        }
+
+        $course = $this->courses->create($data);
 
         $this->audit->log('course', 'create', 'course', "Curso criado: {$course->name}");
 
         return $course;
     }
 
-    public function update(Course $course, UpdateCourseDTO $dto): Course
+    public function update(Course $course, UpdateCourseDTO $dto, ?UploadedFile $image = null, bool $imageProvided = false): Course
     {
-        $course = $this->courses->update($course, $dto->toArray());
+        $data = $dto->toArray();
+
+        if ($image) {
+            $this->deleteImage($course->image);
+            $data['image'] = $this->storeImage($image, (int) $course->company_id);
+        } elseif ($imageProvided && empty($data['image'])) {
+            $this->deleteImage($course->image);
+            $data['image'] = null;
+        } elseif (array_key_exists('image', $data) && $course->image !== $data['image']) {
+            $this->deleteImage($course->image);
+        }
+
+        $course = $this->courses->update($course, $data);
 
         $this->audit->log('course', 'update', 'course', "Curso atualizado: {$course->name}");
 
@@ -87,11 +109,26 @@ class CourseService
         }
 
         DB::transaction(function () use ($course) {
+            $this->deleteImage($course->image);
             $course->modules()->detach();
             $course->teams()->detach();
             $course->delete();
         });
 
         $this->audit->log('course', 'delete', 'course', "Curso excluído: {$course->name}");
+    }
+
+    private function storeImage(UploadedFile $image, int $companyId): string
+    {
+        return $image->store("courses/{$companyId}", 'public');
+    }
+
+    private function deleteImage(?string $image): void
+    {
+        if (empty($image) || str_starts_with($image, 'http://') || str_starts_with($image, 'https://')) {
+            return;
+        }
+
+        Storage::disk('public')->delete($image);
     }
 }

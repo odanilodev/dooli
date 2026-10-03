@@ -233,7 +233,7 @@ class DashboardService
             ->map(fn ($row) => [
                 'id' => (int) $row->course_id,
                 'name' => $courses[$row->course_id]->name,
-                'image' => $courses[$row->course_id]->image,
+                'image' => $courses[$row->course_id]->imageUrl(),
                 'sales' => (int) $row->sales,
                 'revenue' => round((float) $row->revenue, 2),
             ])
@@ -357,7 +357,7 @@ class DashboardService
             ->map(fn ($row) => [
                 'id' => (int) $row->course_id,
                 'name' => $courses[$row->course_id]->name,
-                'image' => $courses[$row->course_id]->image,
+                'image' => $courses[$row->course_id]->imageUrl(),
                 'students_count' => (int) $row->students_count,
             ])
             ->values()

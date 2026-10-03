@@ -16,6 +16,7 @@ class StudentCourseResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'image' => $this->image,
+            'image_url' => $this->imageUrl(),
             'status' => $this->status,
             'total_lessons' => $progress['total_lessons'] ?? 0,
             'completed_lessons' => $progress['completed_lessons'] ?? 0,

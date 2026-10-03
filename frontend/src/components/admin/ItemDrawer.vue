@@ -37,8 +37,22 @@
 
           <template v-if="type === 'course' || type === 'module'">
             <div class="form-group">
-              <label :for="`dw-image`">Imagem (URL)</label>
-              <input :id="`dw-image`" class="form-control" v-model="form.image" placeholder="https://...">
+              <label :for="`dw-image`">Imagem</label>
+              <template v-if="type === 'course'">
+                <div v-if="imagePreviewUrl" class="dw-image-preview">
+                  <img :src="imagePreviewUrl" alt="Pré-visualização da imagem">
+                  <button type="button" class="dw-image-remove" @click="clearImage">remover</button>
+                </div>
+                <FilePicker
+                  accept="image/png,image/jpeg,image/webp"
+                  title="Enviar imagem"
+                  hint="JPG, PNG ou WEBP até 4MB"
+                  :file-name="imageFile?.name || ''"
+                  @change="onImagePicked"
+                />
+                <input :id="`dw-image`" class="form-control" v-model="form.image" placeholder="ou cole uma URL https://...">
+              </template>
+              <input v-else :id="`dw-image`" class="form-control" v-model="form.image" placeholder="https://...">
             </div>
           </template>
 
@@ -207,6 +221,7 @@ import { api } from '../../api/http';
 import { useToast } from '../../composables/useToast';
 import { playerLabel, statusLabel, typeLabel } from '../../utils/adminLabels';
 import { toDateTimeInput } from '../../utils/format';
+import FilePicker from './FilePicker.vue';
 import VideoUploader from './VideoUploader.vue';
 
 const props = defineProps({
@@ -231,6 +246,29 @@ const form = reactive({
   webinar_link: '', webinar_starts_at: '', published_at: '',
 });
 const selectedAttachments = ref([]);
+
+const imageFile = ref(null);
+const imagePreview = ref('');
+const imagePreviewUrl = computed(() => imagePreview.value || form.image || '');
+
+function onImagePicked(file) {
+  if (imagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
+
+  imageFile.value = file;
+  imagePreview.value = file ? URL.createObjectURL(file) : '';
+}
+
+function clearImage() {
+  if (imagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
+
+  imageFile.value = null;
+  imagePreview.value = '';
+  form.image = '';
+}
 
 const videos = ref([]);
 const documents = ref([]);
@@ -303,6 +341,13 @@ function sync() {
   form.description = data.description ?? '';
   form.image = data.image ?? '';
   form.status = data.status ?? 'active';
+
+  if (imagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
+
+  imageFile.value = null;
+  imagePreview.value = data.image_url ?? data.image ?? '';
   form.sort_order = data.sort_order ?? 0;
   form.content = data.content ?? '';
   form.video_id = data.video?.id ?? '';
@@ -374,8 +419,27 @@ async function save() {
   saving.value = true;
 
   try {
-    const { data } = await api.put(`/admin/${endpoints[props.type]}/${props.item.id}`, basePayload());
-    let result = data.data ?? {};
+    const url = `/admin/${endpoints[props.type]}/${props.item.id}`;
+    const payload = basePayload();
+    let response;
+
+    if (props.type === 'course' && imageFile.value) {
+      const body = new FormData();
+
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && typeof value !== 'object') {
+          body.append(key, value);
+        }
+      });
+
+      body.append('image_file', imageFile.value);
+      body.append('_method', 'PUT');
+      response = await api.post(url, body);
+    } else {
+      response = await api.put(url, payload);
+    }
+
+    let result = response.data.data ?? {};
 
     if (props.type === 'lesson') {
       result = {
@@ -547,4 +611,11 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
   border-radius:12px;padding:12px;
 }
 .drawer-checks{display:flex;flex-direction:column;gap:8px;max-height:220px;overflow:auto;}
+.dw-image-preview{position:relative;margin-bottom:8px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+.dw-image-preview img{display:block;width:100%;max-height:160px;object-fit:cover;}
+.dw-image-remove{
+  position:absolute;top:8px;right:8px;background:rgba(0,0,0,.62);color:#fff;border:none;border-radius:8px;
+  padding:4px 9px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;
+}
+.form-group > .file-picker{margin-bottom:8px;}
 </style>

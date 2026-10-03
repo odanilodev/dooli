@@ -35,8 +35,19 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="wz-image">Imagem (URL)</label>
-            <input id="wz-image" class="form-control" v-model="form.image" placeholder="https://...">
+            <label for="wz-image">Imagem</label>
+            <div v-if="imagePreviewUrl" class="wz-image-preview">
+              <img :src="imagePreviewUrl" alt="Pré-visualização da imagem">
+              <button type="button" class="wz-image-remove" @click="clearImage">remover</button>
+            </div>
+            <FilePicker
+              accept="image/png,image/jpeg,image/webp"
+              title="Enviar imagem"
+              hint="JPG, PNG ou WEBP até 4MB"
+              :file-name="imageFile?.name || ''"
+              @change="onImagePicked"
+            />
+            <input id="wz-image" class="form-control" v-model="form.image" placeholder="ou cole uma URL https://...">
           </div>
           <div class="form-group">
             <label for="wz-status">Status</label>
@@ -232,6 +243,7 @@ import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
 import { statusLabel } from '../utils/adminLabels';
 import ItemDrawer from '../components/admin/ItemDrawer.vue';
+import FilePicker from '../components/admin/FilePicker.vue';
 
 const router = useRouter();
 const toast = useToast();
@@ -250,6 +262,29 @@ const course = ref(null);
 const busy = ref(false);
 
 const form = reactive({ name: '', description: '', image: '', status: 'active' });
+
+const imageFile = ref(null);
+const imagePreview = ref('');
+const imagePreviewUrl = computed(() => imagePreview.value || form.image || '');
+
+function onImagePicked(file) {
+  if (imagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
+
+  imageFile.value = file;
+  imagePreview.value = file ? URL.createObjectURL(file) : '';
+}
+
+function clearImage() {
+  if (imagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
+
+  imageFile.value = null;
+  imagePreview.value = '';
+  form.image = '';
+}
 
 const nameInput = ref(null);
 const showModules = ref(false);
@@ -321,7 +356,16 @@ async function ensurePools() {
 
 async function loadCourse() {
   const { data } = await api.get(`/admin/courses/${courseId.value}`);
-  course.value = data.data;
+  const loaded = data.data;
+  course.value = loaded;
+  form.image = loaded.image ?? '';
+
+  if (imagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
+
+  imageFile.value = null;
+  imagePreview.value = loaded.image_url ?? '';
 }
 
 async function next() {
@@ -342,7 +386,29 @@ async function next() {
         status: form.status,
       };
 
-      if (courseId.value) {
+      if (imageFile.value) {
+        const body = new FormData();
+        body.append('name', payload.name);
+
+        if (payload.description) {
+          body.append('description', payload.description);
+        }
+
+        if (payload.image) {
+          body.append('image', payload.image);
+        }
+
+        body.append('status', payload.status);
+        body.append('image_file', imageFile.value);
+
+        if (courseId.value) {
+          body.append('_method', 'PUT');
+          await api.post(`/admin/courses/${courseId.value}`, body);
+        } else {
+          const { data } = await api.post('/admin/courses', body);
+          courseId.value = data.data.id;
+        }
+      } else if (courseId.value) {
         await api.put(`/admin/courses/${courseId.value}`, payload);
       } else {
         const { data } = await api.post('/admin/courses', payload);
@@ -623,4 +689,12 @@ onMounted(() => nextTick(() => nameInput.value?.focus()));
 
 .wizard-foot{display:flex;align-items:center;gap:12px;}
 .wizard-spacer{flex:1;}
+
+.wz-image-preview{position:relative;margin-bottom:8px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+.wz-image-preview img{display:block;width:100%;max-height:180px;object-fit:cover;}
+.wz-image-remove{
+  position:absolute;top:8px;right:8px;background:rgba(0,0,0,.62);color:#fff;border:none;border-radius:8px;
+  padding:4px 9px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;
+}
+.form-group > .file-picker{margin-bottom:8px;}
 </style>

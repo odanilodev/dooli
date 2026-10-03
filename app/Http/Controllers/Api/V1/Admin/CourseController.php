@@ -40,7 +40,10 @@ class CourseController extends ApiController
     {
         $this->authorize('create', Course::class);
 
-        $course = $this->courses->create(CreateCourseDTO::fromArray($request->validated()));
+        $data = $request->validated();
+        unset($data['image_file']);
+
+        $course = $this->courses->create(CreateCourseDTO::fromArray($data), $request->file('image_file'));
 
         return ApiResponse::success(new CourseResource($course), 201);
     }
@@ -56,7 +59,15 @@ class CourseController extends ApiController
     {
         $this->authorize('update', $course);
 
-        $updated = $this->courses->update($course, UpdateCourseDTO::fromArray($request->validated()));
+        $data = $request->validated();
+        unset($data['image_file']);
+
+        $updated = $this->courses->update(
+            $course,
+            UpdateCourseDTO::fromArray($data),
+            $request->file('image_file'),
+            $request->has('image'),
+        );
 
         return ApiResponse::success(new CourseResource($updated));
     }

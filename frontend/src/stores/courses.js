@@ -38,7 +38,7 @@ export const useCoursesStore = defineStore('courses', () => {
         badge: '',
         icon: palette.icon,
         grad: palette.grad,
-        image: course.image ?? '',
+        image: course.image_url ?? course.image ?? '',
       };
     }),
   );
