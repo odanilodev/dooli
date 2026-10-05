@@ -212,6 +212,13 @@
         </button>
       </footer>
     </aside>
+
+    <ImageCropper
+      v-if="cropFile"
+      :file="cropFile"
+      @confirm="onCropConfirm"
+      @cancel="onCropCancel"
+    />
   </div>
 </template>
 
@@ -223,6 +230,7 @@ import { playerLabel, statusLabel, typeLabel } from '../../utils/adminLabels';
 import { toDateTimeInput } from '../../utils/format';
 import FilePicker from './FilePicker.vue';
 import VideoUploader from './VideoUploader.vue';
+import ImageCropper from './ImageCropper.vue';
 
 const props = defineProps({
   type: { type: String, required: true },
@@ -250,14 +258,26 @@ const selectedAttachments = ref([]);
 const imageFile = ref(null);
 const imagePreview = ref('');
 const imagePreviewUrl = computed(() => imagePreview.value || form.image || '');
+const cropFile = ref(null);
 
 function onImagePicked(file) {
+  if (file) {
+    cropFile.value = file;
+  }
+}
+
+function onCropConfirm(file) {
   if (imagePreview.value.startsWith('blob:')) {
     URL.revokeObjectURL(imagePreview.value);
   }
 
+  cropFile.value = null;
   imageFile.value = file;
-  imagePreview.value = file ? URL.createObjectURL(file) : '';
+  imagePreview.value = URL.createObjectURL(file);
+}
+
+function onCropCancel() {
+  cropFile.value = null;
 }
 
 function clearImage() {

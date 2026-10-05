@@ -233,6 +233,13 @@
       @saved="onLessonSaved"
     />
 
+    <ImageCropper
+      v-if="cropFile"
+      :file="cropFile"
+      @confirm="onCropConfirm"
+      @cancel="onCropCancel"
+    />
+
   </main>
 </template>
 
@@ -244,6 +251,7 @@ import { useToast } from '../composables/useToast';
 import { statusLabel } from '../utils/adminLabels';
 import ItemDrawer from '../components/admin/ItemDrawer.vue';
 import FilePicker from '../components/admin/FilePicker.vue';
+import ImageCropper from '../components/admin/ImageCropper.vue';
 
 const router = useRouter();
 const toast = useToast();
@@ -266,14 +274,26 @@ const form = reactive({ name: '', description: '', image: '', status: 'active' }
 const imageFile = ref(null);
 const imagePreview = ref('');
 const imagePreviewUrl = computed(() => imagePreview.value || form.image || '');
+const cropFile = ref(null);
 
 function onImagePicked(file) {
+  if (file) {
+    cropFile.value = file;
+  }
+}
+
+function onCropConfirm(file) {
   if (imagePreview.value.startsWith('blob:')) {
     URL.revokeObjectURL(imagePreview.value);
   }
 
+  cropFile.value = null;
   imageFile.value = file;
-  imagePreview.value = file ? URL.createObjectURL(file) : '';
+  imagePreview.value = URL.createObjectURL(file);
+}
+
+function onCropCancel() {
+  cropFile.value = null;
 }
 
 function clearImage() {
