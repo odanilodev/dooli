@@ -214,7 +214,7 @@ const lessonCount = computed(() =>
 );
 
 function isCollapsed(key) {
-  return collapsed[key] === true;
+  return collapsed[key] !== false;
 }
 
 function toggleCollapse(key) {
@@ -287,7 +287,7 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenus));
 </script>
 
 <style scoped>
-.cb{display:flex;flex-direction:column;gap:14px;width:100%;max-width:1440px;}
+.cb{--lvl-module:#17c993;--lvl-topic:#3b82f6;--lvl-lesson:#a78bfa;display:flex;flex-direction:column;gap:14px;width:100%;max-width:1440px;}
 .cb-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .cb-bar-text{display:flex;flex-direction:column;gap:1px;}
 .cb-bar-title{font-size:15px;font-weight:800;}
@@ -297,7 +297,7 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenus));
 .cb-modules{display:flex;flex-direction:column;gap:12px;}
 .cb-topics,.cb-lessons{display:flex;flex-direction:column;gap:6px;min-height:6px;}
 
-.cb-module{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.cb-module{background:var(--bg-card);border:1px solid var(--border);border-left:4px solid var(--lvl-module);border-radius:14px;overflow:hidden;}
 .cb-row{
   display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;
   border-bottom:1px solid transparent;transition:background .14s ease;
@@ -306,8 +306,8 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenus));
 .cb-row.active{background:var(--accent-soft);}
 .cb-row-module{padding:12px;font-weight:700;}
 .cb-row-topic,.cb-row-lesson{border-radius:10px;border:1px solid var(--border);background:var(--bg-card);}
-.cb-row-topic{margin-left:4px;}
-.cb-row-lesson{margin-left:20px;}
+.cb-row-topic{margin-left:4px;border-left:3px solid var(--lvl-topic);}
+.cb-row-lesson{margin-left:20px;border-left:3px solid var(--lvl-lesson);}
 
 .cb-handle{color:var(--text-muted);cursor:grab;font-size:13px;line-height:1;user-select:none;opacity:0;transition:opacity .14s ease;}
 .cb-handle:active{cursor:grabbing;}
