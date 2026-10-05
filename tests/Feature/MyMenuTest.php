@@ -61,7 +61,7 @@ class MyMenuTest extends TestCase
     public function test_user_sees_only_permitted_menus_with_ancestors(): void
     {
         $section = $this->menu(['name' => 'Administração', 'type' => 'section', 'link' => null]);
-        $child = $this->menu(['name' => 'Conteúdo', 'sub' => (string) $section->id, 'link' => '/admin/conteudo']);
+        $child = $this->menu(['name' => 'Cursos', 'sub' => (string) $section->id, 'link' => '/admin/cursos']);
         $this->menu(['name' => 'Vídeos', 'sub' => (string) $section->id, 'link' => '/admin/videos']);
 
         $this->withToken($this->apiLogin($this->permittedUser([$child->id])))
@@ -69,7 +69,7 @@ class MyMenuTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('data.0.name', 'Administração')
-            ->assertJsonPath('data.1.name', 'Conteúdo');
+            ->assertJsonPath('data.1.name', 'Cursos');
     }
 
     public function test_admin_sees_all_menus(): void

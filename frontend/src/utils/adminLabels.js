@@ -1,4 +1,4 @@
-// Rótulos amigáveis (PT) para a área administrativa de conteúdo.
+// Rótulos amigáveis (PT) para a área administrativa de cursos.
 
 export const TYPE_LABELS = {
   course: 'Curso',

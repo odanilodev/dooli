@@ -83,9 +83,9 @@ class AdminMenuTest extends TestCase
 
         $this->withToken($this->apiLogin($this->admin))
             ->postJson('/api/v1/admin/menus', [
-                'name' => 'Conteúdo',
+                'name' => 'Cursos',
                 'sub' => $parent->id,
-                'link' => '/admin/conteudo',
+                'link' => '/admin/cursos',
             ])
             ->assertCreated()
             ->assertJsonPath('data.sub', (string) $parent->id);
@@ -106,7 +106,7 @@ class AdminMenuTest extends TestCase
     public function test_deleting_a_menu_clears_children_parent(): void
     {
         $parent = $this->makeMenu(['name' => 'Administração', 'link' => null]);
-        $child = $this->makeMenu(['name' => 'Conteúdo', 'sub' => (string) $parent->id]);
+        $child = $this->makeMenu(['name' => 'Cursos', 'sub' => (string) $parent->id]);
 
         $this->withToken($this->apiLogin($this->admin))
             ->deleteJson("/api/v1/admin/menus/{$parent->id}")

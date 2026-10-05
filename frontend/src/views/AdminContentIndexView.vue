@@ -3,7 +3,7 @@
 
     <div class="page-header">
       <div>
-        <h1 class="page-title">Conteúdo</h1>
+        <h1 class="page-title">Cursos</h1>
         <p class="page-subtitle">{{ courses.length }} curso(s) · {{ draftCount }} rascunho(s)</p>
       </div>
       <button class="btn btn-primary" @click="createCourse">+ Novo curso</button>
@@ -26,7 +26,7 @@
 
     <div v-else-if="!filtered.length" class="empty-state">
       <strong>{{ courses.length ? 'Nenhum curso encontrado' : 'Nenhum curso ainda' }}</strong>
-      <span>{{ courses.length ? 'Ajuste a busca ou o filtro selecionado.' : 'Crie o primeiro curso para começar a montar o conteúdo.' }}</span>
+      <span>{{ courses.length ? 'Ajuste a busca ou o filtro selecionado.' : 'Crie o primeiro curso para começar.' }}</span>
       <button v-if="!courses.length" class="btn btn-primary" @click="createCourse">+ Novo curso</button>
     </div>
 
@@ -112,11 +112,11 @@ async function load() {
 }
 
 async function createCourse() {
-  router.push({ name: 'admin-conteudo-novo' });
+  router.push({ name: 'admin-cursos-novo' });
 }
 
 function openCourse(course) {
-  router.push({ name: 'admin-conteudo-curso', params: { courseId: course.id } });
+  router.push({ name: 'admin-curso', params: { courseId: course.id } });
 }
 
 async function toggleStatus(course, publish) {

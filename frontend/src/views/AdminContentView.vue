@@ -2,9 +2,9 @@
   <main class="content">
 
     <div class="page-header">
-      <router-link class="btn btn-outline btn-sm builder-back" :to="{ name: 'admin-conteudo' }">
+      <router-link class="btn btn-outline btn-sm builder-back" :to="{ name: 'admin-cursos' }">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        Conteúdo
+        Cursos
       </router-link>
 
       <div class="admin-head-actions" v-if="course">
@@ -32,8 +32,8 @@
 
     <div v-else class="empty-state">
       <strong>Curso não encontrado</strong>
-      <span>Ele pode ter sido removido. Volte para a lista de conteúdos.</span>
-      <router-link class="btn btn-primary" :to="{ name: 'admin-conteudo' }">‹ Voltar para conteúdos</router-link>
+      <span>Ele pode ter sido removido. Volte para a lista de cursos.</span>
+      <router-link class="btn btn-primary" :to="{ name: 'admin-cursos' }">‹ Voltar para cursos</router-link>
     </div>
 
     <Transition name="drawer">
@@ -170,7 +170,7 @@ async function load() {
 
     if (route.query.edit === 'course') {
       openDrawer('course', course.value.id);
-      router.replace({ name: 'admin-conteudo-curso', params: { courseId: courseId.value } });
+      router.replace({ name: 'admin-curso', params: { courseId: courseId.value } });
     }
   } catch (e) {
     toast.error(e?.message || 'Não foi possível carregar o curso.');

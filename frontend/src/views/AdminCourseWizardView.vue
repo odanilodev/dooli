@@ -2,9 +2,9 @@
   <main class="content">
 
     <div class="page-header">
-      <router-link class="btn btn-outline btn-sm builder-back" :to="{ name: 'admin-conteudo' }">
+      <router-link class="btn btn-outline btn-sm builder-back" :to="{ name: 'admin-cursos' }">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        Conteúdo
+        Cursos
       </router-link>
     </div>
 
@@ -434,7 +434,7 @@ async function next() {
 }
 
 function finish() {
-  router.push({ name: 'admin-conteudo-curso', params: { courseId: courseId.value } });
+  router.push({ name: 'admin-curso', params: { courseId: courseId.value } });
 }
 
 async function createModule() {

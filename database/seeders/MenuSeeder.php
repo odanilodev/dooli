@@ -11,7 +11,7 @@ class MenuSeeder extends Seeder
      * @var list<array{0: string, 1: ?string, 2: ?string}>
      */
     private const ADMIN_ITEMS = [
-        ['Conteúdo', '/admin/conteudo', 'content'],
+        ['Cursos', '/admin/cursos', 'content'],
         ['Turmas', '/admin/turmas', 'teams'],
         ['Vídeos', '/admin/videos', 'videos'],
         ['Documentos', '/admin/documentos', 'documents'],

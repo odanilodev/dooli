@@ -71,7 +71,7 @@ const FALLBACK_MENU = [
     link: null,
     icon: null,
     children: [
-      { id: 'fb-content', name: 'Conteúdo', type: 'link', depth: 1, link: '/admin/conteudo', icon: 'content' },
+      { id: 'fb-content', name: 'Cursos', type: 'link', depth: 1, link: '/admin/cursos', icon: 'content' },
       { id: 'fb-teams', name: 'Turmas', type: 'link', depth: 1, link: '/admin/turmas', icon: 'teams' },
       { id: 'fb-videos', name: 'Vídeos', type: 'link', depth: 1, link: '/admin/videos', icon: 'videos' },
       { id: 'fb-documents', name: 'Documentos', type: 'link', depth: 1, link: '/admin/documentos', icon: 'documents' },
