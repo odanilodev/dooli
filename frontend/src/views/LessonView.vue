@@ -350,6 +350,7 @@ const videoEmbedUrl = ref(null);
 const videoPlatform = ref(null);
 const videoDuration = ref(0);
 const videoResumeFrom = ref(0);
+const videoLoading = ref(false);
 const now = ref(Date.now());
 
 let videoLessonId = null;
