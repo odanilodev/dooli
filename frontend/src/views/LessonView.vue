@@ -283,7 +283,7 @@
                     v-for="lesson in topic.lessons"
                     :key="lesson.id"
                     class="lesson-row"
-                    :class="{ current: currentLesson.id === lesson.id, locked: store.isLocked(lesson.id) }"
+                    :class="{ current: currentLesson.id === lesson.id, locked: store.isLocked(lesson.id), started: store.isStarted(lesson.id), completed: store.isCompleted(lesson.id) }"
                     role="button"
                     tabindex="0"
                     style="cursor:pointer;"
@@ -293,6 +293,7 @@
                     <span class="lesson-icon">
                       <svg v-if="store.isLocked(lesson.id)" class="lock-mark" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
                       <svg v-else-if="store.isCompleted(lesson.id)" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+                      <svg v-else-if="store.isStarted(lesson.id)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
                       <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
                       <svg v-if="currentLesson.id === lesson.id && !store.isLocked(lesson.id)" class="play-mark" width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M9 6l7 6-7 6V6z"/></svg>
                     </span>
