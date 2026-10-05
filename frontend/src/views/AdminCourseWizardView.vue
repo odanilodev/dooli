@@ -27,7 +27,7 @@
         <h2 class="panel-title">Dados do curso</h2>
         <div class="form-group">
           <label for="wz-name">Nome</label>
-          <input id="wz-name" ref="nameInput" class="form-control" v-model="form.name" placeholder="Ex: Curso de PHP" @keydown.enter.prevent="next">
+          <input id="wz-name" ref="nameInput" class="form-control" v-model="form.name" placeholder="Nome do curso" @keydown.enter.prevent="next">
         </div>
         <div class="form-group">
           <label for="wz-desc">Descrição</label>

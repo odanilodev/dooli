@@ -41,11 +41,11 @@
       <div class="form-row">
         <div class="form-group">
           <label for="b-title">Título</label>
-          <input id="b-title" class="form-control" v-model="form.title" placeholder="Do Zero ao Trader">
+          <input id="b-title" class="form-control" v-model="form.title" placeholder="Título do destaque">
         </div>
         <div class="form-group">
           <label for="b-title-highlight">Destaque do título</label>
-          <input id="b-title-highlight" class="form-control" v-model="form.title_highlight" placeholder="Consistente">
+          <input id="b-title-highlight" class="form-control" v-model="form.title_highlight" placeholder="Palavra em destaque">
         </div>
       </div>
 
