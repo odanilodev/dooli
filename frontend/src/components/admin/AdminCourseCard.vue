@@ -83,7 +83,7 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenu));
 <style scoped>
 .acard{display:flex;flex-direction:column;position:relative;overflow:visible;}
 .acard.menu-open{z-index:5;}
-.acard-thumb{position:relative;height:112px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:var(--radius-md) var(--radius-md) 0 0;}
+.acard-thumb{position:relative;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:var(--radius-md) var(--radius-md) 0 0;}
 .acard-thumb .glow{position:absolute;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%);}
 .acard-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .acard-icon{position:relative;color:#fff;opacity:.85;}

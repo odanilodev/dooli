@@ -631,8 +631,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
   border-radius:12px;padding:12px;
 }
 .drawer-checks{display:flex;flex-direction:column;gap:8px;max-height:220px;overflow:auto;}
-.dw-image-preview{position:relative;margin-bottom:8px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
-.dw-image-preview img{display:block;width:100%;max-height:160px;object-fit:cover;}
+.dw-image-preview{position:relative;aspect-ratio:16/9;margin-bottom:8px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+.dw-image-preview img{display:block;width:100%;height:100%;object-fit:cover;}
 .dw-image-remove{
   position:absolute;top:8px;right:8px;background:rgba(0,0,0,.62);color:#fff;border:none;border-radius:8px;
   padding:4px 9px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;
