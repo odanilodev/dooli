@@ -237,7 +237,7 @@ const props = defineProps({
   item: { type: Object, required: true },
   course: { type: Object, default: null },
   focus: { type: String, default: null },
-  closeOnSave: { type: Boolean, default: false },
+  closeOnSave: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['close', 'saved']);

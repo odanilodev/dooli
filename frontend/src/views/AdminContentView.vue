@@ -8,7 +8,6 @@
       </router-link>
 
       <div class="admin-head-actions" v-if="course">
-        <router-link class="btn btn-outline" :to="{ name: 'curso', params: { courseId: course.id } }">Ver como aluno</router-link>
         <button class="btn btn-outline" @click="openDrawer('course', course.id)">Editar curso</button>
       </div>
     </div>
@@ -42,7 +41,7 @@
         :type="selected.type"
         :item="selectedItem"
         :course="course"
-        :close-on-save="closeOnSave"
+        :focus="drawerFocus"
         @close="closeDrawer"
         @saved="onSaved"
       />
@@ -108,7 +107,7 @@ const toast = useToast();
 const courseId = computed(() => Number(route.params.courseId));
 const course = ref(null);
 const selected = ref(null);
-const closeOnSave = ref(false);
+const drawerFocus = ref(null);
 const loading = ref(true);
 
 const showAttach = ref(false);
@@ -169,7 +168,7 @@ async function load() {
     course.value = data.data;
 
     if (route.query.edit === 'course') {
-      openDrawer('course', course.value.id);
+      openDrawer('course', course.value.id, { focus: 'name' });
       router.replace({ name: 'admin-curso', params: { courseId: courseId.value } });
     }
   } catch (e) {
@@ -180,18 +179,17 @@ async function load() {
 }
 
 function onSelect(target) {
-  closeOnSave.value = false;
   selected.value = target;
 }
 
 function closeDrawer() {
   selected.value = null;
-  closeOnSave.value = false;
+  drawerFocus.value = null;
 }
 
 function openDrawer(type, id, options = {}) {
   selected.value = { type, id };
-  closeOnSave.value = options.closeOnSave === true;
+  drawerFocus.value = options.focus ?? null;
 }
 
 async function onSaved({ type, id, data }) {
@@ -241,7 +239,7 @@ async function createLesson(topic) {
     });
     const lesson = { ...data.data, attachments: data.data.attachments ?? [] };
     topic.lessons = [...(topic.lessons ?? []), lesson];
-    openDrawer('lesson', lesson.id, { closeOnSave: true });
+    openDrawer('lesson', lesson.id);
   } catch (e) {
     toast.error(e?.message || 'Não foi possível criar a aula.');
   }

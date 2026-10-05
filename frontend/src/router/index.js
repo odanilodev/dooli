@@ -14,7 +14,6 @@ import ProfileView from '../views/ProfileView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import AdminVideoPlatformsView from '../views/AdminVideoPlatformsView.vue';
 import AdminContentIndexView from '../views/AdminContentIndexView.vue';
-import AdminCourseWizardView from '../views/AdminCourseWizardView.vue';
 import AdminContentView from '../views/AdminContentView.vue';
 import AdminTeamsView from '../views/AdminTeamsView.vue';
 import AdminVideosView from '../views/AdminVideosView.vue';
@@ -46,7 +45,7 @@ const routes = [
       { path: 'configuracoes', name: 'configuracoes', component: SettingsView, meta: { title: 'Configurações' } },
       { path: 'admin/video-platforms', name: 'admin-video-platforms', component: AdminVideoPlatformsView, meta: { title: 'Plataformas de vídeo', requiresAdminMenu: true } },
       { path: 'admin/cursos', name: 'admin-cursos', component: AdminContentIndexView, meta: { title: 'Cursos (admin)', requiresAdminMenu: true } },
-      { path: 'admin/cursos/novo', name: 'admin-cursos-novo', component: AdminCourseWizardView, meta: { title: 'Novo curso (admin)', requiresAdminMenu: true } },
+      { path: 'admin/cursos/novo', redirect: { name: 'admin-cursos' } },
       { path: 'admin/cursos/:courseId', name: 'admin-curso', component: AdminContentView, meta: { title: 'Curso (admin)', requiresAdminMenu: true } },
       { path: 'admin/turmas', name: 'admin-turmas', component: AdminTeamsView, meta: { title: 'Turmas (admin)', requiresAdminMenu: true } },
       { path: 'admin/videos', name: 'admin-videos', component: AdminVideosView, meta: { title: 'Vídeos (admin)', requiresAdminMenu: true } },

@@ -112,7 +112,12 @@ async function load() {
 }
 
 async function createCourse() {
-  router.push({ name: 'admin-cursos-novo' });
+  try {
+    const { data } = await api.post('/admin/courses', { name: 'Novo curso', status: 'active' });
+    router.push({ name: 'admin-curso', params: { courseId: data.data.id }, query: { edit: 'course' } });
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível criar o curso.');
+  }
 }
 
 function openCourse(course) {
