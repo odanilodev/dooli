@@ -47,20 +47,41 @@
       />
     </Transition>
 
-    <div v-if="showAttach" class="admin-modal-backdrop" @mousedown="onBackdropDown" @click.self="backdropDown && (showAttach = false)">
+    <div v-if="showAttach" class="admin-modal-backdrop" @mousedown="onBackdropDown" @click.self="backdropDown && closeAttach()">
       <div class="panel admin-modal">
         <div class="admin-panel-head">
-          <h2 class="panel-title">Vincular módulo existente</h2>
-          <button class="admin-modal-close" @click="showAttach = false">×</button>
+          <h2 class="panel-title">Vincular módulos existentes</h2>
+          <button class="admin-modal-close" @click="closeAttach">×</button>
         </div>
 
-        <p v-if="attaching" class="page-subtitle">Carregando módulos...</p>
-        <p v-else-if="!availableModules.length" class="form-hint">Todos os módulos já estão vinculados a este curso.</p>
+        <input class="form-control admin-search" type="search" v-model="moduleSearch" placeholder="Buscar módulo...">
+
+        <p v-if="modulesLoading" class="page-subtitle">Carregando módulos...</p>
+        <p v-else-if="!moduleResults.length" class="form-hint">Nenhum módulo encontrado.</p>
 
         <div v-else class="admin-attach-list">
-          <button v-for="m in availableModules" :key="m.id" class="admin-attach-item" @click="attach(m)">
-            <span>{{ m.name }}</span>
-            <span class="status-pill" :class="m.status">{{ statusLabel(m.status) }}</span>
+          <label
+            v-for="m in moduleResults"
+            :key="m.id"
+            class="admin-attach-item"
+            :class="{ 'is-linked': moduleIsLinked(m) }"
+          >
+            <input type="checkbox" :value="m.id" v-model="selectedModuleIds" :disabled="moduleIsLinked(m)">
+            <span class="attach-name">{{ m.name }}</span>
+            <span v-if="moduleIsLinked(m)" class="admin-muted">Já vinculado</span>
+            <span v-else class="status-pill" :class="m.status">{{ statusLabel(m.status) }}</span>
+          </label>
+        </div>
+
+        <div v-if="moduleMeta.last_page > 1" class="admin-pager">
+          <button class="btn btn-outline btn-sm" :disabled="moduleMeta.current_page <= 1" @click="goModulePage(moduleMeta.current_page - 1)">Anterior</button>
+          <span class="admin-muted">Página {{ moduleMeta.current_page }} de {{ moduleMeta.last_page }}</span>
+          <button class="btn btn-outline btn-sm" :disabled="moduleMeta.current_page >= moduleMeta.last_page" @click="goModulePage(moduleMeta.current_page + 1)">Próxima</button>
+        </div>
+
+        <div class="admin-modal-actions">
+          <button class="btn btn-primary" :disabled="!selectableSelected.length || attaching" @click="attachSelected">
+            {{ attaching ? 'Vinculando...' : `Vincular (${selectableSelected.length})` }}
           </button>
         </div>
       </div>
@@ -112,7 +133,11 @@ const loading = ref(true);
 
 const showAttach = ref(false);
 const attaching = ref(false);
-const availableModules = ref([]);
+const modulesLoading = ref(false);
+const moduleResults = ref([]);
+const moduleMeta = ref({ current_page: 1, last_page: 1, total: 0 });
+const moduleSearch = ref('');
+const selectedModuleIds = ref([]);
 const backdropDown = ref(false);
 const reorderConflicts = ref([]);
 const pendingReorder = ref(null);
@@ -122,6 +147,8 @@ function onBackdropDown(e) {
 }
 
 const selectedItem = computed(() => (selected.value ? findNode(selected.value.type, selected.value.id) : null));
+const linkedModuleIds = computed(() => new Set((course.value?.modules ?? []).map((m) => m.id)));
+const selectableSelected = computed(() => selectedModuleIds.value.filter((id) => !linkedModuleIds.value.has(id)));
 
 function findNode(type, id) {
   if (!course.value) {
@@ -363,28 +390,70 @@ function cancelReorder() {
 
 async function openAttach() {
   showAttach.value = true;
-  attaching.value = true;
+  moduleSearch.value = '';
+  selectedModuleIds.value = [];
+  moduleMeta.value = { current_page: 1, last_page: 1, total: 0 };
+  await loadModules();
+}
+
+function closeAttach() {
+  showAttach.value = false;
+  moduleSearch.value = '';
+  moduleResults.value = [];
+  selectedModuleIds.value = [];
+}
+
+async function loadModules() {
+  modulesLoading.value = true;
 
   try {
-    const { data } = await api.get('/admin/modules', { params: { per_page: 100 } });
-    const linked = new Set((course.value.modules ?? []).map((m) => m.id));
-    availableModules.value = (data.data ?? []).filter((m) => !linked.has(m.id));
+    const { data } = await api.get('/admin/modules', {
+      params: {
+        search: moduleSearch.value || undefined,
+        page: moduleMeta.value.current_page || 1,
+        per_page: 10,
+      },
+    });
+
+    moduleResults.value = data.data ?? [];
+    moduleMeta.value = data.meta ?? { current_page: 1, last_page: 1, total: 0 };
   } catch (e) {
     toast.error(e?.message || 'Não foi possível carregar os módulos.');
   } finally {
-    attaching.value = false;
+    modulesLoading.value = false;
   }
 }
 
-async function attach(module) {
+function goModulePage(page) {
+  moduleMeta.value.current_page = page;
+  loadModules();
+}
+
+function moduleIsLinked(module) {
+  return linkedModuleIds.value.has(module.id);
+}
+
+async function attachSelected() {
+  const ids = selectableSelected.value;
+
+  if (!ids.length) {
+    return;
+  }
+
+  attaching.value = true;
 
   try {
-    await api.post(`/admin/courses/${courseId.value}/modules`, { module_id: module.id });
-    showAttach.value = false;
+    for (const id of ids) {
+      await api.post(`/admin/courses/${courseId.value}/modules`, { module_id: id });
+    }
+
+    toast.success(`${ids.length} módulo(s) vinculado(s).`);
+    closeAttach();
     await load();
-    openDrawer('module', module.id);
   } catch (e) {
-    toast.error(e?.message || 'Não foi possível vincular o módulo.');
+    toast.error(e?.message || 'Não foi possível vincular os módulos.');
+  } finally {
+    attaching.value = false;
   }
 }
 
@@ -394,8 +463,43 @@ watch(courseId, () => {
   selected.value = null;
   load();
 });
+
+let moduleSearchDebounce;
+
+watch(moduleSearch, () => {
+  if (!showAttach.value) {
+    return;
+  }
+
+  clearTimeout(moduleSearchDebounce);
+  moduleSearchDebounce = setTimeout(() => {
+    moduleMeta.value.current_page = 1;
+    loadModules();
+  }, 350);
+});
 </script>
 
 <style scoped>
 .builder-back{display:inline-flex;align-items:center;gap:6px;}
+.admin-modal .admin-search{max-width:none;}
+.admin-attach-item{justify-content:flex-start;}
+.admin-attach-item.is-linked{opacity:.55;cursor:default;}
+.admin-attach-item.is-linked:hover{border-color:var(--border);background:var(--bg-card);}
+.attach-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.admin-attach-item input[type="checkbox"]{
+  appearance:none;-webkit-appearance:none;margin:0;flex-shrink:0;
+  width:18px;height:18px;display:inline-grid;place-content:center;cursor:pointer;
+  border:1.5px solid var(--border);border-radius:6px;background:var(--bg-input);
+  transition:border-color .14s ease,background .14s ease;
+}
+.admin-attach-item input[type="checkbox"]::before{
+  content:"";width:10px;height:10px;transform:scale(0);transition:transform .12s ease;
+  box-shadow:inset 1em 1em var(--accent-ink);
+  clip-path:polygon(14% 44%,0 65%,50% 100%,100% 16%,80% 0%,43% 62%);
+}
+.admin-attach-item input[type="checkbox"]:hover{border-color:var(--accent);}
+.admin-attach-item input[type="checkbox"]:checked{background:var(--accent);border-color:var(--accent);}
+.admin-attach-item input[type="checkbox"]:checked::before{transform:scale(1);}
+.admin-attach-item input[type="checkbox"]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.admin-attach-item input[type="checkbox"]:disabled{cursor:default;opacity:.55;}
 </style>
