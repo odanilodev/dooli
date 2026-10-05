@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTO\CompleteLessonDTO;
+use App\DTO\StartLessonDTO;
 use App\Enums\ActionCode;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Course;
@@ -87,16 +88,100 @@ class ProgressService
     }
 
     /**
+     * Records that the student opened a lesson. Two timeline actions are kept:
+     * "started" is written only once (the first time the lesson is opened),
+     * while "viewed" is upserted — the same row is updated (timestamp) on every
+     * revisit, so it always reflects the last time the screen was seen.
+     *
+     * @return array{already_started: bool}
+     */
+    public function startLesson(User $user, StartLessonDTO $dto): array
+    {
+        $team = $this->studentCourses->assertLessonInCourse($user, $dto->courseId, $dto->lessonId, $dto->teamId);
+
+        $lesson = Lesson::query()->with('topic.module')->findOrFail($dto->lessonId);
+
+        $this->studentCourses->assertLessonUnlocked($user, $lesson, $dto->courseId, $team->id);
+
+        $module = $lesson->topic?->module;
+
+        $attributes = [
+            'company_id' => $user->company_id,
+            'module_id' => $module?->id,
+            'lesson_id' => $lesson->id,
+            'course_id' => $dto->courseId,
+            'team_id' => $team->id,
+        ];
+
+        $startedAction = $this->actions->findByCode(ActionCode::Started->value);
+        $alreadyStarted = true;
+
+        if ($startedAction) {
+            $alreadyStarted = $this->timeline->existsForLesson($user->id, $lesson->id, $startedAction->id);
+
+            if (! $alreadyStarted) {
+                DB::transaction(function () use ($user, $attributes, $startedAction) {
+                    Timeline::query()->create([
+                        'user_id' => $user->id,
+                        'action_id' => $startedAction->id,
+                        ...$attributes,
+                    ]);
+                });
+
+                $this->audit->log('progress', 'start_lesson', 'lesson', "Aula iniciada: {$lesson->name}", $user->id);
+            }
+        }
+
+        $this->recordViewed($user, $attributes);
+
+        return ['already_started' => $alreadyStarted];
+    }
+
+    /**
+     * Upserts the "viewed" action for a lesson: creates it on the first view and
+     * only touches the existing row on subsequent views.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    private function recordViewed(User $user, array $attributes): void
+    {
+        $viewedAction = $this->actions->findByCode(ActionCode::Viewed->value);
+
+        if (! $viewedAction) {
+            return;
+        }
+
+        $existing = $this->timeline->findForLesson($user->id, $attributes['lesson_id'], $viewedAction->id);
+
+        if ($existing) {
+            $existing->touch();
+
+            return;
+        }
+
+        Timeline::query()->create([
+            'user_id' => $user->id,
+            'action_id' => $viewedAction->id,
+            ...$attributes,
+        ]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function progressFor(User $user, int $courseId, int $teamId): array
     {
         $completedAction = $this->actions->findByCode(ActionCode::Completed->value);
+        $startedAction = $this->actions->findByCode(ActionCode::Started->value);
 
         $totalLessons = $this->lessons->countPublishedByCourse($courseId);
 
         $completedIds = $completedAction
             ? $this->timeline->completedLessonIds($user->id, $courseId, $teamId, $completedAction->id)
+            : [];
+
+        $startedIds = $startedAction
+            ? $this->timeline->lessonIdsForAction($user->id, $courseId, $teamId, $startedAction->id)
             : [];
 
         $completedCount = count($completedIds);
@@ -108,6 +193,7 @@ class ProgressService
             'completed_lessons' => $completedCount,
             'percentage' => $totalLessons > 0 ? round(($completedCount / $totalLessons) * 100, 2) : 0.0,
             'completed_lesson_ids' => $completedIds,
+            'started_lesson_ids' => $startedIds,
         ];
     }
 

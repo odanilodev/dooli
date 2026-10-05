@@ -616,6 +616,16 @@ watch(currentLesson, (lesson) => {
   }
 });
 
+watch(
+  [currentLesson, () => store.progress],
+  ([lesson]) => {
+    if (lesson && store.progress && !isCurrentLocked.value) {
+      store.startLesson(lesson.id);
+    }
+  },
+  { immediate: true },
+);
+
 watch(activeTab, (tab) => {
   if (!currentLesson.value) {
     return;

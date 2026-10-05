@@ -54,6 +54,16 @@ trait BuildsTenant
             'code' => ActionCode::Completed->value,
         ]);
 
+        Action::factory()->create([
+            'company_id' => $this->company->id,
+            'code' => ActionCode::Started->value,
+        ]);
+
+        Action::factory()->create([
+            'company_id' => $this->company->id,
+            'code' => ActionCode::Viewed->value,
+        ]);
+
         app(CompanyContext::class)->forget();
     }
 

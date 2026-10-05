@@ -41,6 +41,7 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
   });
 
   const completedIds = computed(() => new Set(progress.value?.completed_lesson_ids ?? []));
+  const startedIds = computed(() => new Set(progress.value?.started_lesson_ids ?? []));
   const currentLesson = computed(
     () => lessons.value.find((lesson) => lesson.id === Number(activeLessonId.value)) ?? lessons.value[0] ?? null,
   );
@@ -57,6 +58,12 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
 
   function isCompleted(lessonId) {
     return completedIds.value.has(Number(lessonId));
+  }
+
+  function isStarted(lessonId) {
+    const id = Number(lessonId);
+
+    return startedIds.value.has(id) && !completedIds.value.has(id);
   }
 
   function lessonById(lessonId) {
@@ -117,6 +124,26 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
     }
   }
 
+  async function startLesson(lessonId) {
+    const lesson = lessons.value.find((item) => item.id === Number(lessonId));
+
+    if (!lesson || !course.value || !progress.value) {
+      return null;
+    }
+
+    try {
+      const { data } = await api.post('/me/progress/start', {
+        lesson_id: lesson.id,
+        course_id: course.value.id,
+        team_id: progress.value.team_id,
+      });
+
+      return data?.data ?? null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function completeLesson(lessonId) {
     const lesson = lessons.value.find((item) => item.id === Number(lessonId));
 
@@ -161,10 +188,12 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
     prevLesson,
     nextLesson,
     isCompleted,
+    isStarted,
     isLocked,
     requiredLessonName,
     load,
     selectLesson,
+    startLesson,
     completeLesson,
     reset,
   };

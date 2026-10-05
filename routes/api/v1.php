@@ -110,6 +110,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
 
     Route::get('me/courses/{course}/lessons/{lesson}/video', [StudentVideoController::class, 'playback']);
 
+    Route::post('me/progress/start', [ProgressController::class, 'startLesson']);
     Route::post('me/progress/complete', [ProgressController::class, 'completeLesson']);
     Route::post('me/progress/video-position', [ProgressController::class, 'saveVideoPosition']);
 
