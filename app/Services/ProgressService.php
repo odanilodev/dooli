@@ -19,6 +19,12 @@ use Illuminate\Support\Facades\DB;
 
 class ProgressService
 {
+    /**
+     * Seconds of tolerance so a video that ends a moment before its declared
+     * duration still counts as fully watched.
+     */
+    private const WATCH_TOLERANCE_SECONDS = 2;
+
     public function __construct(
         private readonly TimelineRepository $timeline,
         private readonly LessonRepository $lessons,
@@ -36,9 +42,9 @@ class ProgressService
     {
         $team = $this->studentCourses->assertAccess($user, $dto->courseId, $dto->teamId);
 
-        $lesson = Lesson::query()->with('topic.module.courses')->findOrFail($dto->lessonId);
+        $lesson = Lesson::query()->with('module.courses')->findOrFail($dto->lessonId);
 
-        $module = $lesson->topic?->module;
+        $module = $lesson->module;
 
         $belongsToCourse = $module !== null
             && $module->courses->contains(fn (Course $course) => $course->id === $dto->courseId);
@@ -64,6 +70,8 @@ class ProgressService
         );
 
         if (! $alreadyCompleted) {
+            $this->assertFullWatchSatisfied($user, $lesson, $dto, $team->id);
+
             DB::transaction(function () use ($user, $lesson, $dto, $team, $action, $module) {
                 Timeline::query()->create([
                     'user_id' => $user->id,
@@ -88,6 +96,36 @@ class ProgressService
     }
 
     /**
+     * A lesson flagged with require_full_watch can only be completed after the
+     * student watched the video up to its end (within a small tolerance).
+     */
+    private function assertFullWatchSatisfied(User $user, Lesson $lesson, CompleteLessonDTO $dto, int $teamId): void
+    {
+        if (! $lesson->require_full_watch) {
+            return;
+        }
+
+        $lesson->loadMissing('video');
+
+        if ($lesson->video_id === null) {
+            return;
+        }
+
+        $progress = $this->videoProgress->forLesson($user->id, $lesson->id, $dto->courseId, $teamId);
+
+        $position = (int) ($progress?->position_seconds ?? 0);
+        $duration = (int) ($progress?->duration ?: $lesson->video?->time ?? 0);
+
+        $watchedToEnd = $duration > 0
+            ? $position >= $duration - self::WATCH_TOLERANCE_SECONDS
+            : $position > 0;
+
+        if (! $watchedToEnd) {
+            throw new BusinessRuleException('Assista a aula até o final para concluí-la.');
+        }
+    }
+
+    /**
      * Records that the student opened a lesson. Two timeline actions are kept:
      * "started" is written only once (the first time the lesson is opened),
      * while "viewed" is upserted — the same row is updated (timestamp) on every
@@ -99,11 +137,11 @@ class ProgressService
     {
         $team = $this->studentCourses->assertLessonInCourse($user, $dto->courseId, $dto->lessonId, $dto->teamId);
 
-        $lesson = Lesson::query()->with('topic.module')->findOrFail($dto->lessonId);
+        $lesson = Lesson::query()->with('module')->findOrFail($dto->lessonId);
 
         $this->studentCourses->assertLessonUnlocked($user, $lesson, $dto->courseId, $team->id);
 
-        $module = $lesson->topic?->module;
+        $module = $lesson->module;
 
         $attributes = [
             'company_id' => $user->company_id,
@@ -283,7 +321,7 @@ class ProgressService
                 'course_name' => $course->name,
                 'lesson_id' => $target['lesson']->id,
                 'lesson_name' => $target['lesson']->name,
-                'module_name' => $target['lesson']->topic?->module?->name,
+                'module_name' => $target['lesson']->module?->name,
                 'image' => $target['lesson']->video?->image,
                 'duration' => $target['duration'],
                 'resume_from' => $target['resume_from'],

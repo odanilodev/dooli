@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 #[Fillable(['name', 'company_id', 'image', 'description', 'status'])]
 class Module extends Model
@@ -29,8 +28,13 @@ class Module extends Model
         return $this->hasMany(Topic::class)->orderBy('sort_order');
     }
 
-    public function lessons(): HasManyThrough
+    public function lessons(): HasMany
     {
-        return $this->hasManyThrough(Lesson::class, Topic::class, 'module_id', 'topic_id');
+        return $this->hasMany(Lesson::class)->orderBy('sort_order');
+    }
+
+    public function looseLessons(): HasMany
+    {
+        return $this->hasMany(Lesson::class)->whereNull('topic_id')->orderBy('sort_order');
     }
 }

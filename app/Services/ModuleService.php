@@ -58,6 +58,7 @@ class ModuleService
     {
         DB::transaction(function () use ($module) {
             $module->courses()->detach();
+            $module->looseLessons()->get()->each(fn (Lesson $lesson) => $this->lessons->delete($lesson));
             $module->topics()->each(function ($topic) {
                 $topic->lessons()->get()->each(fn (Lesson $lesson) => $this->lessons->delete($lesson));
                 $topic->delete();

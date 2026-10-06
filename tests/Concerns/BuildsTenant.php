@@ -93,6 +93,21 @@ trait BuildsTenant
         return compact('course', 'module', 'topic', 'lesson');
     }
 
+    /**
+     * Creates a lesson attached directly to the module, without a topic.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    protected function buildModuleLesson(int $companyId, Module $module, array $attributes = []): Lesson
+    {
+        return Lesson::factory()->create(array_merge([
+            'company_id' => $companyId,
+            'module_id' => $module->id,
+            'topic_id' => null,
+            'status' => GeneralStatus::Active->value,
+        ], $attributes));
+    }
+
     protected function enroll(User $user, Course $course, int $companyId): Team
     {
         $team = Team::factory()->create(['company_id' => $companyId, 'status' => GeneralStatus::Active->value]);

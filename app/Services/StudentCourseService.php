@@ -103,7 +103,7 @@ class StudentCourseService
 
         $belongsToCourse = Lesson::query()
             ->whereKey($lessonId)
-            ->whereHas('topic.module.courses', fn ($q) => $q->where('courses.id', $courseId))
+            ->whereHas('module.courses', fn ($q) => $q->where('courses.id', $courseId))
             ->exists();
 
         if (! $belongsToCourse) {
@@ -155,6 +155,9 @@ class StudentCourseService
                 'modules' => fn ($q) => $q->orderBy('course_modules.sort_order'),
                 'modules.topics' => fn ($q) => $q->where('status', GeneralStatus::Active->value)->orderBy('sort_order'),
                 'modules.topics.lessons' => fn ($q) => $q->where('lessons.status', GeneralStatus::Active->value)
+                    ->orderBy('sort_order')
+                    ->with(['video', 'document', 'attachments']),
+                'modules.looseLessons' => fn ($q) => $q->where('lessons.status', GeneralStatus::Active->value)
                     ->orderBy('sort_order')
                     ->with(['video', 'document', 'attachments']),
             ])

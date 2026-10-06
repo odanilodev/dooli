@@ -28,6 +28,7 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
             webinar_link: lesson.webinar_link ?? null,
             webinar_starts_at: lesson.webinar_starts_at ?? null,
             requiredLessonId: lesson.required_lesson_id ?? null,
+            requireFullWatch: lesson.require_full_watch ?? false,
             moduleId: module.id,
             moduleName: module.name,
             topicId: topic.id,
@@ -35,7 +36,27 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
           });
         }
       }
-    }
+
+      for (const lesson of module.lessons ?? []) {
+        flat.push({
+          id: lesson.id,
+          name: lesson.name,
+          description: lesson.description,
+          content: lesson.content,
+          video: lesson.video ?? null,
+          document: lesson.document ?? null,
+          attachments: lesson.attachments ?? [],
+            webinar_link: lesson.webinar_link ?? null,
+            webinar_starts_at: lesson.webinar_starts_at ?? null,
+            requiredLessonId: lesson.required_lesson_id ?? null,
+            requireFullWatch: lesson.require_full_watch ?? false,
+            moduleId: module.id,
+            moduleName: module.name,
+            topicId: null,
+            topicName: null,
+          });
+        }
+      }
 
     return flat;
   });

@@ -44,7 +44,7 @@
             <span v-else class="cb-name">{{ module.name }}</span>
 
             <span v-if="module.status !== 'active'" class="cb-chip draft">Rascunho</span>
-            <span class="cb-count">{{ module.topics?.length ?? 0 }} tópicos</span>
+            <span class="cb-count">{{ module.topics?.length ?? 0 }} tópicos · {{ moduleLessonCount(module) }} aulas</span>
 
             <span class="cb-menu-wrap" @click.stop>
               <button class="cb-dots" @click="toggleMenu(`m-${module.id}`)" title="Ações">⋯</button>
@@ -109,7 +109,8 @@
                       :animation="160"
                       ghost-class="cb-ghost"
                       class="cb-lessons"
-                      @end="reorder('lesson', topic.id, topic.lessons)"
+                      :group="lessonGroup(module.id)"
+                      @change="onLessonChange($event, 'lesson', topic.id, topic.lessons)"
                     >
                       <template #item="{ element: lesson }">
                         <div
@@ -161,6 +162,61 @@
 
             <p v-if="!module.topics?.length" class="cb-empty">Nenhum tópico ainda.</p>
             <button class="cb-add" @click.stop="emit('add-topic', module)">+ Adicionar tópico</button>
+
+            <draggable
+              v-model="module.lessons"
+              item-key="id"
+              handle=".cb-handle"
+              :animation="160"
+              ghost-class="cb-ghost"
+              class="cb-lessons cb-module-lessons"
+              :class="{ 'cb-dropzone-empty': !module.lessons?.length }"
+              :group="lessonGroup(module.id)"
+              @change="onLessonChange($event, 'module-lesson', module.id, module.lessons)"
+            >
+              <template #item="{ element: lesson }">
+                <div
+                  class="cb-row cb-row-lesson"
+                  :class="{ active: isSelected('lesson', lesson.id) }"
+                  @click="emit('select', { type: 'lesson', id: lesson.id })"
+                >
+                  <span class="cb-handle" title="Arrastar" @click.stop>⠿</span>
+                  <span class="cb-dot" :class="liveState(lesson) || 'idle'"></span>
+
+                  <input
+                    v-if="isEditing('lesson', lesson.id)"
+                    :ref="setRenameInput"
+                    class="cb-name-input"
+                    v-model="editValue"
+                    @click.stop
+                    @focus="$event.target.select()"
+                    @keydown.enter.prevent="commitRename('lesson', lesson)"
+                    @keydown.esc.prevent="cancelRename"
+                    @blur="commitRename('lesson', lesson)"
+                  >
+                  <span v-else class="cb-name">{{ lesson.name }}</span>
+
+                  <span v-if="liveState(lesson) === 'live'" class="cb-chip live"><i></i>Ao vivo</span>
+                  <span v-else-if="liveState(lesson) === 'soon'" class="cb-chip soon">Em breve</span>
+                  <span v-if="lesson.video" class="cb-chip">Vídeo</span>
+                  <span v-if="lesson.document" class="cb-chip">Doc</span>
+                  <span v-if="lesson.attachments?.length" class="cb-chip">{{ lesson.attachments.length }} anexo(s)</span>
+                  <span v-if="lesson.required_lesson_id" class="cb-chip req">Pré-req</span>
+                  <span v-if="lesson.status !== 'active'" class="cb-chip draft">Rascunho</span>
+
+                  <span class="cb-menu-wrap" @click.stop>
+                    <button class="cb-dots" @click="toggleMenu(`l-${lesson.id}`)" title="Ações">⋯</button>
+                    <div v-if="openMenu === `l-${lesson.id}`" class="cb-menu">
+                      <button @click="startRename('lesson', lesson)">Renomear</button>
+                      <button class="danger" @click="run(() => emit('remove', { type: 'lesson', node: lesson }))">Remover</button>
+                    </div>
+                  </span>
+                </div>
+              </template>
+            </draggable>
+
+            <p v-if="!module.lessons?.length" class="cb-drop-hint">Arraste uma aula para cá para retirá-la do tópico.</p>
+            <button class="cb-add" @click.stop="emit('add-module-lesson', module)">+ Adicionar aula</button>
           </div>
         </article>
       </template>
@@ -186,7 +242,7 @@ const props = defineProps({
   selected: { type: Object, default: null },
 });
 
-const emit = defineEmits(['select', 'rename', 'add-module', 'attach-module', 'add-topic', 'add-lesson', 'remove', 'reorder']);
+const emit = defineEmits(['select', 'rename', 'add-module', 'attach-module', 'add-topic', 'add-lesson', 'add-module-lesson', 'remove', 'reorder']);
 
 const collapsed = reactive({});
 const openMenu = ref(null);
@@ -207,11 +263,13 @@ const modules = computed({
 
 const moduleCount = computed(() => (props.course.modules ?? []).length);
 const lessonCount = computed(() =>
-  (props.course.modules ?? []).reduce(
-    (total, module) => total + (module.topics ?? []).reduce((sum, topic) => sum + (topic.lessons?.length ?? 0), 0),
-    0,
-  ),
+  (props.course.modules ?? []).reduce((total, module) => total + moduleLessonCount(module), 0),
 );
+
+function moduleLessonCount(module) {
+  return (module.topics ?? []).reduce((sum, topic) => sum + (topic.lessons?.length ?? 0), 0)
+    + (module.lessons?.length ?? 0);
+}
 
 function isCollapsed(key) {
   return collapsed[key] !== false;
@@ -266,6 +324,24 @@ function reorder(level, parentId, list) {
   emit('reorder', { level, parentId, ids: list.map((item) => item.id) });
 }
 
+function lessonGroup(moduleId) {
+  return { name: `cb-lessons-${moduleId}`, pull: true, put: true };
+}
+
+function onLessonChange(event, level, parentId, list) {
+  if (!event.added && !event.moved && !event.removed) {
+    return;
+  }
+
+  if (event.added) {
+    event.added.element.topic_id = level === 'lesson' ? parentId : null;
+  }
+
+  if (list?.length) {
+    reorder(level, parentId, list);
+  }
+}
+
 function liveState(lesson) {
   if (!lesson.webinar_link) {
     return null;
@@ -296,6 +372,8 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenus));
 
 .cb-modules{display:flex;flex-direction:column;gap:12px;}
 .cb-topics,.cb-lessons{display:flex;flex-direction:column;gap:6px;min-height:6px;}
+.cb-module-lessons.cb-dropzone-empty{min-height:34px;margin-left:20px;border:1px dashed var(--border);border-radius:10px;background:var(--bg-card-alt);}
+.cb-drop-hint{font-size:11.5px;color:var(--text-muted);margin:0 0 0 20px;padding:0;}
 
 .cb-module{background:var(--bg-card);border:1px solid var(--border);border-left:4px solid var(--lvl-module);border-radius:14px;overflow:visible;}
 .cb-row{

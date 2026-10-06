@@ -21,7 +21,7 @@ class MaterialService
 
         $document = Document::query()
             ->whereKey($documentId)
-            ->whereHas('lessons.topic.module.courses', fn ($q) => $q->where('courses.id', $courseId))
+            ->whereHas('lessons.module.courses', fn ($q) => $q->where('courses.id', $courseId))
             ->first();
 
         abort_unless($document, 404, 'Documento não encontrado.');
@@ -38,7 +38,7 @@ class MaterialService
 
         $attachment = Attachment::query()
             ->whereKey($attachmentId)
-            ->whereHas('lessons.topic.module.courses', fn ($q) => $q->where('courses.id', $courseId))
+            ->whereHas('lessons.module.courses', fn ($q) => $q->where('courses.id', $courseId))
             ->first();
 
         abort_unless($attachment, 404, 'Anexo não encontrado.');

@@ -67,11 +67,23 @@
               <select :id="`dw-required`" class="form-control" v-model="form.required_lesson_id">
                 <option value="">Nenhuma</option>
                 <option v-for="lesson in prerequisiteOptions" :key="lesson.id" :value="lesson.id">
-                  {{ lesson.moduleName }} › {{ lesson.topicName }} › {{ lesson.name }}
+                  {{ lessonPath(lesson) }}
                 </option>
               </select>
               <p class="form-hint">O aluno só libera esta aula após concluir a aula escolhida. Só aparecem aulas anteriores na ordem do curso.</p>
             </div>
+
+            <div class="form-group">
+              <label class="dw-option" :class="{ 'is-on': form.require_full_watch }">
+                <input type="checkbox" v-model="form.require_full_watch">
+                <span class="dw-option-text">
+                  <span class="dw-option-title">Exigir assistir até o final</span>
+                  <span class="dw-option-desc">O aluno só consegue marcar a aula como concluída depois de assistir o vídeo até o fim. Requer vídeo vinculado.</span>
+                </span>
+              </label>
+            </div>
+
+            <p v-if="lessonLocation" class="form-hint">Local: {{ lessonLocation }}</p>
           </template>
 
           <p v-if="type === 'topic'" class="form-hint">Módulo: {{ course?.modules?.find((m) => m.id === item.module_id)?.name || `#${item.module_id}` }}</p>
@@ -251,6 +263,7 @@ const backdropDown = ref(false);
 const form = reactive({
   name: '', description: '', image: '', status: 'active', sort_order: 0,
   content: '', video_id: '', document_id: '', required_lesson_id: '',
+  require_full_watch: false,
   webinar_link: '', webinar_starts_at: '', published_at: '',
 });
 const selectedAttachments = ref([]);
@@ -311,9 +324,23 @@ const courseLessons = computed(() => {
         flat.push({ id: lesson.id, name: lesson.name, moduleName: module.name, topicName: topic.name });
       }
     }
+
+    for (const lesson of module.lessons ?? []) {
+      flat.push({ id: lesson.id, name: lesson.name, moduleName: module.name, topicName: null });
+    }
   }
 
   return flat;
+});
+
+function lessonPath(lesson) {
+  return [lesson.moduleName, lesson.topicName, lesson.name].filter(Boolean).join(' › ');
+}
+
+const lessonLocation = computed(() => {
+  const found = courseLessons.value.find((lesson) => lesson.id === props.item.id);
+
+  return found ? lessonPath({ ...found, name: '' }) : '';
 });
 
 const prerequisiteOptions = computed(() => {
@@ -373,6 +400,7 @@ function sync() {
   form.video_id = data.video?.id ?? '';
   form.document_id = data.document?.id ?? '';
   form.required_lesson_id = data.required_lesson_id ?? '';
+  form.require_full_watch = !!data.require_full_watch;
   form.webinar_link = data.webinar_link ?? '';
   form.webinar_starts_at = toDateTimeInput(data.webinar_starts_at);
   form.published_at = toDateTimeInput(data.published_at);
@@ -416,11 +444,14 @@ function basePayload() {
     name: form.name,
     description: form.description || null,
     content: form.content || null,
+    module_id: props.item.module_id ?? null,
+    topic_id: props.item.topic_id ?? null,
     sort_order: form.sort_order,
     status: form.status,
     video_id: form.video_id === '' ? null : Number(form.video_id),
     document_id: form.document_id === '' ? null : Number(form.document_id),
     required_lesson_id: form.required_lesson_id === '' ? null : Number(form.required_lesson_id),
+    require_full_watch: !!form.require_full_watch,
     webinar_link: form.webinar_link || null,
     webinar_starts_at: form.webinar_starts_at || null,
     published_at: form.published_at || null,
@@ -638,4 +669,30 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
   padding:4px 9px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;
 }
 .form-group > .file-picker{margin-bottom:8px;}
+
+.dw-option{
+  display:flex;align-items:flex-start;gap:10px;padding:12px;margin-top:2px;
+  border:1px solid var(--border);border-radius:12px;background:var(--bg-card-alt);
+  cursor:pointer;transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;
+}
+.dw-option:hover{border-color:var(--accent);}
+.dw-option.is-on{border-color:var(--accent);background:var(--accent-soft);}
+.dw-option input[type="checkbox"]{
+  appearance:none;-webkit-appearance:none;margin:1px 0 0;flex-shrink:0;
+  width:18px;height:18px;display:inline-grid;place-content:center;cursor:pointer;
+  border:1.5px solid var(--border);border-radius:6px;background:var(--bg-input);
+  transition:border-color .14s ease,background .14s ease;
+}
+.dw-option input[type="checkbox"]::before{
+  content:"";width:10px;height:10px;transform:scale(0);transition:transform .12s ease;
+  box-shadow:inset 1em 1em var(--accent-ink);
+  clip-path:polygon(14% 44%,0 65%,50% 100%,100% 16%,80% 0%,43% 62%);
+}
+.dw-option:hover input[type="checkbox"]{border-color:var(--accent);}
+.dw-option input[type="checkbox"]:checked{background:var(--accent);border-color:var(--accent);}
+.dw-option input[type="checkbox"]:checked::before{transform:scale(1);}
+.dw-option input[type="checkbox"]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.dw-option-text{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.dw-option-title{font-size:13px;font-weight:700;color:var(--text-primary);}
+.dw-option-desc{font-size:11.5px;line-height:1.45;color:var(--text-muted);font-weight:400;}
 </style>

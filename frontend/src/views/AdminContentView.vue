@@ -24,6 +24,7 @@
         @attach-module="openAttach"
         @add-topic="createTopic"
         @add-lesson="createLesson"
+        @add-module-lesson="createModuleLesson"
         @remove="removeNode"
         @reorder="reorder"
       />
@@ -175,6 +176,12 @@ function findNode(type, id) {
         }
       }
     }
+
+    for (const lesson of module.lessons ?? []) {
+      if (type === 'lesson' && lesson.id === id) {
+        return lesson;
+      }
+    }
   }
 
   return null;
@@ -232,7 +239,7 @@ async function createModule() {
   try {
     const { data } = await api.post('/admin/modules', { name: 'Novo módulo', status: 'active' });
     await api.post(`/admin/courses/${courseId.value}/modules`, { module_id: data.data.id });
-    const module = { ...data.data, topics: [] };
+    const module = { ...data.data, topics: [], lessons: [] };
     course.value.modules = [...(course.value.modules ?? []), module];
     openDrawer('module', module.id);
   } catch (e) {
@@ -261,11 +268,28 @@ async function createLesson(topic) {
   try {
     const { data } = await api.post('/admin/lessons', {
       name: 'Nova aula',
+      module_id: topic.module_id,
       topic_id: topic.id,
       status: 'active',
     });
     const lesson = { ...data.data, attachments: data.data.attachments ?? [] };
     topic.lessons = [...(topic.lessons ?? []), lesson];
+    openDrawer('lesson', lesson.id);
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível criar a aula.');
+  }
+}
+
+async function createModuleLesson(module) {
+
+  try {
+    const { data } = await api.post('/admin/lessons', {
+      name: 'Nova aula',
+      module_id: module.id,
+      status: 'active',
+    });
+    const lesson = { ...data.data, attachments: data.data.attachments ?? [] };
+    module.lessons = [...(module.lessons ?? []), lesson];
     openDrawer('lesson', lesson.id);
   } catch (e) {
     toast.error(e?.message || 'Não foi possível criar a aula.');
@@ -316,6 +340,8 @@ async function removeNode({ type, node }) {
       }
     } else {
       for (const module of course.value.modules ?? []) {
+        module.lessons = (module.lessons ?? []).filter((l) => l.id !== node.id);
+
         for (const topic of module.topics ?? []) {
           topic.lessons = (topic.lessons ?? []).filter((l) => l.id !== node.id);
         }
@@ -331,23 +357,20 @@ async function removeNode({ type, node }) {
   }
 }
 
-async function reorder({ level, parentId, ids }) {
-  pendingReorder.value = { level, parentId, ids };
+async function reorder(payload) {
+  pendingReorder.value = payload;
 
-  await sendReorder(false);
+  await sendReorder(payload, false);
 }
 
-async function sendReorder(force) {
-  if (!pendingReorder.value) {
-    return;
-  }
-
-  const { level, parentId, ids } = pendingReorder.value;
+async function sendReorder(payload, force) {
+  const { level, parentId, ids } = payload;
 
   const endpoints = {
     module: `/admin/courses/${parentId}/modules/reorder`,
     topic: `/admin/modules/${parentId}/topics/reorder`,
     lesson: `/admin/topics/${parentId}/lessons/reorder`,
+    'module-lesson': `/admin/modules/${parentId}/lessons/reorder`,
   };
 
   try {
@@ -362,24 +385,33 @@ async function sendReorder(force) {
       }
     }
 
-    reorderConflicts.value = [];
-    pendingReorder.value = null;
+    if (pendingReorder.value === payload) {
+      reorderConflicts.value = [];
+      pendingReorder.value = null;
+    }
   } catch (e) {
     if (e?.status === 409 && e?.errors?.conflicts?.length) {
       reorderConflicts.value = e.errors.conflicts;
+      pendingReorder.value = payload;
 
       return;
     }
 
     toast.error(e?.message || 'Não foi possível reordenar.');
-    reorderConflicts.value = [];
-    pendingReorder.value = null;
+
+    if (pendingReorder.value === payload) {
+      reorderConflicts.value = [];
+      pendingReorder.value = null;
+    }
+
     await load();
   }
 }
 
 async function confirmReorder() {
-  await sendReorder(true);
+  if (pendingReorder.value) {
+    await sendReorder(pendingReorder.value, true);
+  }
 }
 
 function cancelReorder() {

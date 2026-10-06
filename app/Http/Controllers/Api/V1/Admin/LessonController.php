@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\StoreLessonRequest;
 use App\Http\Requests\Admin\UpdateLessonRequest;
 use App\Http\Resources\LessonResource;
 use App\Models\Lesson;
+use App\Models\Module;
 use App\Models\Topic;
 use App\Services\LessonService;
 use App\Support\ApiResponse;
@@ -93,6 +94,15 @@ class LessonController extends ApiController
         $this->authorize('update', $topic);
 
         $cleared = $this->lessons->reorder($topic, $request->validated('ids'), $request->boolean('force'));
+
+        return ApiResponse::success(['message' => 'Aulas reordenadas.', 'cleared' => $cleared]);
+    }
+
+    public function reorderModule(ReorderRequest $request, Module $module): JsonResponse
+    {
+        $this->authorize('update', $module);
+
+        $cleared = $this->lessons->reorderModuleLessons($module, $request->validated('ids'), $request->boolean('force'));
 
         return ApiResponse::success(['message' => 'Aulas reordenadas.', 'cleared' => $cleared]);
     }

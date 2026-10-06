@@ -17,10 +17,11 @@ class LessonOrderService
     public function sequenceForCourse(int $courseId): array
     {
         return DB::table('lessons')
-            ->join('topics', 'topics.id', '=', 'lessons.topic_id')
-            ->join('course_modules', 'course_modules.module_id', '=', 'topics.module_id')
+            ->leftJoin('topics', 'topics.id', '=', 'lessons.topic_id')
+            ->join('course_modules', 'course_modules.module_id', '=', 'lessons.module_id')
             ->where('course_modules.course_id', $courseId)
             ->orderBy('course_modules.sort_order')
+            ->orderByRaw('lessons.topic_id IS NULL')
             ->orderBy('topics.sort_order')
             ->orderBy('lessons.sort_order')
             ->orderBy('lessons.id')
@@ -124,10 +125,10 @@ class LessonOrderService
             throw new BusinessRuleException('Uma aula não pode depender dela mesma.');
         }
 
-        $lesson->loadMissing('topic.module.courses');
-        $courseIds = $lesson->topic?->module?->courses?->pluck('id')->all() ?? [];
+        $lesson->loadMissing('module.courses');
+        $courseIds = $lesson->module?->courses?->pluck('id')->all() ?? [];
 
-        $required = Lesson::query()->with('topic.module.courses')->find($requiredLessonId);
+        $required = Lesson::query()->with('module.courses')->find($requiredLessonId);
 
         if (! $required) {
             throw new BusinessRuleException('Aula pré-requisito não encontrada.');
@@ -137,7 +138,7 @@ class LessonOrderService
             throw new BusinessRuleException('O pré-requisito precisa ser uma aula da mesma empresa.');
         }
 
-        $requiredCourseIds = $required->topic?->module?->courses?->pluck('id')->all() ?? [];
+        $requiredCourseIds = $required->module?->courses?->pluck('id')->all() ?? [];
         $sharedCourseIds = array_values(array_intersect($courseIds, $requiredCourseIds));
 
         if ($sharedCourseIds === []) {

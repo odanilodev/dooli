@@ -16,9 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * model and table nomenclature aligned.
  */
 #[Fillable([
-    'company_id', 'name', 'topic_id', 'description', 'content',
+    'company_id', 'name', 'module_id', 'topic_id', 'description', 'content',
     'sort_order', 'status', 'video_id', 'document_id', 'required_lesson_id',
-    'webinar_link', 'webinar_starts_at', 'published_at',
+    'require_full_watch', 'webinar_link', 'webinar_starts_at', 'published_at',
 ])]
 class Lesson extends Model
 {
@@ -31,9 +31,15 @@ class Lesson extends Model
         return [
             'sort_order' => 'integer',
             'required_lesson_id' => 'integer',
+            'require_full_watch' => 'boolean',
             'webinar_starts_at' => 'datetime',
             'published_at' => 'datetime',
         ];
+    }
+
+    public function module(): BelongsTo
+    {
+        return $this->belongsTo(Module::class);
     }
 
     public function topic(): BelongsTo

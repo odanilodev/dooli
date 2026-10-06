@@ -27,6 +27,9 @@ class CourseRepository extends BaseRepository
                 'modules.topics.lessons.video',
                 'modules.topics.lessons.document',
                 'modules.topics.lessons.attachments',
+                'modules.looseLessons.video',
+                'modules.looseLessons.document',
+                'modules.looseLessons.attachments',
             ])
             ->findOrFail($id);
     }

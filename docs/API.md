@@ -242,6 +242,7 @@ Salva a posição de reprodução (retomar de onde parou). Exige matrícula (403
 ```
 Idempotente: repetir a conclusão não duplica o registro em `timelines`.
 > **Pré-requisito:** se a aula tem `required_lesson_id` e o aluno ainda não concluiu essa aula no curso/team, responde **422** (`business_rule`).
+> **Assistir até o final:** se a aula tem `require_full_watch = true` e um vídeo, o aluno só conclui depois que a posição salva em `video-progress` alcança a duração do vídeo (tolerância de 2s); caso contrário responde **422** (`business_rule`). Sem vídeo a flag é ignorada.
 **Resposta:**
 ```json
 { "success": true, "data": { "already_completed": false, "progress": { "percentage": 10.0 } } }
@@ -287,17 +288,20 @@ Publicação: `POST /courses/{course}/publish`, `POST /courses/{course}/unpublis
 Módulos do curso: `POST /courses/{course}/modules` (`module_id`, `sort_order`), `DELETE /courses/{course}/modules/{module}`, `PUT /courses/{course}/modules/reorder` (`ids: []`).
 
 ### Módulos (`modules`)
-CRUD + `PUT /modules/{module}/topics/reorder` (`ids: []`).
+CRUD + `PUT /modules/{module}/topics/reorder` (`ids: []`) + `PUT /modules/{module}/lessons/reorder` (`ids: []`, `force?: bool`) para as aulas **sem tópico**.
 
 ### Tópicos (`topics`)
 CRUD + `PUT /topics/{topic}/lessons/reorder` (`ids: []`, `force?: bool`).
 
 ### Aulas (`lessons`)
 CRUD + `POST /lessons/{lesson}/publish`, `POST /lessons/{lesson}/unpublish`, `attachment_ids[]` opcional.
-> **Pré-requisito (trava):** `required_lesson_id` (nullable) aponta para outra aula do **mesmo curso** que precisa ser concluída antes. Só são aceitas aulas **anteriores** na ordem do curso (validação 422 `business_rule`). Ao criar, a aula entra no fim do tópico. O bloqueio do aluno é validado no backend em `me/courses/{course}/lessons/{lesson}/video` e `me/progress/complete` (422).
+> **Vínculo:** `module_id` identifica o módulo da aula (obrigatório; se `topic_id` for enviado e `module_id` omitido, o backend deriva do tópico). `topic_id` é **opcional**: sem ele a aula pertence direto ao módulo. Se ambos vierem, o tópico tem de pertencer ao módulo (422 se não).
+> **Pré-requisito (trava):** `required_lesson_id` (nullable) aponta para outra aula do **mesmo curso** que precisa ser concluída antes. Só são aceitas aulas **anteriores** na ordem do curso (validação 422 `business_rule`). Ao criar, a aula entra no fim do tópico ou, sem tópico, no fim das aulas do módulo. O bloqueio do aluno é validado no backend em `me/courses/{course}/lessons/{lesson}/video` e `me/progress/complete` (422).
+> **Assistir até o final:** `require_full_watch` (bool, nullable/padrão `false`). Com `true` e um `video_id` vinculado, o aluno só conclui a aula depois de assistir o vídeo até o fim (ver `me/progress/complete`).
 > **Aula ao vivo:** `webinar_link` (URL de embed, ex.: `https://player.vdocipher.com/live-v2?liveId=...`) + `webinar_starts_at` (data/hora agendada, nullable). A aula com `webinar_link` é renderizada como live no player do aluno (iframe), sem passar pelo fluxo de OTP/`videos`. Antes de `webinar_starts_at` o frontend mostra um card "EM BREVE"; depois (ou sem data) mostra o iframe com selo "AO VIVO".
 > Ao publicar/criar aulas em um curso com alunos concluídos, o backend dispara a regra de recálculo de certificados (ver `docs/ARCHITECTURE.md`).
-> **Reordenação** (`modules/reorder`, `topics/reorder`, `lessons/reorder`): se a nova ordem deixar o pré-requisito de alguma aula depois dela, o backend responde **409** `prerequisite_conflict` com `errors.conflicts[]` (`lesson_id`, `lesson_name`, `required_lesson_id`, `required_lesson_name`) e **não** aplica nada. Reenviar com `force: true` aplica a ordem e **remove essas travas**, devolvendo `data.cleared` (ids das aulas destravadas).
+> **Reordenação** (`modules/reorder`, `topics/reorder`, `lessons/reorder`, `modules/{module}/lessons/reorder`): se a nova ordem deixar o pré-requisito de alguma aula depois dela, o backend responde **409** `prerequisite_conflict` com `errors.conflicts[]` (`lesson_id`, `lesson_name`, `required_lesson_id`, `required_lesson_name`) e **não** aplica nada. Reenviar com `force: true` aplica a ordem e **remove essas travas**, devolvendo `data.cleared` (ids das aulas destravadas).
+> `topics/{topic}/lessons/reorder` e `modules/{module}/lessons/reorder` também **movem** as aulas listadas para o tópico/módulo indicado (só ids do mesmo módulo são aceitos; ids de outros módulos são ignorados). É assim que o builder move uma aula entre tópicos do mesmo módulo ou entre tópico e módulo.
 
 ### Turmas (`teams`)
 CRUD +

@@ -121,9 +121,9 @@
             <p v-if="currentLesson.content" class="desc-text" v-html="currentLesson.content"></p>
             <p v-else-if="currentLesson.description" class="desc-text" style="white-space:pre-line;">{{ currentLesson.description }}</p>
             <p v-else class="desc-text">Sem descrição para esta aula.</p>
-            <button class="btn btn-primary" :disabled="isCurrentCompleted || completing || isCurrentLocked" @click="markCompleted">
+            <button class="btn btn-primary" :disabled="isCurrentCompleted || completing || isCurrentLocked || isCurrentAwaitingWatch" @click="markCompleted">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-              <span>{{ isCurrentCompleted ? 'Aula concluída' : (isCurrentLocked ? 'Aula bloqueada' : (completing ? 'Salvando...' : 'Marcar como concluída')) }}</span>
+              <span>{{ isCurrentCompleted ? 'Aula concluída' : (isCurrentLocked ? 'Aula bloqueada' : (isCurrentAwaitingWatch ? 'Assista até o final' : (completing ? 'Salvando...' : 'Marcar como concluída'))) }}</span>
             </button>
           </div>
         </div>
@@ -301,6 +301,30 @@
                     <span class="mins" v-if="store.isCompleted(lesson.id)">✓</span>
                   </div>
                 </template>
+
+                <template v-if="module.lessons?.length">
+                  <div
+                    v-for="lesson in module.lessons"
+                    :key="lesson.id"
+                    class="lesson-row"
+                    :class="{ current: currentLesson.id === lesson.id, locked: store.isLocked(lesson.id), started: store.isStarted(lesson.id), completed: store.isCompleted(lesson.id) }"
+                    role="button"
+                    tabindex="0"
+                    style="cursor:pointer;"
+                    @click="goLesson(lesson.id)"
+                    @keydown.enter="goLesson(lesson.id)"
+                  >
+                    <span class="lesson-icon">
+                      <svg v-if="store.isLocked(lesson.id)" class="lock-mark" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+                      <svg v-else-if="store.isCompleted(lesson.id)" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+                      <svg v-else-if="store.isStarted(lesson.id)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+                      <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+                      <svg v-if="currentLesson.id === lesson.id && !store.isLocked(lesson.id)" class="play-mark" width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M9 6l7 6-7 6V6z"/></svg>
+                    </span>
+                    <span class="name">{{ lesson.name }}</span>
+                    <span class="mins" v-if="store.isCompleted(lesson.id)">✓</span>
+                  </div>
+                </template>
               </div>
             </template>
           </div>
@@ -353,6 +377,7 @@ const videoDuration = ref(0);
 const videoResumeFrom = ref(0);
 const videoLoading = ref(false);
 const now = ref(Date.now());
+const watchedToEnd = ref(false);
 
 let videoLessonId = null;
 let videoRequestId = 0;
@@ -372,6 +397,15 @@ const prerequisiteLesson = computed(() => {
 });
 const isCurrentLocked = computed(() => (currentLesson.value ? store.isLocked(currentLesson.value.id) : false));
 const isNextLocked = computed(() => (store.nextLesson ? store.isLocked(store.nextLesson.id) : false));
+const isCurrentAwaitingWatch = computed(() => {
+  const lesson = currentLesson.value;
+
+  if (!lesson || isCurrentCompleted.value) {
+    return false;
+  }
+
+  return !!lesson.requireFullWatch && !!lesson.video && !watchedToEnd.value;
+});
 
 const myRating = computed(() => {
   const userId = auth.user?.id;
@@ -419,6 +453,7 @@ function resetVideoState() {
   videoDuration.value = 0;
   videoResumeFrom.value = 0;
   videoLessonId = null;
+  watchedToEnd.value = false;
 }
 
 async function loadVideoPlayback(lessonId) {
@@ -463,6 +498,10 @@ async function loadVideoPlayback(lessonId) {
     videoPlatform.value = playback.platform || null;
     videoDuration.value = playback.duration || 0;
     videoResumeFrom.value = playback.resume_from || 0;
+
+    if (videoDuration.value > 0 && videoResumeFrom.value >= videoDuration.value - 2) {
+      watchedToEnd.value = true;
+    }
   } catch (e) {
     if (requestId !== videoRequestId) {
       return;
@@ -498,7 +537,7 @@ function videoPositionPayload() {
 
 function sendVideoPosition(keepalive = false) {
   if (!videoTracking.lessonId || !videoTracking.teamId) {
-    return;
+    return Promise.resolve();
   }
 
   const payload = videoPositionPayload();
@@ -520,10 +559,10 @@ function sendVideoPosition(keepalive = false) {
       /* ignore */
     }
 
-    return;
+    return Promise.resolve();
   }
 
-  api.post('/me/progress/video-position', payload).catch(() => {});
+  return api.post('/me/progress/video-position', payload).catch(() => {});
 }
 
 function onVideoProgress({ position, duration }) {
@@ -533,9 +572,13 @@ function onVideoProgress({ position, duration }) {
   videoTracking.position = position;
   videoTracking.duration = duration || videoTracking.duration;
 
+  if (videoTracking.duration > 0 && position >= videoTracking.duration - 2) {
+    watchedToEnd.value = true;
+  }
+
   const now = Date.now();
 
-  if (now - lastVideoSentAt >= 5000) {
+  if (watchedToEnd.value || now - lastVideoSentAt >= 5000) {
     lastVideoSentAt = now;
     sendVideoPosition();
   }
@@ -788,7 +831,10 @@ function pulsePlay(event) {
 }
 
 function moduleLessons(module) {
-  return (module.topics ?? []).flatMap((topic) => topic.lessons ?? []);
+  return [
+    ...(module.topics ?? []).flatMap((topic) => topic.lessons ?? []),
+    ...(module.lessons ?? []),
+  ];
 }
 
 function moduleTotal(module) {
@@ -810,9 +856,22 @@ async function markCompleted() {
     return;
   }
 
+  if (isCurrentAwaitingWatch.value) {
+    toast.error('Assista a aula até o final para concluí-la.');
+
+    return;
+  }
+
   completing.value = true;
 
   try {
+    if (currentLesson.value.requireFullWatch && currentLesson.value.video) {
+      videoTracking.lessonId = currentLesson.value.id;
+      videoTracking.courseId = courseId.value;
+      videoTracking.teamId = store.progress?.team_id ?? null;
+      await sendVideoPosition();
+    }
+
     await store.completeLesson(currentLesson.value.id);
     toast.success('Aula concluída.');
   } catch (e) {

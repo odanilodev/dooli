@@ -171,6 +171,7 @@ class CourseContentSeeder extends Seeder
                     $lesson = Lesson::query()->updateOrCreate(
                         ['company_id' => $companyId, 'topic_id' => $topic->id, 'name' => $lessonData['name']],
                         [
+                            'module_id' => $module->id,
                             'description' => 'Aula de demonstração: '.$lessonData['name'].'.',
                             'content' => '<p>Conteúdo da aula '.$lessonData['name'].'.</p>',
                             'sort_order' => $lessonSort,

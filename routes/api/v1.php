@@ -146,6 +146,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
 
         Route::apiResource('modules', AdminModuleController::class);
         Route::put('modules/{module}/topics/reorder', [AdminTopicController::class, 'reorder']);
+        Route::put('modules/{module}/lessons/reorder', [AdminLessonController::class, 'reorderModule']);
 
         Route::apiResource('topics', AdminTopicController::class);
         Route::put('topics/{topic}/lessons/reorder', [AdminLessonController::class, 'reorder']);

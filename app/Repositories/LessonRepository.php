@@ -9,7 +9,7 @@ class LessonRepository extends BaseRepository
 {
     protected array $searchable = ['name', 'description'];
 
-    protected array $filterable = ['status', 'topic_id', 'video_id', 'document_id', 'company_id'];
+    protected array $filterable = ['status', 'module_id', 'topic_id', 'video_id', 'document_id', 'company_id'];
 
     protected string $defaultSort = 'sort_order';
 
@@ -23,21 +23,22 @@ class LessonRepository extends BaseRepository
     public function findWithRelations(int $id): Lesson
     {
         return $this->query()
-            ->with(['video', 'document', 'attachments', 'topic.module'])
+            ->with(['video', 'document', 'attachments', 'module', 'topic.module'])
             ->findOrFail($id);
     }
 
     public function countPublishedByCourse(int $courseId): int
     {
         return $this->query()
-            ->whereHas('topic.module.courses', fn ($q) => $q->where('courses.id', $courseId))
+            ->whereHas('module.courses', fn ($q) => $q->where('courses.id', $courseId))
             ->where('lessons.status', GeneralStatus::Active->value)
             ->count();
     }
 
     /**
-     * First published lesson of the course (module -> topic -> lesson order)
-     * whose id is not in the excluded list.
+     * First published lesson of the course (module -> topic -> lesson order,
+     * with topic-less lessons after the topics of each module) whose id is not
+     * in the excluded list.
      *
      * @param  array<int, int>  $excludeIds
      */
@@ -45,15 +46,16 @@ class LessonRepository extends BaseRepository
     {
         return $this->query()
             ->select('lessons.*')
-            ->with(['topic.module', 'video'])
-            ->join('topics', 'topics.id', '=', 'lessons.topic_id')
-            ->join('course_modules', 'course_modules.module_id', '=', 'topics.module_id')
+            ->with(['module', 'topic.module', 'video'])
+            ->leftJoin('topics', 'topics.id', '=', 'lessons.topic_id')
+            ->join('course_modules', 'course_modules.module_id', '=', 'lessons.module_id')
             ->where('course_modules.course_id', $courseId)
             ->where('course_modules.status', GeneralStatus::Active->value)
-            ->where('topics.status', GeneralStatus::Active->value)
+            ->where(fn ($q) => $q->whereNull('lessons.topic_id')->orWhere('topics.status', GeneralStatus::Active->value))
             ->where('lessons.status', GeneralStatus::Active->value)
             ->when($excludeIds !== [], fn ($q) => $q->whereNotIn('lessons.id', $excludeIds))
             ->orderBy('course_modules.sort_order')
+            ->orderByRaw('lessons.topic_id IS NULL')
             ->orderBy('topics.sort_order')
             ->orderBy('lessons.sort_order')
             ->first();

@@ -29,7 +29,7 @@ class VideoProgressRepository extends BaseRepository
     public function latestForCourse(int $userId, int $courseId, int $teamId): ?VideoProgress
     {
         return $this->query()
-            ->with(['lesson.topic.module', 'lesson.video'])
+            ->with(['lesson.module', 'lesson.video'])
             ->where('user_id', $userId)
             ->where('course_id', $courseId)
             ->where('team_id', $teamId)

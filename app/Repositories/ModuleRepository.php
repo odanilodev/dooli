@@ -20,7 +20,10 @@ class ModuleRepository extends BaseRepository
     public function findWithContent(int $id): Module
     {
         return $this->query()
-            ->with(['topics.lessons.video', 'topics.lessons.document', 'topics.lessons.attachments'])
+            ->with([
+                'topics.lessons.video', 'topics.lessons.document', 'topics.lessons.attachments',
+                'looseLessons.video', 'looseLessons.document', 'looseLessons.attachments',
+            ])
             ->findOrFail($id);
     }
 }

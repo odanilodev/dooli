@@ -18,19 +18,21 @@ Todos os modelos pertencem a uma **Company** (tenant) via trait `BelongsToCompan
 Company (escola/tenant)
  └─ Course (curso)
      └─ Module (módulo)      ← N:N com Course via pivot course_modules
-         └─ Topic (tópico)   ← pertence a UM módulo (topics.module_id)
-             └─ Lesson (aula) ← pertence a UM tópico (lessons.topic_id)
-                 ├─ Video      (opcional — lessons.video_id)
-                 ├─ Document   (opcional — lessons.document_id)
-                 └─ Attachments (N:N via lesson_attachments)
+         ├─ Topic (tópico)   ← opcional, pertence a UM módulo (topics.module_id)
+         │   └─ Lesson (aula) ← pertence a UM tópico (lessons.topic_id)
+         └─ Lesson (aula)    ← pode pertencer só ao módulo (lessons.module_id, topic_id nulo)
+             ├─ Video      (opcional — lessons.video_id)
+             ├─ Document   (opcional — lessons.document_id)
+             └─ Attachments (N:N via lesson_attachments)
 ```
 
 ```mermaid
 flowchart TD
     C[Company] --> CO[Course]
     CO -->|course_modules| M[Module]
-    M --> T[Topic]
-    T --> L[Lesson / aula]
+    M --> T[Topic - opcional]
+    M --> L[Lesson / aula]
+    T --> L
     L -.-> V[Video - opcional]
     L -.-> D[Document - opcional]
     L --- AT[Attachments - N:N]
@@ -39,8 +41,9 @@ flowchart TD
 Pontos-chave:
 
 - **Curso ↔ Módulo é N:N** (`course_modules`): o mesmo módulo pode ser reaproveitado em vários cursos.
-- **Tópico pertence a um módulo** e **aula pertence a um tópico** — não existem ligados direto ao curso.
+- **Toda aula pertence a um módulo** (`lessons.module_id`) e **opcionalmente a um tópico** (`lessons.topic_id`): um módulo pode ter aulas com ou sem tópico. Tópico pertence a um módulo.
 - Uma aula só aparece para o aluno se estiver **publicada**: `Lesson::isPublished()` = `status = active` **e** (`published_at` nulo **ou** no passado).
+- **Assistir até o final (opcional):** `lessons.require_full_watch` (bool, padrão `false`). Quando ligado e a aula tem vídeo, o aluno só consegue concluir depois que o progresso de vídeo salvo (`video_progresses.position_seconds`) alcança a duração (tolerância de 2s). Sem vídeo vinculado a flag não tem efeito.
 - O **produto (`store_products`) NÃO faz parte do conteúdo**. A aula existe sem produto nenhum.
 
 Referências: `app/Models/Course.php`, `app/Models/Module.php`, `app/Models/Topic.php`, `app/Models/Lesson.php`.
@@ -110,7 +113,9 @@ Referências: `app/Services/EnrollmentService.php`, `app/Services/PaymentService
 ```mermaid
 flowchart TD
     subgraph Conteudo[Conteúdo]
-        CO2[Course] --> M2[Module] --> T2[Topic] --> L2[Lesson]
+        CO2[Course] --> M2[Module]
+        M2 --> T2[Topic - opcional] --> L2[Lesson]
+        M2 --> L2
     end
     subgraph Acesso[Acesso]
         TE2[Team] -->|team_courses| CO2
@@ -136,7 +141,7 @@ flowchart TD
     B -- não --> X[403 UnauthorizedCourseAccess]
     B -- sim --> C{Turma tem o curso ativo?}
     C -- não --> X
-    C -- sim --> D[Carrega Course -> Modules -> Topics -> Lessons publicadas]
+    C -- sim --> D[Carrega Course -> Modules -> (Topics ->) Lessons publicadas]
     D --> E[Assiste a aula]
     E --> F[Marca conclusão -> timelines]
     F --> G[CertificateService::issueIfEligible]
@@ -147,11 +152,11 @@ flowchart TD
 
 Passo a passo:
 
-1. Admin cria `Curso → Módulos → Tópicos → Aulas` (publicadas).
+1. Admin cria `Curso → Módulos → (Tópicos →) Aulas` (publicadas). A aula pode ficar direto no módulo, sem tópico.
 2. Admin cria uma `Turma` e vincula o curso (`team_courses`).
 3. Aluno entra na turma **por compra** (pagamento → `EnrollmentService`) **ou** por cadastro manual do admin.
 4. `GET /me/courses` lista os cursos em que o aluno tem turma ativa.
-5. `GET /me/courses/{course}` valida o acesso e retorna `modules → topics → lessons`.
+5. `GET /me/courses/{course}` valida o acesso e retorna `modules → topics → lessons` mais as `modules.lessons` (aulas sem tópico).
 6. `POST /me/progress/complete` grava `timelines` (idempotente) e tenta emitir certificado.
 
 ---
@@ -168,7 +173,7 @@ Todas as pivots carregam `company_id` (multi-tenant) e `status`, e têm unique c
 | `store_product_teams` | StoreProduct ↔ Team | `company_id`, `store_product_id`, `team_id`, `status` | `company_id, store_product_id, team_id` |
 | `lesson_attachments` | Lesson ↔ Attachment | `company_id`, `lesson_id`, `attachment_id`, `status`, `sort_order` | `company_id, lesson_id, attachment_id` |
 
-> `sort_order` controla a ordenação de exibição (módulos no curso, anexos na aula). Tópicos e aulas ordenam por seu próprio `sort_order`.
+> `sort_order` controla a ordenação de exibição (módulos no curso, anexos na aula). Tópicos e aulas ordenam por seu próprio `sort_order`. Aulas sem tópico usam `lessons.sort_order` dentro do módulo e aparecem **depois** dos tópicos.
 
 ---
 
@@ -188,7 +193,7 @@ Nesse caso o aluno foi matriculado **direto na turma** (sem produto), pelo `Demo
 ## 7. Respostas rápidas
 
 - **Aluno precisa de turma para assistir?** Sim. Acesso é sempre via `Team`, com vínculo ativo e não expirado.
-- **A aula precisa de módulo?** Sim, indiretamente: `aula → tópico → módulo → curso`.
+- **A aula precisa de módulo?** Sim, diretamente: `lessons.module_id`. O tópico (`lessons.topic_id`) é opcional — unidade organizacional dentro do módulo.
 - **A aula precisa de produto?** Não. Produto é só venda; ele libera acesso colocando o aluno na turma.
 - **`user_type` dá acesso a curso?** Não — define permissão (admin/instrutor/aluno), não matrícula.
 - **Curso pode ter o mesmo módulo duas vezes?** O vínculo é N:N, mas o unique `company_id, course_id, module_id` impede duplicar o mesmo módulo no mesmo curso.

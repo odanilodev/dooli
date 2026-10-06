@@ -123,4 +123,21 @@ class LessonManagementTest extends TestCase
         $this->assertDatabaseMissing('comments', ['lesson_id' => $data['lesson']->id]);
         $this->assertDatabaseMissing('ratings', ['lesson_id' => $data['lesson']->id]);
     }
+
+    public function test_admin_can_flag_lesson_as_requiring_full_watch(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'require_full_watch' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.require_full_watch', true);
+
+        $this->assertDatabaseHas('lessons', [
+            'id' => $data['lesson']->id,
+            'require_full_watch' => true,
+        ]);
+    }
 }

@@ -17,6 +17,7 @@ class ModuleResource extends JsonResource
             'status' => $this->status,
             'sort_order' => $this->whenPivotLoaded('course_modules', fn () => $this->pivot->sort_order) ?? $this->sort_order,
             'topics' => TopicResource::collection($this->whenLoaded('topics')),
+            'lessons' => LessonResource::collection($this->whenLoaded('looseLessons')),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

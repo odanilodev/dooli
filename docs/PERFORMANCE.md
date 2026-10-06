@@ -18,6 +18,7 @@ Migrations originais já indexam `status` e chaves estrangeiras (InnoDB). A migr
 - `notifications(company_id, team_id, status)`
 - `certificate_users(company_id, user_id)`
 - `lessons(topic_id, status, sort_order)`
+- `lessons(module_id, status, sort_order)`
 - `store_products(company_id, status, release_at)`
 
 ### Processamento assíncrono
