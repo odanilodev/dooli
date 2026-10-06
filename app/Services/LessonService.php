@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\GeneralStatus;
+use App\Enums\LessonContentType;
 use App\Events\CourseContentChanged;
 use App\Exceptions\PrerequisiteConflictException;
 use App\Models\Lesson;
@@ -43,7 +44,7 @@ class LessonService
                 $data['sort_order'] = $this->nextSortOrder($data);
             }
 
-            $lesson = $this->lessons->create($data);
+            $lesson = $this->lessons->create($this->normalizeContent(null, $data));
 
             $this->orders->assertValidPrerequisite($lesson, $lesson->required_lesson_id);
 
@@ -60,7 +61,7 @@ class LessonService
         return DB::transaction(function () use ($lesson, $data) {
             $wasPublished = $lesson->status === GeneralStatus::Active->value;
 
-            $lesson = $this->lessons->update($lesson, $this->normalizePlacement($lesson, $data));
+            $lesson = $this->lessons->update($lesson, $this->normalizeContent($lesson, $this->normalizePlacement($lesson, $data)));
 
             $this->orders->assertValidPrerequisite($lesson, $lesson->required_lesson_id);
 
@@ -195,6 +196,81 @@ class LessonService
         }
 
         return $data;
+    }
+
+    /**
+     * Keeps the lesson's main content source consistent with its type: the
+     * chosen type wins and the fields of the other types are cleared.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function normalizeContent(?Lesson $lesson, array $data): array
+    {
+        $hasType = array_key_exists('content_type', $data);
+
+        $raw = $hasType ? $data['content_type'] : $lesson?->content_type;
+        $type = $raw instanceof LessonContentType ? $raw->value : $raw;
+
+        if (! $hasType && $type === null) {
+            $type = $this->deriveContentType($data);
+
+            if ($type === null) {
+                return $data;
+            }
+        }
+
+        $data['content_type'] = $type;
+
+        $previous = $lesson?->content_type?->value;
+
+        if ($type !== null && $type !== $previous) {
+            $data['content'] = null;
+        }
+
+        if ($type === null) {
+            $data['video_id'] = null;
+            $data['document_id'] = null;
+            $data['webinar_link'] = null;
+            $data['require_full_watch'] = false;
+
+            return $data;
+        }
+
+        if ($type === LessonContentType::Video->value) {
+            $data['document_id'] = null;
+            $data['webinar_link'] = null;
+        } elseif ($type === LessonContentType::Document->value) {
+            $data['video_id'] = null;
+            $data['webinar_link'] = null;
+            $data['require_full_watch'] = false;
+        } elseif ($type === LessonContentType::Live->value) {
+            $data['video_id'] = null;
+            $data['document_id'] = null;
+            $data['require_full_watch'] = false;
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function deriveContentType(array $data): ?string
+    {
+        if (! empty($data['video_id'])) {
+            return LessonContentType::Video->value;
+        }
+
+        if (! empty($data['document_id'])) {
+            return LessonContentType::Document->value;
+        }
+
+        if (! empty($data['webinar_link'])) {
+            return LessonContentType::Live->value;
+        }
+
+        return null;
     }
 
     /**

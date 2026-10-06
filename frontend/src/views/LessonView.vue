@@ -30,7 +30,7 @@
         </div>
 
         <!-- VIDEO -->
-        <div class="video-block">
+        <div v-if="showMediaBlock" class="video-block">
           <div v-if="isCurrentLocked" class="video-stage video-stage-locked">
             <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
             <div class="video-overlay-text">
@@ -68,44 +68,30 @@
               @error="onVideoError"
             />
           </div>
-          <div v-else-if="videoLoading" class="video-stage video-stage-loading">
-            <span class="video-spinner"></span>
-            <span class="video-loading-text">Carregando vídeo...</span>
-          </div>
-          <div v-else class="video-stage" :style="videoBg">
-            <svg v-if="!currentLesson.video" class="video-illustration" width="100%" height="100%" viewBox="0 0 900 420" preserveAspectRatio="xMidYMid slice" fill="none">
-              <defs>
-                <radialGradient id="vidGlow" cx="35%" cy="55%" r="55%">
-                  <stop offset="0%" stop-color="#17c993" stop-opacity="0.25"/>
-                  <stop offset="100%" stop-color="#17c993" stop-opacity="0"/>
-                </radialGradient>
-              </defs>
-              <rect width="900" height="420" fill="#0c141e"/>
-              <circle cx="330" cy="240" r="260" fill="url(#vidGlow)"/>
-              <g fill="#141f2c">
-                <circle cx="330" cy="200" r="70"/>
-                <path d="M180 420c0-95 65-150 150-150s150 55 150 150z"/>
-              </g>
-              <g stroke="#1c2a38" stroke-width="1">
-                <line x1="0" y1="140" x2="900" y2="140"/>
-                <line x1="0" y1="280" x2="900" y2="280"/>
-              </g>
-            </svg>
-            <div class="video-overlay-text">
-              <div class="l1">{{ currentLesson.moduleName }}</div>
-              <div class="l2">{{ currentLesson.name }}</div>
+          <div v-else-if="showDocumentStage" class="video-stage has-player document-stage">
+            <div v-if="documentLoading" class="document-loading">
+              <span class="video-spinner"></span>
+              <span class="video-loading-text">Carregando documento...</span>
             </div>
-            <button class="play-btn" aria-label="Reproduzir" @click="pulsePlay">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff"><path d="M8 5l12 7-12 7V5z"/></svg>
+            <iframe v-else-if="documentPreviewUrl" :src="documentPreviewUrl" class="document-frame" title="Documento da aula"></iframe>
+            <div v-else class="document-fallback">
+              <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg>
+              <div class="document-fallback-name">{{ fileName(currentLesson.document?.path) }}</div>
+              <p class="document-fallback-text">{{ documentError || 'Pré-visualização indisponível para este formato. Baixe o arquivo para abrir.' }}</p>
+            </div>
+            <button
+              type="button"
+              class="document-download"
+              :disabled="downloadingId === currentLesson.document?.id"
+              @click="downloadMaterial('document', currentLesson.document)"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg>
+              {{ currentLesson.document?.url ? 'Abrir documento' : 'Baixar documento' }}
             </button>
           </div>
-          <div v-if="!currentLesson.webinar_link && !videoEmbedUrl && !videoLoading" class="video-controls">
-            <button aria-label="Reproduzir"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M8 5l12 7-12 7V5z"/></svg></button>
-            <span class="time">{{ currentLesson.video?.time || '00:00' }}</span>
-            <span class="video-seek"><span></span></span>
-            <button aria-label="Volume"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" stroke="#fff"><path d="M4 9v6h4l5 4V5L8 9H4z"/></svg></button>
-            <button aria-label="Configurações"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" stroke="#fff"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></button>
-            <button aria-label="Tela cheia"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" stroke="#fff"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
+          <div v-else class="video-stage video-stage-loading">
+            <span class="video-spinner"></span>
+            <span class="video-loading-text">Carregando vídeo...</span>
           </div>
         </div>
         <!-- TABS -->
@@ -129,10 +115,10 @@
         </div>
 
         <div v-else-if="activeTab === 'materiais'" class="tab-panel simple active">
-          <template v-if="currentLesson.document || currentLesson.attachments.length">
-            <p v-if="currentLesson.document" style="margin:0 0 12px;">
-              <a href="#" @click.prevent="downloadMaterial('document', currentLesson.document)" style="color:var(--accent);font-weight:700;">
-                Documento da aula · {{ fileName(currentLesson.document.path) }}
+          <template v-if="supplementalDocument || currentLesson.attachments.length">
+            <p v-if="supplementalDocument" style="margin:0 0 12px;">
+              <a href="#" @click.prevent="downloadMaterial('document', supplementalDocument)" style="color:var(--accent);font-weight:700;">
+                Documento da aula · {{ supplementalDocument.path ? fileName(supplementalDocument.path) : supplementalDocument.url }}
               </a>
             </p>
             <ul v-if="currentLesson.attachments.length" style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;">
@@ -378,10 +364,14 @@ const videoResumeFrom = ref(0);
 const videoLoading = ref(false);
 const now = ref(Date.now());
 const watchedToEnd = ref(false);
+const documentPreviewUrl = ref(null);
+const documentLoading = ref(false);
+const documentError = ref('');
 
 let videoLessonId = null;
 let videoRequestId = 0;
 let nowTimer = null;
+let documentPreviewId = null;
 
 const courseId = computed(() => Number(route.params.courseId));
 const lessonIdParam = computed(() => (route.params.lessonId ? Number(route.params.lessonId) : null));
@@ -404,7 +394,35 @@ const isCurrentAwaitingWatch = computed(() => {
     return false;
   }
 
-  return !!lesson.requireFullWatch && !!lesson.video && !watchedToEnd.value;
+  return lesson.contentType === 'video' && !!lesson.requireFullWatch && !!lesson.video && !watchedToEnd.value;
+});
+
+const showDocumentStage = computed(() => {
+  const lesson = currentLesson.value;
+
+  return !!lesson && lesson.contentType === 'document' && !!lesson.document;
+});
+
+const isVideoLesson = computed(() => currentLesson.value?.contentType === 'video');
+
+const showMediaBlock = computed(() => {
+  const lesson = currentLesson.value;
+
+  if (!lesson) {
+    return false;
+  }
+
+  return isCurrentLocked.value || !!lesson.webinar_link || isVideoLesson.value || showDocumentStage.value;
+});
+
+const supplementalDocument = computed(() => {
+  const lesson = currentLesson.value;
+
+  if (!lesson) {
+    return null;
+  }
+
+  return lesson.contentType === 'document' ? null : lesson.document;
 });
 
 const myRating = computed(() => {
@@ -430,11 +448,6 @@ const averageRating = computed(() => {
 });
 
 const averageStars = computed(() => Math.round(averageRating.value / 2));
-
-const videoBg = computed(() => {
-  const image = currentLesson.value?.video?.image;
-  return image ? { backgroundImage: `url(${image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {};
-});
 
 const liveSoon = computed(() => {
   const lesson = currentLesson.value;
@@ -465,8 +478,11 @@ async function loadVideoPlayback(lessonId) {
     return;
   }
 
-  // Live lessons stream via the webinar embed, no on-demand playback to load.
-  if (store.lessons.find((item) => item.id === Number(lessonId))?.webinar_link) {
+  // Skip on-demand playback when the lesson's content is not a video. While the
+  // course is still loading the lesson is unknown, so let the request proceed.
+  const lesson = store.lessons.find((item) => item.id === Number(lessonId));
+
+  if (lesson && lesson.contentType !== 'video') {
     resetVideoState();
 
     return;
@@ -520,6 +536,65 @@ async function loadVideoPlayback(lessonId) {
 
 function onVideoError(message) {
   toast.error(message || 'Não foi possível carregar o vídeo.');
+}
+
+function isPdf(path) {
+  return /\.pdf$/i.test(path || '');
+}
+
+function revokeDocumentPreview() {
+  if (documentPreviewUrl.value) {
+    if (documentPreviewUrl.value.startsWith('blob:')) {
+      URL.revokeObjectURL(documentPreviewUrl.value);
+    }
+
+    documentPreviewUrl.value = null;
+  }
+}
+
+async function loadDocumentPreview(lesson) {
+  revokeDocumentPreview();
+  documentError.value = '';
+  documentLoading.value = false;
+  documentPreviewId = null;
+
+  if (!lesson || lesson.contentType !== 'document' || !lesson.document) {
+    return;
+  }
+
+  if (lesson.document.url) {
+    documentPreviewUrl.value = lesson.document.url;
+
+    return;
+  }
+
+  if (!isPdf(lesson.document.path)) {
+    return;
+  }
+
+  const id = lesson.document.id;
+  documentPreviewId = id;
+  documentLoading.value = true;
+
+  try {
+    const { data } = await api.get(`/me/courses/${courseId.value}/documents/${id}`, {
+      responseType: 'blob',
+    });
+
+    if (documentPreviewId !== id) {
+      return;
+    }
+
+    documentPreviewUrl.value = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
+  } catch (e) {
+    if (documentPreviewId === id) {
+      documentError.value = e?.message || 'Não foi possível carregar o documento.';
+    }
+  } finally {
+    if (documentPreviewId === id) {
+      documentLoading.value = false;
+    }
+  }
 }
 
 let lastVideoSentAt = 0;
@@ -605,6 +680,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload);
   clearInterval(nowTimer);
   flushVideoPosition();
+  revokeDocumentPreview();
 });
 
 watch(
@@ -647,7 +723,10 @@ watch(currentLesson, (lesson) => {
   selectedStars.value = 0;
   hoverStars.value = 0;
 
+  loadDocumentPreview(lesson);
+
   if (lesson) {
+    loadVideoPlayback(lesson.id);
     openModule.value = lesson.moduleId;
 
     if (activeTab.value === 'comentarios') {
@@ -754,6 +833,12 @@ function fileName(path) {
 }
 
 async function downloadMaterial(type, material) {
+  if (material.url) {
+    window.open(material.url, '_blank', 'noopener');
+
+    return;
+  }
+
   downloadingId.value = material.id;
 
   const segment = type === 'document' ? 'documents' : 'attachments';
@@ -820,14 +905,6 @@ function goLesson(lessonId, force = false) {
 
 function toggleModule(moduleId) {
   openModule.value = openModule.value === moduleId ? null : moduleId;
-}
-
-function pulsePlay(event) {
-  const button = event.currentTarget;
-  button.style.transform = 'scale(0.9)';
-  setTimeout(() => {
-    button.style.transform = '';
-  }, 120);
 }
 
 function moduleLessons(module) {

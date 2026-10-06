@@ -21,8 +21,8 @@ Company (escola/tenant)
          ├─ Topic (tópico)   ← opcional, pertence a UM módulo (topics.module_id)
          │   └─ Lesson (aula) ← pertence a UM tópico (lessons.topic_id)
          └─ Lesson (aula)    ← pode pertencer só ao módulo (lessons.module_id, topic_id nulo)
-             ├─ Video      (opcional — lessons.video_id)
-             ├─ Document   (opcional — lessons.document_id)
+             ├─ Video      (opcional — lessons.video_id, content_type = video)
+             ├─ Document   (opcional — lessons.document_id, content_type = document; arquivo enviado ou link)
              └─ Attachments (N:N via lesson_attachments)
 ```
 
@@ -43,7 +43,8 @@ Pontos-chave:
 - **Curso ↔ Módulo é N:N** (`course_modules`): o mesmo módulo pode ser reaproveitado em vários cursos.
 - **Toda aula pertence a um módulo** (`lessons.module_id`) e **opcionalmente a um tópico** (`lessons.topic_id`): um módulo pode ter aulas com ou sem tópico. Tópico pertence a um módulo.
 - Uma aula só aparece para o aluno se estiver **publicada**: `Lesson::isPublished()` = `status = active` **e** (`published_at` nulo **ou** no passado).
-- **Assistir até o final (opcional):** `lessons.require_full_watch` (bool, padrão `false`). Quando ligado e a aula tem vídeo, o aluno só consegue concluir depois que o progresso de vídeo salvo (`video_progresses.position_seconds`) alcança a duração (tolerância de 2s). Sem vídeo vinculado a flag não tem efeito.
+- **Tipo de conteúdo da aula:** `lessons.content_type` (`null`, `video`, `document` ou `live`) define a **mídia principal** exibida no player. Ao escolher um tipo, o serviço limpa os campos dos outros tipos (uma aula de vídeo zera `document_id`/`webinar_link`; uma de documento zera `video_id`/`webinar_link`; uma ao vivo zera `video_id`/`document_id`). Quando `content_type` não é enviado, ele é derivado dos campos preenchidos (`video_id` → video, senão `document_id` → document, senão `webinar_link` → live). `null` = aula sem mídia (só texto/HTML). Anexos (`lesson_attachments`) continuam sendo materiais complementares em qualquer tipo. Enum: `app/Enums/LessonContentType.php`.
+- **Assistir até o final (opcional):** `lessons.require_full_watch` (bool, padrão `false`). Quando ligado e a aula tem vídeo, o aluno só consegue concluir depois que o progresso de vídeo salvo (`video_progresses.position_seconds`) alcança a duração (tolerância de 2s). Sem vídeo vinculado a flag não tem efeito; o serviço zera a flag em aulas de documento/ao vivo.
 - O **produto (`store_products`) NÃO faz parte do conteúdo**. A aula existe sem produto nenhum.
 
 Referências: `app/Models/Course.php`, `app/Models/Module.php`, `app/Models/Topic.php`, `app/Models/Lesson.php`.

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\GeneralStatus;
+use App\Enums\LessonContentType;
 use App\Enums\VideoPlayer;
 use App\Models\Attachment;
 use App\Models\Company;
@@ -176,6 +177,7 @@ class CourseContentSeeder extends Seeder
                             'content' => '<p>Conteúdo da aula '.$lessonData['name'].'.</p>',
                             'sort_order' => $lessonSort,
                             'status' => GeneralStatus::Active->value,
+                            'content_type' => LessonContentType::Video->value,
                             'video_id' => $videoModels[$lessonData['video']]->id,
                             'document_id' => $lessonData['document'] ? $documentModels[$lessonData['document']]->id : null,
                             'published_at' => now(),

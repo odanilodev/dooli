@@ -117,4 +117,22 @@ class StudentMaterialTest extends TestCase
             ->get("/api/v1/me/courses/{$data['course']}/documents/{$data['document']->id}")
             ->assertStatus(404);
     }
+
+    public function test_url_document_redirects_to_the_link(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $this->enroll($this->student, $course['course'], $this->company->id);
+
+        $document = Document::query()->create([
+            'company_id' => $this->company->id,
+            'url' => 'https://example.com/apostila.pdf',
+            'status' => GeneralStatus::Active->value,
+        ]);
+
+        $course['lesson']->update(['document_id' => $document->id]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->get("/api/v1/me/courses/{$course['course']->id}/documents/{$document->id}")
+            ->assertRedirect('https://example.com/apostila.pdf');
+    }
 }

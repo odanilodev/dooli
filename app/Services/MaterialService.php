@@ -5,12 +5,29 @@ namespace App\Services;
 use App\Models\Attachment;
 use App\Models\Document;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class MaterialService
 {
     public function __construct(private readonly StudentCourseService $studentCourses) {}
+
+    /**
+     * Stores an uploaded document on the private materials disk and returns the
+     * path relative to the company folder (as expected by the download flow).
+     */
+    public function storeDocumentFile(UploadedFile $file, int $companyId): string
+    {
+        $name = Str::random(12).'-'.$this->safeName($file->getClientOriginalName());
+        $relative = 'documents/'.$name;
+
+        Storage::disk('materials')->putFileAs((string) $companyId, $file, $relative);
+
+        return $relative;
+    }
 
     /**
      * Streams a lesson document for a student enrolled in the course.
@@ -26,7 +43,11 @@ class MaterialService
 
         abort_unless($document, 404, 'Documento não encontrado.');
 
-        return $this->download($document->company_id, $document->path);
+        if (! empty($document->url)) {
+            return new RedirectResponse($document->url);
+        }
+
+        return $this->download($document->company_id, (string) $document->path);
     }
 
     /**
@@ -68,5 +89,16 @@ class MaterialService
         abort_if($path === '' || str_contains($path, '..'), 404, 'Arquivo não encontrado.');
 
         return $path;
+    }
+
+    /**
+     * Keeps only a safe file name (no folders, no traversal) for stored uploads.
+     */
+    private function safeName(string $name): string
+    {
+        $name = basename(str_replace('\\', '/', $name));
+        $name = preg_replace('/[^A-Za-z0-9._-]/', '-', $name) ?? 'arquivo';
+
+        return ltrim($name, '.') ?: 'arquivo';
     }
 }

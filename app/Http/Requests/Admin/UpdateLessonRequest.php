@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\GeneralStatus;
+use App\Enums\LessonContentType;
 use App\Http\Requests\Concerns\ScopedExists;
 use App\Models\Lesson;
 use App\Models\Topic;
@@ -28,11 +29,12 @@ class UpdateLessonRequest extends FormRequest
             'content' => ['nullable', 'string'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
-            'video_id' => ['nullable', 'integer', $this->companyExists('videos')],
-            'document_id' => ['nullable', 'integer', $this->companyExists('documents')],
+            'content_type' => ['nullable', Rule::in(LessonContentType::values())],
+            'video_id' => ['nullable', 'integer', $this->companyExists('videos'), Rule::requiredIf(fn () => $this->contentRequired(LessonContentType::Video, 'video_id'))],
+            'document_id' => ['nullable', 'integer', $this->companyExists('documents'), Rule::requiredIf(fn () => $this->contentRequired(LessonContentType::Document, 'document_id'))],
             'required_lesson_id' => ['nullable', 'integer', $this->companyExists('lessons')],
             'require_full_watch' => ['sometimes', 'boolean'],
-            'webinar_link' => ['nullable', 'url', 'max:255'],
+            'webinar_link' => ['nullable', 'url', 'max:255', Rule::requiredIf(fn () => $this->contentRequired(LessonContentType::Live, 'webinar_link'))],
             'webinar_starts_at' => ['nullable', 'date'],
             'published_at' => ['nullable', 'date'],
             'attachment_ids' => ['sometimes', 'array'],
@@ -70,5 +72,16 @@ class UpdateLessonRequest extends FormRequest
                 $fail('O tópico informado não pertence ao módulo.');
             }
         };
+    }
+
+    private function contentRequired(LessonContentType $type, string $field): bool
+    {
+        if ($this->input('content_type') !== $type->value) {
+            return false;
+        }
+
+        $lesson = $this->route('lesson');
+
+        return ! ($lesson instanceof Lesson && $lesson->{$field});
     }
 }

@@ -2,15 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Enums\GeneralStatus;
 use App\Models\Action;
 use App\Models\Comment;
 use App\Models\Course;
+use App\Models\Document;
 use App\Models\Lesson;
 use App\Models\Module;
 use App\Models\Rating;
 use App\Models\Team;
 use App\Models\Timeline;
 use App\Models\Topic;
+use App\Models\Video;
 use App\Models\VideoProgress;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsTenant;
@@ -138,6 +141,123 @@ class LessonManagementTest extends TestCase
         $this->assertDatabaseHas('lessons', [
             'id' => $data['lesson']->id,
             'require_full_watch' => true,
+        ]);
+    }
+
+    public function test_lesson_content_type_is_derived_from_media_on_create(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $video = Video::factory()->create(['company_id' => $this->company->id]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/lessons', [
+                'name' => 'Aula com vídeo',
+                'module_id' => $data['module']->id,
+                'video_id' => $video->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.content_type', 'video');
+    }
+
+    public function test_document_content_type_requires_a_document(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'content_type' => 'document',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('document_id');
+    }
+
+    public function test_switching_lesson_to_document_clears_video_and_full_watch(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $video = Video::factory()->create(['company_id' => $this->company->id]);
+        $document = Document::create([
+            'company_id' => $this->company->id,
+            'path' => 'documentos/aula.pdf',
+            'status' => GeneralStatus::Active->value,
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'content_type' => 'video',
+                'video_id' => $video->id,
+                'require_full_watch' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.content_type', 'video')
+            ->assertJsonPath('data.require_full_watch', true);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'content_type' => 'document',
+                'document_id' => $document->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.content_type', 'document')
+            ->assertJsonPath('data.require_full_watch', false);
+
+        $this->assertDatabaseHas('lessons', [
+            'id' => $data['lesson']->id,
+            'content_type' => 'document',
+            'video_id' => null,
+            'document_id' => $document->id,
+            'require_full_watch' => false,
+        ]);
+    }
+
+    public function test_switching_content_type_clears_html_content(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $video = Video::factory()->create(['company_id' => $this->company->id]);
+
+        $data['lesson']->update([
+            'content' => '<p>Conteúdo antigo</p>',
+            'content_type' => null,
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'content_type' => 'video',
+                'video_id' => $video->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.content', null);
+
+        $this->assertDatabaseHas('lessons', [
+            'id' => $data['lesson']->id,
+            'content_type' => 'video',
+            'content' => null,
+        ]);
+    }
+
+    public function test_keeping_content_type_preserves_html_content(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $video = Video::factory()->create(['company_id' => $this->company->id]);
+
+        $data['lesson']->update([
+            'content' => '<p>Legado</p>',
+            'content_type' => 'video',
+            'video_id' => $video->id,
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'name' => 'Aula editada',
+                'content_type' => 'video',
+                'video_id' => $video->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.content', '<p>Legado</p>');
+
+        $this->assertDatabaseHas('lessons', [
+            'id' => $data['lesson']->id,
+            'content_type' => 'video',
+            'content' => '<p>Legado</p>',
         ]);
     }
 }

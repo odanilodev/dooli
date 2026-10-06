@@ -16,7 +16,9 @@ class StoreDocumentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'path' => ['required', 'string', 'max:255'],
+            'file' => ['nullable', 'file', 'mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,txt,csv,zip', 'max:20480'],
+            'path' => ['nullable', 'string', 'max:255', 'required_without_all:file,url'],
+            'url' => ['nullable', 'url', 'max:2048', 'required_without_all:file,path'],
             'image' => ['nullable', 'string', 'max:255'],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
         ];

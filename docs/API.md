@@ -208,7 +208,7 @@ Lista os cursos **em andamento** com a próxima aula a assistir (1ª aula public
 > `duration` (segundos, do vídeo da aula) pode ser `null`. `resume_from` é a posição salva (segundos) para retomar; `image` é o poster do vídeo da aula (usado no card) e pode ser `null`. Cursos com 0% ou 100% não aparecem.
 
 ### GET /api/v1/me/courses/{course}/documents/{document}
-Baixa (stream) um documento da aula. Exige matrícula no curso (403). 404 se o documento não pertence ao curso ou o arquivo não existe no disco.
+Baixa (stream) um documento da aula. Exige matrícula no curso (403). 404 se o documento não pertence ao curso ou o arquivo não existe no disco. Se o documento for um **link** (`url`), responde com `302` redirecionando para a URL externa.
 > Arquivos ficam privados em `storage/app/private/uploads/{company_id}/{path}`. O download usa o token Bearer (não é link público).
 
 ### GET /api/v1/me/courses/{course}/attachments/{attachment}
@@ -296,8 +296,9 @@ CRUD + `PUT /topics/{topic}/lessons/reorder` (`ids: []`, `force?: bool`).
 ### Aulas (`lessons`)
 CRUD + `POST /lessons/{lesson}/publish`, `POST /lessons/{lesson}/unpublish`, `attachment_ids[]` opcional.
 > **Vínculo:** `module_id` identifica o módulo da aula (obrigatório; se `topic_id` for enviado e `module_id` omitido, o backend deriva do tópico). `topic_id` é **opcional**: sem ele a aula pertence direto ao módulo. Se ambos vierem, o tópico tem de pertencer ao módulo (422 se não).
+> **Tipo de conteúdo:** `content_type` (`video`, `document`, `live` ou `null`) define a **mídia principal** da aula e torna o campo correspondente obrigatório (`video`→`video_id`, `document`→`document_id`, `live`→`webinar_link`). Ao definir um tipo, o serviço limpa os campos dos outros tipos. Se `content_type` for omitido, ele é derivado de `video_id`/`document_id`/`webinar_link`. `null` = aula só com texto/HTML. O recurso retorna `content_type`.
 > **Pré-requisito (trava):** `required_lesson_id` (nullable) aponta para outra aula do **mesmo curso** que precisa ser concluída antes. Só são aceitas aulas **anteriores** na ordem do curso (validação 422 `business_rule`). Ao criar, a aula entra no fim do tópico ou, sem tópico, no fim das aulas do módulo. O bloqueio do aluno é validado no backend em `me/courses/{course}/lessons/{lesson}/video` e `me/progress/complete` (422).
-> **Assistir até o final:** `require_full_watch` (bool, nullable/padrão `false`). Com `true` e um `video_id` vinculado, o aluno só conclui a aula depois de assistir o vídeo até o fim (ver `me/progress/complete`).
+> **Assistir até o final:** `require_full_watch` (bool, nullable/padrão `false`). Com `true` e um `video_id` vinculado (`content_type = video`), o aluno só conclui a aula depois de assistir o vídeo até o fim (ver `me/progress/complete`). Em aulas de documento/ao vivo o serviço zera a flag.
 > **Aula ao vivo:** `webinar_link` (URL de embed, ex.: `https://player.vdocipher.com/live-v2?liveId=...`) + `webinar_starts_at` (data/hora agendada, nullable). A aula com `webinar_link` é renderizada como live no player do aluno (iframe), sem passar pelo fluxo de OTP/`videos`. Antes de `webinar_starts_at` o frontend mostra um card "EM BREVE"; depois (ou sem data) mostra o iframe com selo "AO VIVO".
 > Ao publicar/criar aulas em um curso com alunos concluídos, o backend dispara a regra de recálculo de certificados (ver `docs/ARCHITECTURE.md`).
 > **Reordenação** (`modules/reorder`, `topics/reorder`, `lessons/reorder`, `modules/{module}/lessons/reorder`): se a nova ordem deixar o pré-requisito de alguma aula depois dela, o backend responde **409** `prerequisite_conflict` com `errors.conflicts[]` (`lesson_id`, `lesson_name`, `required_lesson_id`, `required_lesson_name`) e **não** aplica nada. Reenviar com `force: true` aplica a ordem e **remove essas travas**, devolvendo `data.cleared` (ids das aulas destravadas).
@@ -361,7 +362,7 @@ CRUD + `GET /videos/{video}/playback` (dados seguros de reprodução via adapter
 CRUD. Configura o provedor de vídeo **por empresa** (any-platform): `code` ∈ `panda`, `vdocipher`, `vimeo`, `fastpix`, `external`. `credentials` (ex.: `api_secret` do VdoCipher, `api_key` do Panda) é **cifrado em repouso** e **nunca retornado**; a resposta expõe apenas `has_credentials`.
 
 ### Documentos e anexos
-`documents`, `attachments` — CRUD.
+`documents`, `attachments` — CRUD. Um documento tem **duas origens**: arquivo enviado (`file`, multipart; grava `path` no disco privado `materials`) ou **link externo** (`url`). Informe `file`, `path` ou `url` (ao menos um). Tipos aceitos no upload: `pdf, doc, docx, ppt, pptx, xls, xlsx, txt, csv, zip` (máx. 20 MB). A aula referencia o documento por `document_id`.
 
 ### Banners (`banners`)
 CRUD. Controlam o **hero da home**: `name`, `link`, `sort_order`, `status` e o conteúdo do destaque (`eyebrow`, `title`, `title_highlight`, `description`, `quote`, `cta_label`, `cta_link`, `secondary_label`, `secondary_link`).

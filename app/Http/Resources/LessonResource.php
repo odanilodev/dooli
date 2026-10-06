@@ -17,6 +17,7 @@ class LessonResource extends JsonResource
             'module_id' => $this->module_id,
             'topic_id' => $this->topic_id,
             'status' => $this->status,
+            'content_type' => $this->content_type?->value,
             'sort_order' => $this->sort_order,
             'required_lesson_id' => $this->required_lesson_id,
             'require_full_watch' => (bool) $this->require_full_watch,

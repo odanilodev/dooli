@@ -8,20 +8,26 @@ use App\Http\Requests\Admin\UpdateDocumentRequest;
 use App\Http\Resources\DocumentResource;
 use App\Models\Document;
 use App\Repositories\DocumentRepository;
+use App\Services\MaterialService;
 use App\Support\ApiResponse;
+use App\Support\CompanyContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class DocumentController extends ApiController
 {
-    public function __construct(private readonly DocumentRepository $documents) {}
+    public function __construct(
+        private readonly DocumentRepository $documents,
+        private readonly MaterialService $materials,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Document::class);
 
         return ApiResponse::paginated(
-            $this->documents->paginate($this->perPage($request), $request->only(['status'])),
+            $this->documents->paginate($this->perPage($request), $request->only(['search', 'status'])),
             DocumentResource::class,
         );
     }
@@ -30,7 +36,15 @@ class DocumentController extends ApiController
     {
         $this->authorize('create', Document::class);
 
-        return ApiResponse::success(new DocumentResource($this->documents->create($request->validated())), 201);
+        $data = $request->validated();
+        unset($data['file']);
+
+        if ($file = $request->file('file')) {
+            $data['path'] = $this->materials->storeDocumentFile($file, (int) app(CompanyContext::class)->id());
+            $data['url'] = null;
+        }
+
+        return ApiResponse::success(new DocumentResource($this->documents->create($data)), 201);
     }
 
     public function show(Document $document): JsonResponse
@@ -44,7 +58,22 @@ class DocumentController extends ApiController
     {
         $this->authorize('update', $document);
 
-        return ApiResponse::success(new DocumentResource($this->documents->update($document, $request->validated())));
+        $data = $request->validated();
+        unset($data['file']);
+
+        if ($file = $request->file('file')) {
+            $data['path'] = $this->materials->storeDocumentFile($file, $document->company_id);
+            $data['url'] = null;
+        } else {
+            $path = array_key_exists('path', $data) ? $data['path'] : $document->path;
+            $url = array_key_exists('url', $data) ? $data['url'] : $document->url;
+
+            if (empty($path) && empty($url)) {
+                throw ValidationException::withMessages(['path' => 'Informe um arquivo ou um link.']);
+            }
+        }
+
+        return ApiResponse::success(new DocumentResource($this->documents->update($document, $data)));
     }
 
     public function destroy(Document $document): JsonResponse

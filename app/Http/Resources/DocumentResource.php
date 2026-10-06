@@ -12,6 +12,7 @@ class DocumentResource extends JsonResource
         return [
             'id' => $this->id,
             'path' => $this->path,
+            'url' => $this->url,
             'image' => $this->image,
             'status' => $this->status,
         ];

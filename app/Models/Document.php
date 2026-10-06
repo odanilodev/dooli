@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['company_id', 'path', 'image', 'status'])]
+#[Fillable(['company_id', 'path', 'url', 'image', 'status'])]
 class Document extends Model
 {
     use BelongsToCompany, HasFactory;

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\BelongsToCompany;
 use App\Enums\GeneralStatus;
+use App\Enums\LessonContentType;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'company_id', 'name', 'module_id', 'topic_id', 'description', 'content',
-    'sort_order', 'status', 'video_id', 'document_id', 'required_lesson_id',
+    'sort_order', 'status', 'content_type', 'video_id', 'document_id', 'required_lesson_id',
     'require_full_watch', 'webinar_link', 'webinar_starts_at', 'published_at',
 ])]
 class Lesson extends Model
@@ -30,6 +31,7 @@ class Lesson extends Model
     {
         return [
             'sort_order' => 'integer',
+            'content_type' => LessonContentType::class,
             'required_lesson_id' => 'integer',
             'require_full_watch' => 'boolean',
             'webinar_starts_at' => 'datetime',

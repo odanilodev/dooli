@@ -14,6 +14,9 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
     const modules = course.value?.modules ?? [];
     const flat = [];
 
+    const contentTypeOf = (lesson) => lesson.content_type
+      ?? (lesson.video ? 'video' : (lesson.document ? 'document' : (lesson.webinar_link ? 'live' : null)));
+
     for (const module of modules) {
       for (const topic of module.topics ?? []) {
         for (const lesson of topic.lessons ?? []) {
@@ -22,6 +25,7 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
             name: lesson.name,
             description: lesson.description,
             content: lesson.content,
+            contentType: contentTypeOf(lesson),
             video: lesson.video ?? null,
             document: lesson.document ?? null,
             attachments: lesson.attachments ?? [],
@@ -43,6 +47,7 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
           name: lesson.name,
           description: lesson.description,
           content: lesson.content,
+          contentType: contentTypeOf(lesson),
           video: lesson.video ?? null,
           document: lesson.document ?? null,
           attachments: lesson.attachments ?? [],
