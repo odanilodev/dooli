@@ -24,6 +24,14 @@ class LessonResource extends JsonResource
             'published_at' => $this->published_at?->toIso8601String(),
             'webinar_link' => $this->webinar_link,
             'webinar_starts_at' => $this->webinar_starts_at?->toIso8601String(),
+            'available_at' => $this->when(
+                ($this->schedule_available_at ?? null) !== null,
+                fn () => $this->schedule_available_at?->toIso8601String(),
+            ),
+            'is_locked' => $this->when(
+                ($this->schedule_available_at ?? null) !== null,
+                fn () => (bool) $this->schedule_locked,
+            ),
             'video' => new VideoResource($this->whenLoaded('video')),
             'document' => new DocumentResource($this->whenLoaded('document')),
             'attachments' => AttachmentResource::collection($this->whenLoaded('attachments')),

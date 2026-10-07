@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\DTO\CreateTeamDTO;
 use App\Enums\GeneralStatus;
+use App\Enums\ScheduleLevel;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Course;
+use App\Models\Schedule;
 use App\Models\Team;
 use App\Models\User;
 use App\Repositories\TeamRepository;
@@ -25,7 +27,7 @@ class TeamService
         return $this->teams->paginate(
             perPage: $perPage,
             filters: $filters,
-            withCount: ['users', 'courses'],
+            withCount: ['users', 'courses', 'schedules'],
             sort: $filters['sort'] ?? null,
             direction: $filters['direction'] ?? 'asc',
         );
@@ -78,6 +80,12 @@ class TeamService
     public function detachCourse(Team $team, int $courseId): void
     {
         $team->courses()->detach($courseId);
+
+        Schedule::query()
+            ->where('team_id', $team->id)
+            ->where('schedulable_type', ScheduleLevel::Course->value)
+            ->where('schedulable_id', $courseId)
+            ->delete();
     }
 
     public function addStudent(Team $team, int $userId, ?string $expiredAt = null): void

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\Admin\NotificationController as AdminNotificatio
 use App\Http\Controllers\Api\V1\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Api\V1\Admin\RatingController as AdminRatingController;
+use App\Http\Controllers\Api\V1\Admin\ScheduleController as AdminScheduleController;
 use App\Http\Controllers\Api\V1\Admin\StoreProductController as AdminStoreProductController;
 use App\Http\Controllers\Api\V1\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Api\V1\Admin\TopicController as AdminTopicController;
@@ -163,6 +164,8 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::get('teams/{team}/courses', [AdminTeamController::class, 'courses']);
         Route::post('teams/{team}/courses', [AdminTeamController::class, 'attachCourse']);
         Route::delete('teams/{team}/courses/{course}', [AdminTeamController::class, 'detachCourse'])->whereNumber('course');
+        Route::get('teams/{team}/schedules', [AdminScheduleController::class, 'index']);
+        Route::put('teams/{team}/schedules', [AdminScheduleController::class, 'upsert']);
 
         Route::apiResource('users', AdminUserController::class);
         Route::apiResource('user-types', AdminUserTypeController::class);

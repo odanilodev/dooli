@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Schedule;
 use App\Models\Team;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsTenant;
@@ -25,11 +26,20 @@ class AdminTeamTest extends TestCase
         $team->courses()->attach($course->id, ['company_id' => $this->company->id, 'status' => 'active']);
         $team->users()->attach($this->student->id, ['company_id' => $this->company->id, 'status' => 'active', 'expired_at' => null]);
 
+        Schedule::query()->create([
+            'company_id' => $this->company->id,
+            'team_id' => $team->id,
+            'schedulable_type' => 'course',
+            'schedulable_id' => $course->id,
+            'available_at' => now()->addDay(),
+        ]);
+
         $this->withToken($this->apiLogin($this->admin))
             ->getJson('/api/v1/admin/teams')
             ->assertOk()
             ->assertJsonPath('data.0.users_count', 1)
-            ->assertJsonPath('data.0.courses_count', 1);
+            ->assertJsonPath('data.0.courses_count', 1)
+            ->assertJsonPath('data.0.schedules_count', 1);
     }
 
     public function test_admin_can_create_team_with_courses(): void

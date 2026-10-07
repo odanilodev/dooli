@@ -63,7 +63,7 @@
     <div v-else class="admin-table-wrap">
       <table class="admin-table">
         <thead>
-          <tr><th>Turma</th><th>Alunos</th><th>Cursos</th><th>Status</th><th></th></tr>
+          <tr><th>Turma</th><th>Alunos</th><th>Cursos</th><th>Agendamentos</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
           <tr v-for="team in teams" :key="team.id">
@@ -73,6 +73,10 @@
             </td>
             <td><span class="status-count">{{ team.users_count ?? 0 }}</span></td>
             <td><span class="status-count">{{ team.courses_count ?? 0 }}</span></td>
+            <td>
+              <span v-if="team.schedules_count" class="status-count sched">{{ team.schedules_count }}</span>
+              <span v-else class="admin-muted">—</span>
+            </td>
             <td><span class="status-pill" :class="team.status">{{ statusLabel(team.status) }}</span></td>
             <td class="team-actions">
               <button
@@ -120,6 +124,7 @@
         <button type="button" role="menuitem" @click="run('details')">Detalhes</button>
         <button type="button" role="menuitem" @click="run('students')">Alunos</button>
         <button type="button" role="menuitem" @click="run('courses')">Cursos</button>
+        <button type="button" role="menuitem" @click="run('schedules')">Agendamentos</button>
         <div class="team-menu-sep"></div>
         <button type="button" role="menuitem" class="danger" @click="run('delete')">Excluir</button>
       </div>
@@ -160,7 +165,7 @@ const drawerTab = ref('details');
 const menuTeam = ref(null);
 const menuPos = reactive({ top: 0, left: 0, up: false });
 const MENU_WIDTH = 176;
-const MENU_HEIGHT = 150;
+const MENU_HEIGHT = 186;
 
 let searchTimer = null;
 
@@ -338,6 +343,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .status-count{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:800;}
+.status-count.sched{background:rgba(59,130,246,.15);color:#3b82f6;}
 .team-actions{text-align:right;white-space:nowrap;}
 .team-kebab{
   display:inline-flex;align-items:center;justify-content:center;width:30px;height:26px;padding:0;border-radius:9px;cursor:pointer;

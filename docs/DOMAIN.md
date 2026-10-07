@@ -81,6 +81,22 @@ Regra central (em `StudentCourseService::activeEnrollmentConstraint` o aluno tem
 
 Referências: `app/Services/StudentCourseService.php`, `app/Models/Team.php`, `app/Models/User.php`.
 
+### 2.1 Liberação programada (drip)
+
+Além da matrícula, o admin pode agendar a **data de liberação** de um conteúdo por turma, em três níveis: **curso**, **módulo** e **aula**. Fica na tabela `schedules` (Team + `schedulable_type`/`schedulable_id` polimórfico + `available_at`).
+
+Regra:
+
+- A data é sempre "a partir de" (não há data de encerramento).
+- Quando há mais de uma data aplicável (curso + módulo + aula), vale a **mais restritiva** — o conteúdo libera quando **todas** já passaram (`ScheduleService::effectiveAt` = `max`).
+- Sem registro = sem agendamento (nada bloqueado). Limpar = apagar a linha.
+- O bloqueio vale **só para a aula** (iniciar/concluir/assistir e salvar posição de vídeo). Documentos e anexos continuam acessíveis se a aula estiver bloqueada.
+- Aulas bloqueadas **contam** no total do curso (o certificado sai quando todas forem concluídas).
+
+O enforcement roda em `StudentCourseService::assertLessonUnlocked` (junto do pré-requisito), chamado por `ProgressService` e `VideoProgressService`. O conteúdo do aluno expõe `available_at` e `is_locked` em curso/módulo/aula.
+
+Referências: `app/Services/ScheduleService.php`, `app/Models/Schedule.php`, `app/Enums/ScheduleLevel.php`.
+
 ---
 
 ## 3. Hierarquia Comercial (produto)
@@ -173,6 +189,7 @@ Todas as pivots carregam `company_id` (multi-tenant) e `status`, e têm unique c
 | `team_users` | Team ↔ User | `company_id`, `team_id`, `user_id`, `status`, `expired_at` | `company_id, team_id, user_id` |
 | `store_product_teams` | StoreProduct ↔ Team | `company_id`, `store_product_id`, `team_id`, `status` | `company_id, store_product_id, team_id` |
 | `lesson_attachments` | Lesson ↔ Attachment | `company_id`, `lesson_id`, `attachment_id`, `status`, `sort_order` | `company_id, lesson_id, attachment_id` |
+| `schedules` | Team ↔ (Course/Module/Lesson, polimórfico) | `company_id`, `team_id`, `schedulable_type`, `schedulable_id`, `available_at` | `company_id, team_id, schedulable_type, schedulable_id` |
 
 > `sort_order` controla a ordenação de exibição (módulos no curso, anexos na aula). Tópicos e aulas ordenam por seu próprio `sort_order`. Aulas sem tópico usam `lessons.sort_order` dentro do módulo e aparecem **depois** dos tópicos.
 
@@ -199,6 +216,7 @@ Nesse caso o aluno foi matriculado **direto na turma** (sem produto), pelo `Demo
 - **`user_type` dá acesso a curso?** Não — define permissão (admin/instrutor/aluno), não matrícula.
 - **Curso pode ter o mesmo módulo duas vezes?** O vínculo é N:N, mas o unique `company_id, course_id, module_id` impede duplicar o mesmo módulo no mesmo curso.
 - **Progresso é por aluno ou por turma?** Por **aluno + aula + curso + turma** (`timelines`), então trocar de turma refaz o progresso.
+- **Dá para agendar a liberação de uma aula?** Sim, por turma, no nível curso/módulo/aula (`schedules`). Vale a data mais tardia; o aluno só acessa a aula depois dela.
 
 ---
 
@@ -207,6 +225,7 @@ Nesse caso o aluno foi matriculado **direto na turma** (sem produto), pelo `Demo
 | Assunto | Arquivo |
 | ------- | ------- |
 | Acesso do aluno | `app/Services/StudentCourseService.php` |
+| Agendamento (drip) | `app/Services/ScheduleService.php`, `app/Models/Schedule.php` |
 | Matrícula pós-pagamento | `app/Services/EnrollmentService.php` |
 | Progresso e certificado | `app/Services/ProgressService.php`, `app/Services/CertificateService.php` |
 | Modelos | `app/Models/{Course,Module,Topic,Lesson,Team,StoreProduct,User}.php` |

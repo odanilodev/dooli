@@ -178,6 +178,7 @@ Lista apenas os cursos aos quais o aluno tem acesso (turma ativa + produto ativo
 
 ### GET /api/v1/me/courses/{course}
 Conteúdo do curso (módulos → tópicos → aulas publicadas) com vídeo, documento e anexos. Retorna `403 unauthorized_course_access` se não houver acesso.
+> **Liberação programada:** quando o curso/módulo/aula tem data de liberação (drip) para a turma, o item traz `available_at` (ISO) e `is_locked` (bool). A data efetiva é a **mais tardia** entre curso, módulo e aula. Itens sem agendamento não trazem esses campos.
 
 ### GET /api/v1/me/courses/{course}/progress
 Query opcional: `team_id`.
@@ -221,6 +222,7 @@ Dados de reprodução (embed assinado) do vídeo da aula. Exige matrícula no cu
 ```
 > O backend gera o OTP/URL temporária via adapter da plataforma configurada em `video_platforms` (por empresa). O segredo da API nunca é enviado ao cliente. Sem credencial configurada, devolve o link direto + `warning`. `resume_from` é a posição (segundos) salva do aluno para retomar o vídeo.
 > **Pré-requisito:** se a aula tem `required_lesson_id` e o aluno ainda não concluiu essa aula no curso/team, responde **422** (`business_rule`) — a aula fica travada.
+> **Agendamento:** se a aula ainda não foi liberada pela turma (data futura), responde **422** (`business_rule`).
 > **Aulas ao vivo** não usam este endpoint: quando a aula tem `webinar_link`, o frontend embute a URL (iframe). Cada aula em `GET /me/courses/{course}` traz `webinar_link` e `webinar_starts_at` (ISO, nullable): no futuro → card "EM BREVE"; passado/nulo → player ao vivo com selo "AO VIVO".
 
 ### POST /api/v1/me/progress/video-position
@@ -242,6 +244,7 @@ Salva a posição de reprodução (retomar de onde parou). Exige matrícula (403
 ```
 Idempotente: repetir a conclusão não duplica o registro em `timelines`.
 > **Pré-requisito:** se a aula tem `required_lesson_id` e o aluno ainda não concluiu essa aula no curso/team, responde **422** (`business_rule`).
+> **Agendamento:** se a aula ainda não foi liberada pela turma, responde **422** (`business_rule`).
 > **Assistir até o final:** se a aula tem `require_full_watch = true` e um vídeo, o aluno só conclui depois que a posição salva em `video-progress` alcança a duração do vídeo (tolerância de 2s); caso contrário responde **422** (`business_rule`). Sem vídeo a flag é ignorada.
 **Resposta:**
 ```json
@@ -312,6 +315,8 @@ CRUD +
 - `GET /teams/{team}/courses`
 - `POST /teams/{team}/courses` (`course_id`)
 - `DELETE /teams/{team}/courses/{course}`
+- `GET /teams/{team}/schedules` — árvore curso → módulo → aula com `available_at` de cada nível
+- `PUT /teams/{team}/schedules` — agendamento por item (`schedulable_type`: `course`/`module`/`lesson`, `schedulable_id`, `available_at`; `null` limpa). O item precisa pertencer à turma (senão 422 `business_rule`)
 
 ### Usuários (`users`) e tipos (`user-types`)
 CRUD. `user_types.code` define o perfil (`admin`, `instructor`, `student`).

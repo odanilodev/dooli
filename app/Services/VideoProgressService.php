@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTO\SaveVideoPositionDTO;
+use App\Models\Lesson;
 use App\Models\User;
 use App\Repositories\VideoProgressRepository;
 
@@ -20,6 +21,9 @@ class VideoProgressService
     public function save(User $user, SaveVideoPositionDTO $dto): array
     {
         $team = $this->studentCourses->assertLessonInCourse($user, $dto->courseId, $dto->lessonId, $dto->teamId);
+
+        $lesson = Lesson::query()->findOrFail($dto->lessonId);
+        $this->studentCourses->assertLessonUnlocked($user, $lesson, $dto->courseId, $team->id);
 
         $progress = $this->progress->savePosition(
             userId: $user->id,

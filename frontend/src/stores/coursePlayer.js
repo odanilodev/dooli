@@ -33,6 +33,8 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
             webinar_starts_at: lesson.webinar_starts_at ?? null,
             requiredLessonId: lesson.required_lesson_id ?? null,
             requireFullWatch: lesson.require_full_watch ?? false,
+            availableAt: lesson.available_at ?? null,
+            scheduleLocked: lesson.is_locked ?? false,
             moduleId: module.id,
             moduleName: module.name,
             topicId: topic.id,
@@ -55,6 +57,8 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
             webinar_starts_at: lesson.webinar_starts_at ?? null,
             requiredLessonId: lesson.required_lesson_id ?? null,
             requireFullWatch: lesson.require_full_watch ?? false,
+            availableAt: lesson.available_at ?? null,
+            scheduleLocked: lesson.is_locked ?? false,
             moduleId: module.id,
             moduleName: module.name,
             topicId: null,
@@ -99,11 +103,41 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
   function isLocked(lessonId) {
     const lesson = lessonById(lessonId);
 
-    if (!lesson?.requiredLessonId) {
+    if (!lesson) {
+      return false;
+    }
+
+    if (lesson.scheduleLocked) {
+      return true;
+    }
+
+    if (!lesson.requiredLessonId) {
       return false;
     }
 
     return !completedIds.value.has(Number(lesson.requiredLessonId));
+  }
+
+  function lockReason(lessonId) {
+    const lesson = lessonById(lessonId);
+
+    if (!lesson) {
+      return null;
+    }
+
+    if (lesson.scheduleLocked) {
+      return 'schedule';
+    }
+
+    if (lesson.requiredLessonId && !completedIds.value.has(Number(lesson.requiredLessonId))) {
+      return 'prerequisite';
+    }
+
+    return null;
+  }
+
+  function scheduleAvailableAt(lessonId) {
+    return lessonById(lessonId)?.availableAt ?? null;
   }
 
   function requiredLessonName(lessonId) {
@@ -216,6 +250,8 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
     isCompleted,
     isStarted,
     isLocked,
+    lockReason,
+    scheduleAvailableAt,
     requiredLessonName,
     load,
     selectLesson,

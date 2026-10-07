@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * Represents a lesson (aula). The table is named "lessons" to keep the route,
@@ -94,6 +95,16 @@ class Lesson extends Model
     public function videoProgresses(): HasMany
     {
         return $this->hasMany(VideoProgress::class);
+    }
+
+    public function schedules(): MorphMany
+    {
+        return $this->morphMany(Schedule::class, 'schedulable');
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(fn (Lesson $lesson) => $lesson->schedules()->delete());
     }
 
     public function isPublished(): bool

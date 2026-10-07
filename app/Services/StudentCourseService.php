@@ -22,6 +22,7 @@ class StudentCourseService
         private readonly DatalogService $audit,
         private readonly TimelineRepository $timeline,
         private readonly ActionRepository $actions,
+        private readonly ScheduleService $schedules,
     ) {}
 
     public function myCourses(User $user, int $perPage = 20): LengthAwarePaginator
@@ -114,11 +115,13 @@ class StudentCourseService
     }
 
     /**
-     * A lesson with a prerequisite can only be opened/completed after that
-     * prerequisite lesson was completed by the student in this course/team.
+     * A lesson can only be opened/completed when it is already released by the
+     * team schedule and its prerequisite (if any) was completed.
      */
     public function assertLessonUnlocked(User $user, Lesson $lesson, int $courseId, int $teamId): void
     {
+        $this->assertLessonScheduled($lesson, $courseId, $teamId);
+
         $requiredLessonId = $lesson->required_lesson_id;
 
         if (! $requiredLessonId) {
@@ -146,9 +149,20 @@ class StudentCourseService
         }
     }
 
+    /**
+     * Asserts the lesson is released for the team (course, module and lesson
+     * schedules combined — the most restrictive date wins).
+     */
+    private function assertLessonScheduled(Lesson $lesson, int $courseId, int $teamId): void
+    {
+        $availableAt = $this->schedules->effectiveForLesson($teamId, $courseId, $lesson->module_id, $lesson->id);
+
+        $this->schedules->assertLessonAvailable($availableAt);
+    }
+
     public function courseContent(User $user, int $courseId): Course
     {
-        $this->assertAccess($user, $courseId);
+        $team = $this->assertAccess($user, $courseId);
 
         $course = Course::query()
             ->with([
@@ -162,6 +176,8 @@ class StudentCourseService
                     ->with(['video', 'document', 'attachments']),
             ])
             ->findOrFail($courseId);
+
+        $this->schedules->applyToCourseContent($course, $team);
 
         $this->audit->log('student', 'view_course', 'course', "Aluno acessou o curso {$course->name}", $user->id);
 

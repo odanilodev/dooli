@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['company_id', 'name', 'description', 'image', 'status', 'sort_order'])]
@@ -66,5 +67,15 @@ class Course extends Model
     public function timeline(): HasMany
     {
         return $this->hasMany(Timeline::class);
+    }
+
+    public function schedules(): MorphMany
+    {
+        return $this->morphMany(Schedule::class, 'schedulable');
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(fn (Course $course) => $course->schedules()->delete());
     }
 }

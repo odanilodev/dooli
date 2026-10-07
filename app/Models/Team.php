@@ -56,4 +56,14 @@ class Team extends Model
     {
         return $this->hasMany(Notification::class);
     }
+
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(Schedule::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(fn (Team $team) => $team->schedules()->delete());
+    }
 }

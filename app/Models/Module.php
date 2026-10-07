@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 #[Fillable(['name', 'company_id', 'image', 'description', 'status'])]
 class Module extends Model
@@ -36,5 +37,15 @@ class Module extends Model
     public function looseLessons(): HasMany
     {
         return $this->hasMany(Lesson::class)->whereNull('topic_id')->orderBy('sort_order');
+    }
+
+    public function schedules(): MorphMany
+    {
+        return $this->morphMany(Schedule::class, 'schedulable');
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(fn (Module $module) => $module->schedules()->delete());
     }
 }

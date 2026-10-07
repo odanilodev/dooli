@@ -131,6 +131,97 @@
           <p v-else-if="studentSearch" class="form-hint">Nenhum aluno encontrado.</p>
         </template>
 
+        <!-- AGENDAMENTOS -->
+        <template v-else-if="tab === 'schedules'">
+          <p class="form-hint">
+            Escolha o que liberar e a data a partir da qual fica disponível para a turma. Quando houver mais de uma data
+            (curso, módulo e aula), vale a mais tardia.
+          </p>
+
+          <p v-if="schedulesLoading" class="form-hint">Carregando...</p>
+          <p v-else-if="!schedules.length" class="form-hint">Nenhum curso associado a esta turma.</p>
+          <template v-else>
+            <div class="td-builder">
+              <div class="form-group">
+                <label>O que agendar</label>
+                <div class="td-seg">
+                  <button type="button" class="td-seg-btn" :class="{ active: builder.level === 'course' }" @click="setBuilderLevel('course')">Curso todo</button>
+                  <button type="button" class="td-seg-btn" :class="{ active: builder.level === 'module' }" @click="setBuilderLevel('module')">Módulo</button>
+                  <button type="button" class="td-seg-btn" :class="{ active: builder.level === 'lesson' }" @click="setBuilderLevel('lesson')">Aula</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="td-sched-course">Curso</label>
+                <SearchSelect
+                  id="td-sched-course"
+                  v-model="builder.courseId"
+                  :options="courseOptions"
+                  placeholder="Buscar curso..."
+                  empty-text="Nenhum curso."
+                />
+              </div>
+
+              <div v-if="builder.level !== 'course'" class="form-group">
+                <label for="td-sched-module">Módulo</label>
+                <SearchSelect
+                  id="td-sched-module"
+                  v-model="builder.moduleId"
+                  :options="moduleOptions"
+                  :disabled="!moduleOptions.length"
+                  :placeholder="moduleOptions.length ? 'Buscar módulo...' : 'Nenhum módulo neste curso'"
+                  empty-text="Nenhum módulo."
+                />
+              </div>
+
+              <div v-if="builder.level === 'lesson'" class="form-group">
+                <label for="td-sched-lesson">Aula</label>
+                <SearchSelect
+                  id="td-sched-lesson"
+                  v-model="builder.lessonId"
+                  :options="lessonOptions"
+                  :disabled="!lessonOptions.length"
+                  :placeholder="lessonOptions.length ? 'Buscar aula...' : 'Nenhuma aula neste módulo'"
+                  empty-text="Nenhuma aula."
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="td-sched-at">Disponível a partir de</label>
+                <input id="td-sched-at" class="form-control" type="datetime-local" v-model="builder.availableAt">
+              </div>
+
+              <p v-if="builder.editingId" class="form-hint">Este item já tem agendamento. Os campos foram carregados para edição.</p>
+
+              <div class="td-builder-actions">
+                <button v-if="builder.editingId" type="button" class="btn btn-outline btn-sm" @click="cancelScheduleEdit">Cancelar</button>
+                <button type="button" class="btn btn-primary btn-sm" :disabled="!canSubmitSchedule || scheduleBusy" @click="submitSchedule">
+                  {{ scheduleBusy ? 'Salvando...' : (builder.editingId ? 'Atualizar' : 'Agendar') }}
+                </button>
+              </div>
+            </div>
+
+            <div class="drawer-divider"></div>
+
+            <div class="form-group">
+              <label>Agendamentos ativos ({{ scheduledList.length }})</label>
+              <div v-if="scheduledList.length" class="td-list">
+                <div v-for="s in scheduledList" :key="`${s.type}${s.id}`" class="td-row">
+                  <span class="td-sched-badge" :class="s.type">{{ levelLabel(s.type) }}</span>
+                  <span class="td-info">
+                    <span class="td-name">{{ s.name }}</span>
+                    <span class="td-sub">{{ s.path }}</span>
+                  </span>
+                  <span class="td-sched-when">{{ formatDateTime(s.availableAt) }}</span>
+                  <button type="button" class="btn btn-outline btn-sm" @click="editSchedule(s)">Editar</button>
+                  <button type="button" class="td-sched-clear" title="Limpar" @click="clearSchedule(s)">×</button>
+                </div>
+              </div>
+              <p v-else class="form-hint">Nenhum agendamento definido.</p>
+            </div>
+          </template>
+        </template>
+
         <!-- CURSOS -->
         <template v-else-if="tab === 'courses'">
           <div class="form-group">
@@ -191,8 +282,9 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { api } from '../../api/http';
+import SearchSelect from './SearchSelect.vue';
 import { useToast } from '../../composables/useToast';
 import { statusLabel } from '../../utils/adminLabels';
 import { formatDateTime, toDateTimeInput } from '../../utils/format';
@@ -205,8 +297,8 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved', 'changed']);
 const toast = useToast();
 
-const tabs = ['details', 'students', 'courses'];
-const tabLabels = { details: 'Detalhes', students: 'Alunos', courses: 'Cursos' };
+const tabs = ['details', 'students', 'courses', 'schedules'];
+const tabLabels = { details: 'Detalhes', students: 'Alunos', courses: 'Cursos', schedules: 'Agendamentos' };
 
 const tab = ref(tabs.includes(props.initialTab) ? props.initialTab : 'details');
 const form = reactive({ name: '', status: 'active', sort_order: 0 });
@@ -235,6 +327,62 @@ const studentTypeId = ref(null);
 const courseSearch = ref('');
 const courseResults = ref([]);
 const searchingCourses = ref(false);
+
+const schedules = ref([]);
+const schedulesLoading = ref(false);
+const scheduleBusy = ref(false);
+const builder = reactive({ level: 'course', courseId: '', moduleId: '', lessonId: '', availableAt: '', editingId: null });
+let schedulesLoaded = false;
+
+const SCHEDULE_LEVELS = { course: 'Curso', module: 'Módulo', lesson: 'Aula' };
+
+function levelLabel(type) {
+  return SCHEDULE_LEVELS[type] ?? type;
+}
+
+const flatItems = computed(() => {
+  const items = [];
+
+  for (const course of schedules.value) {
+    items.push({ type: 'course', id: course.id, name: course.name, path: 'Todo o curso', availableAt: course.available_at, courseId: course.id, moduleId: null });
+
+    for (const module of course.modules ?? []) {
+      items.push({ type: 'module', id: module.id, name: module.name, path: course.name, availableAt: module.available_at, courseId: course.id, moduleId: module.id });
+
+      for (const lesson of module.lessons ?? []) {
+        items.push({ type: 'lesson', id: lesson.id, name: lesson.name, path: `${course.name} › ${module.name}`, availableAt: lesson.available_at, courseId: course.id, moduleId: module.id });
+      }
+    }
+  }
+
+  return items;
+});
+
+const scheduledList = computed(() => flatItems.value.filter((item) => item.availableAt));
+
+const builderModules = computed(() => schedules.value.find((c) => c.id === builder.courseId)?.modules ?? []);
+const builderLessons = computed(() => builderModules.value.find((m) => m.id === builder.moduleId)?.lessons ?? []);
+
+const courseOptions = computed(() => schedules.value.map((c) => ({ value: c.id, label: c.name })));
+const moduleOptions = computed(() => builderModules.value.map((m) => ({ value: m.id, label: m.name })));
+const lessonOptions = computed(() => builderLessons.value.map((l) => ({ value: l.id, label: l.name })));
+
+const currentTarget = computed(() => {
+  if (builder.level === 'course' && builder.courseId) {
+    return { type: 'course', id: builder.courseId };
+  }
+  if (builder.level === 'module' && builder.moduleId) {
+    return { type: 'module', id: builder.moduleId };
+  }
+  if (builder.level === 'lesson' && builder.lessonId) {
+    return { type: 'lesson', id: builder.lessonId };
+  }
+
+  return null;
+});
+
+const currentTargetKey = computed(() => (currentTarget.value ? `${currentTarget.value.type}${currentTarget.value.id}` : null));
+const canSubmitSchedule = computed(() => Boolean(currentTarget.value && builder.availableAt));
 
 let studentTimer = null;
 let courseTimer = null;
@@ -334,6 +482,124 @@ async function loadCourses() {
     toast.error(e?.message || 'Não foi possível carregar os cursos.');
   }
 }
+
+async function loadSchedules() {
+  schedulesLoading.value = true;
+
+  try {
+    const { data } = await api.get(`/admin/teams/${props.team.id}/schedules`);
+    schedules.value = data.data ?? [];
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível carregar os agendamentos.');
+  } finally {
+    schedulesLoading.value = false;
+  }
+}
+
+function setBuilderLevel(level) {
+  builder.level = level;
+
+  if (level === 'course') {
+    builder.moduleId = '';
+    builder.lessonId = '';
+  } else if (level === 'module') {
+    builder.lessonId = '';
+  }
+
+  builder.editingId = null;
+  builder.availableAt = '';
+}
+
+function editSchedule(entry) {
+  builder.level = entry.type;
+  builder.courseId = entry.courseId;
+  builder.moduleId = entry.type === 'course' ? '' : entry.moduleId;
+  builder.lessonId = entry.type === 'lesson' ? entry.id : '';
+  builder.availableAt = toDateTimeInput(entry.availableAt);
+  builder.editingId = `${entry.type}${entry.id}`;
+}
+
+function cancelScheduleEdit() {
+  builder.editingId = null;
+  builder.availableAt = '';
+}
+
+async function submitSchedule() {
+  const target = currentTarget.value;
+
+  if (!target || !builder.availableAt) {
+    return;
+  }
+
+  scheduleBusy.value = true;
+
+  try {
+    await api.put(`/admin/teams/${props.team.id}/schedules`, {
+      schedulable_type: target.type,
+      schedulable_id: target.id,
+      available_at: builder.availableAt,
+    });
+    await loadSchedules();
+    builder.editingId = currentTargetKey.value;
+    toast.success('Agendamento salvo.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível salvar o agendamento.');
+  } finally {
+    scheduleBusy.value = false;
+  }
+}
+
+async function clearSchedule(entry) {
+  scheduleBusy.value = true;
+
+  try {
+    await api.put(`/admin/teams/${props.team.id}/schedules`, {
+      schedulable_type: entry.type,
+      schedulable_id: entry.id,
+      available_at: null,
+    });
+
+    if (builder.editingId === `${entry.type}${entry.id}`) {
+      cancelScheduleEdit();
+    }
+
+    await loadSchedules();
+    toast.success('Agendamento removido.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível remover o agendamento.');
+  } finally {
+    scheduleBusy.value = false;
+  }
+}
+
+watch(() => builder.courseId, () => {
+  builder.moduleId = '';
+  builder.lessonId = '';
+  builder.availableAt = '';
+  builder.editingId = null;
+}, { flush: 'sync' });
+
+watch(() => builder.moduleId, () => {
+  builder.lessonId = '';
+  builder.availableAt = '';
+  builder.editingId = null;
+}, { flush: 'sync' });
+
+watch(currentTargetKey, (key) => {
+  if (!key) {
+    return;
+  }
+
+  const existing = flatItems.value.find((item) => `${item.type}${item.id}` === key);
+
+  if (existing?.availableAt) {
+    builder.availableAt = toDateTimeInput(existing.availableAt);
+    builder.editingId = key;
+  } else {
+    builder.availableAt = '';
+    builder.editingId = null;
+  }
+});
 
 async function ensureStudentType() {
   if (studentTypeId.value) {
@@ -464,6 +730,7 @@ async function addCourse(course) {
     await api.post(`/admin/teams/${props.team.id}/courses`, { course_id: course.id });
     courseSearch.value = '';
     courseResults.value = [];
+    schedulesLoaded = false;
     await loadCourses();
     emit('changed');
     toast.success('Curso associado.');
@@ -479,6 +746,7 @@ async function removeCourse(course) {
 
   try {
     await api.delete(`/admin/teams/${props.team.id}/courses/${course.id}`);
+    schedulesLoaded = false;
     await loadCourses();
     emit('changed');
     toast.success('Curso desassociado.');
@@ -508,9 +776,17 @@ watch(() => props.team, sync, { immediate: true });
 
 watch(() => props.team?.id, () => {
   tab.value = tabs.includes(props.initialTab) ? props.initialTab : 'details';
+  schedulesLoaded = false;
   closeRowMenu();
   cancelEditStudent();
 });
+
+watch(tab, (value) => {
+  if (value === 'schedules' && !schedulesLoaded) {
+    schedulesLoaded = true;
+    loadSchedules();
+  }
+}, { immediate: true });
 
 onMounted(() => {
   ensureStudentType();
@@ -565,4 +841,25 @@ onBeforeUnmount(() => {
 .td-row-menu button:hover{background:var(--bg-card-alt);color:var(--text-primary);}
 .td-row-menu button.danger{color:#ef4444;}
 .td-row-menu button.danger:hover{background:rgba(239,68,68,.12);}
+
+.td-builder{display:flex;flex-direction:column;gap:12px;padding:12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:12px;}
+.td-seg{display:flex;flex-wrap:wrap;gap:6px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:4px;}
+.td-seg-btn{
+  flex:1 1 auto;border:none;background:none;color:var(--text-muted);font-family:inherit;font-weight:700;font-size:12.5px;
+  padding:8px 10px;border-radius:9px;cursor:pointer;transition:background .15s ease,color .15s ease;white-space:nowrap;
+}
+.td-seg-btn:hover{color:var(--text-primary);}
+.td-seg-btn.active{background:var(--accent);color:var(--accent-ink);}
+.td-builder-actions{display:flex;justify-content:flex-end;gap:8px;}
+
+.td-sched-badge{flex-shrink:0;font-size:10px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:3px 7px;border-radius:6px;background:var(--accent-soft);color:var(--accent);}
+.td-sched-badge.module{background:rgba(59,130,246,.15);color:#3b82f6;}
+.td-sched-badge.lesson{background:rgba(148,163,184,.18);color:var(--text-secondary);}
+.td-sched-when{font-size:11.5px;color:var(--text-secondary);white-space:nowrap;}
+.td-sched-clear{
+  display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex-shrink:0;padding:0;
+  border:1.5px solid var(--border);border-radius:9px;background:transparent;color:var(--text-muted);cursor:pointer;
+  font-size:15px;line-height:1;font-family:inherit;transition:border-color .14s ease,color .14s ease;
+}
+.td-sched-clear:hover{border-color:#ef4444;color:#ef4444;}
 </style>

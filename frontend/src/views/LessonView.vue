@@ -35,9 +35,10 @@
             <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
             <div class="video-overlay-text">
               <div class="l1">Aula bloqueada</div>
-              <div class="l2">Conclua "{{ lockedPrerequisiteName }}" para liberar</div>
+              <div v-if="currentLockReason === 'schedule'" class="l2">Disponível em {{ formatDate(currentScheduleAt) }}</div>
+              <div v-else class="l2">Conclua "{{ lockedPrerequisiteName }}" para liberar</div>
             </div>
-            <button v-if="prerequisiteLesson" class="btn btn-primary" @click="goLesson(prerequisiteLesson.id, true)">
+            <button v-if="currentLockReason !== 'schedule' && prerequisiteLesson" class="btn btn-primary" @click="goLesson(prerequisiteLesson.id, true)">
               Ir para "{{ prerequisiteLesson.name }}"
             </button>
           </div>
@@ -386,6 +387,8 @@ const prerequisiteLesson = computed(() => {
   return requiredId ? store.lessons.find((lesson) => lesson.id === Number(requiredId)) ?? null : null;
 });
 const isCurrentLocked = computed(() => (currentLesson.value ? store.isLocked(currentLesson.value.id) : false));
+const currentLockReason = computed(() => (currentLesson.value ? store.lockReason(currentLesson.value.id) : null));
+const currentScheduleAt = computed(() => (currentLesson.value ? store.scheduleAvailableAt(currentLesson.value.id) : null));
 const isNextLocked = computed(() => (store.nextLesson ? store.isLocked(store.nextLesson.id) : false));
 const isCurrentAwaitingWatch = computed(() => {
   const lesson = currentLesson.value;
@@ -892,6 +895,12 @@ function goLesson(lessonId, force = false) {
   }
 
   if (!force && store.isLocked(lessonId)) {
+    if (store.lockReason(lessonId) === 'schedule') {
+      toast.warning(`Esta aula estará disponível a partir de ${formatDate(store.scheduleAvailableAt(lessonId))}.`);
+
+      return;
+    }
+
     const name = store.requiredLessonName(lessonId);
     toast.warning(name
       ? `Conclua a aula "${name}" para liberar esta aula.`
