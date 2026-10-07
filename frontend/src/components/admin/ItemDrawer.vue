@@ -241,12 +241,6 @@
               <option value="inactive">Rascunho</option>
             </select>
           </div>
-
-          <div v-if="type === 'lesson'" class="form-group">
-            <label :for="`dw-published`">Publicado em</label>
-            <input :id="`dw-published`" class="form-control" type="datetime-local" v-model="form.published_at">
-            <p class="form-hint">Vazio + status Publicado = disponível agora. Data futura = agendado.</p>
-          </div>
         </template>
       </div>
 
@@ -301,7 +295,7 @@ const form = reactive({
   name: '', description: '', image: '', status: 'active', sort_order: 0,
   content: '', content_type: '', video_id: '', document_id: '', required_lesson_id: '',
   require_full_watch: false,
-  webinar_link: '', webinar_starts_at: '', published_at: '',
+  webinar_link: '', webinar_starts_at: '',
 });
 const selectedAttachments = ref([]);
 
@@ -467,7 +461,6 @@ function sync() {
   form.require_full_watch = !!data.require_full_watch;
   form.webinar_link = data.webinar_link ?? '';
   form.webinar_starts_at = toDateTimeInput(data.webinar_starts_at);
-  form.published_at = toDateTimeInput(data.published_at);
   selectedAttachments.value = (data.attachments ?? []).map((a) => a.id);
   tab.value = 'details';
 }
@@ -604,7 +597,6 @@ function basePayload() {
     require_full_watch: !!form.require_full_watch,
     webinar_link: form.webinar_link || null,
     webinar_starts_at: form.webinar_starts_at || null,
-    published_at: form.published_at || null,
     attachment_ids: selectedAttachments.value,
   };
 }
