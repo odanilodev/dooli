@@ -157,6 +157,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::post('lessons/{lesson}/unpublish', [AdminLessonController::class, 'unpublish']);
 
         Route::apiResource('teams', AdminTeamController::class);
+        Route::post('teams/bulk', [AdminTeamController::class, 'bulk']);
         Route::get('teams/{team}/students', [AdminTeamController::class, 'students']);
         Route::post('teams/{team}/students', [AdminTeamController::class, 'addStudent']);
         Route::put('teams/{team}/students/{user}', [AdminTeamController::class, 'updateStudent'])->whereNumber('user');
@@ -168,6 +169,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::put('teams/{team}/schedules', [AdminScheduleController::class, 'upsert']);
 
         Route::apiResource('users', AdminUserController::class);
+        Route::post('users/bulk', [AdminUserController::class, 'bulk']);
         Route::apiResource('user-types', AdminUserTypeController::class);
         Route::apiResource('menus', AdminMenuController::class);
 

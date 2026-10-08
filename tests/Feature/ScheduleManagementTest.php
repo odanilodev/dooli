@@ -100,13 +100,29 @@ class ScheduleManagementTest extends TestCase
     {
         $data = $this->buildCourse($this->company->id);
         $this->team = $this->enroll($this->student, $data['course'], $this->company->id);
+
+        $other = $this->buildCourse($this->company->id);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson("/api/v1/admin/teams/{$this->team->id}/courses", ['course_id' => $other['course']->id])
+            ->assertOk();
+
         $this->schedule('course', $data['course']->id, now()->addDay());
+        $this->schedule('module', $data['module']->id, now()->addDay());
+        $this->schedule('lesson', $data['lesson']->id, now()->addDay());
+        $this->schedule('lesson', $other['lesson']->id, now()->addDay());
+
+        $this->assertDatabaseCount('schedules', 4);
 
         $this->withToken($this->apiLogin($this->admin))
             ->deleteJson("/api/v1/admin/teams/{$this->team->id}/courses/{$data['course']->id}")
             ->assertOk();
 
-        $this->assertDatabaseCount('schedules', 0);
+        $this->assertDatabaseCount('schedules', 1);
+        $this->assertDatabaseHas('schedules', [
+            'schedulable_type' => 'lesson',
+            'schedulable_id' => $other['lesson']->id,
+        ]);
     }
 
     public function test_student_cannot_start_a_lesson_released_in_the_future(): void

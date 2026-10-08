@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -158,5 +159,67 @@ class AdminUserTest extends TestCase
     public function test_guest_cannot_list_users(): void
     {
         $this->getJson('/api/v1/admin/users')->assertUnauthorized();
+    }
+
+    public function test_admin_can_bulk_add_users_to_a_team(): void
+    {
+        $team = Team::factory()->create(['company_id' => $this->company->id]);
+        $other = User::factory()->create([
+            'company_id' => $this->company->id,
+            'user_type_id' => $this->student->user_type_id,
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/users/bulk', [
+                'action' => 'add-to-teams',
+                'user_ids' => [$this->student->id, $other->id],
+                'team_ids' => [$team->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.processed', 2)
+            ->assertJsonCount(0, 'data.failed');
+
+        $this->assertDatabaseHas('team_users', ['team_id' => $team->id, 'user_id' => $this->student->id]);
+        $this->assertDatabaseHas('team_users', ['team_id' => $team->id, 'user_id' => $other->id]);
+    }
+
+    public function test_admin_can_bulk_update_user_status(): void
+    {
+        $other = User::factory()->create([
+            'company_id' => $this->company->id,
+            'user_type_id' => $this->student->user_type_id,
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/users/bulk', [
+                'action' => 'deactivate',
+                'user_ids' => [$this->student->id, $other->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.processed', 2);
+
+        $this->assertSame('inactive', $this->student->fresh()->status);
+        $this->assertSame('inactive', $other->fresh()->status);
+    }
+
+    public function test_admin_can_bulk_delete_users_but_not_self(): void
+    {
+        $other = User::factory()->create([
+            'company_id' => $this->company->id,
+            'user_type_id' => $this->student->user_type_id,
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/users/bulk', [
+                'action' => 'delete',
+                'user_ids' => [$other->id, $this->admin->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.processed', 1)
+            ->assertJsonCount(1, 'data.failed')
+            ->assertJsonPath('data.failed.0.id', $this->admin->id);
+
+        $this->assertDatabaseMissing('users', ['id' => $other->id]);
+        $this->assertDatabaseHas('users', ['id' => $this->admin->id]);
     }
 }

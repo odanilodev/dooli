@@ -12,6 +12,7 @@ use App\Models\Schedule;
 use App\Models\Team;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ScheduleService
 {
@@ -139,6 +140,42 @@ class ScheduleService
             'schedulable_id' => $id,
             'available_at' => $availableAt,
         ]);
+    }
+
+    /**
+     * Remove schedules whose target is no longer reachable through the team's
+     * active courses (a detached course, or a module/lesson only reachable via
+     * it). Prevents orphaned rows after detaching a course.
+     */
+    public function pruneUnreachable(Team $team): int
+    {
+        $courseIds = $team->courses()
+            ->where('team_courses.status', GeneralStatus::Active->value)
+            ->pluck('courses.id');
+
+        $moduleIds = DB::table('course_modules')
+            ->whereIn('course_id', $courseIds)
+            ->pluck('module_id');
+
+        $lessonIds = Lesson::query()
+            ->whereIn('module_id', $moduleIds)
+            ->pluck('id');
+
+        return Schedule::query()
+            ->where('team_id', $team->id)
+            ->where(function ($query) use ($courseIds, $moduleIds, $lessonIds) {
+                $query->where(function ($q) use ($courseIds) {
+                    $q->where('schedulable_type', ScheduleLevel::Course->value)
+                        ->whereNotIn('schedulable_id', $courseIds);
+                })->orWhere(function ($q) use ($moduleIds) {
+                    $q->where('schedulable_type', ScheduleLevel::Module->value)
+                        ->whereNotIn('schedulable_id', $moduleIds);
+                })->orWhere(function ($q) use ($lessonIds) {
+                    $q->where('schedulable_type', ScheduleLevel::Lesson->value)
+                        ->whereNotIn('schedulable_id', $lessonIds);
+                });
+            })
+            ->delete();
     }
 
     private function assertTargetBelongsToTeam(Team $team, ScheduleLevel $level, int $id): void

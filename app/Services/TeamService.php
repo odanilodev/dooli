@@ -4,22 +4,22 @@ namespace App\Services;
 
 use App\DTO\CreateTeamDTO;
 use App\Enums\GeneralStatus;
-use App\Enums\ScheduleLevel;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Course;
-use App\Models\Schedule;
 use App\Models\Team;
 use App\Models\User;
 use App\Repositories\TeamRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class TeamService
 {
     public function __construct(
         private readonly TeamRepository $teams,
         private readonly DatalogService $audit,
+        private readonly ScheduleService $schedules,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -81,11 +81,135 @@ class TeamService
     {
         $team->courses()->detach($courseId);
 
-        Schedule::query()
-            ->where('team_id', $team->id)
-            ->where('schedulable_type', ScheduleLevel::Course->value)
-            ->where('schedulable_id', $courseId)
-            ->delete();
+        $this->schedules->pruneUnreachable($team);
+    }
+
+    /**
+     * Attach one or more courses to several teams, reporting per-target results.
+     *
+     * @param  array<int, int>  $teamIds
+     * @param  array<int, int>  $courseIds
+     * @return array{processed: int, failed: array<int, array{id: int, name: ?string, reason: string}>}
+     */
+    public function bulkAttachCourses(array $teamIds, array $courseIds): array
+    {
+        $teams = Team::query()->whereIn('id', $teamIds)->get()->keyBy('id');
+        $processed = 0;
+        $failed = [];
+
+        foreach ($teamIds as $teamId) {
+            $teamId = (int) $teamId;
+            $team = $teams[$teamId] ?? null;
+
+            if (! $team) {
+                $failed[] = ['id' => $teamId, 'name' => null, 'reason' => 'Turma não encontrada.'];
+
+                continue;
+            }
+
+            foreach ($courseIds as $courseId) {
+                try {
+                    $this->attachCourse($team, (int) $courseId);
+                    $processed++;
+                } catch (Throwable $e) {
+                    $failed[] = ['id' => $teamId, 'name' => $team->name, 'reason' => $e->getMessage()];
+                }
+            }
+        }
+
+        return ['processed' => $processed, 'failed' => $failed];
+    }
+
+    /**
+     * Enroll one or more students into several teams.
+     *
+     * @param  array<int, int>  $teamIds
+     * @param  array<int, int>  $userIds
+     * @return array{processed: int, failed: array<int, array{id: int, name: ?string, reason: string}>}
+     */
+    public function bulkEnroll(array $teamIds, array $userIds, ?string $expiredAt = null): array
+    {
+        $teams = Team::query()->whereIn('id', $teamIds)->get()->keyBy('id');
+        $processed = 0;
+        $failed = [];
+
+        foreach ($teamIds as $teamId) {
+            $teamId = (int) $teamId;
+            $team = $teams[$teamId] ?? null;
+
+            if (! $team) {
+                $failed[] = ['id' => $teamId, 'name' => null, 'reason' => 'Turma não encontrada.'];
+
+                continue;
+            }
+
+            foreach ($userIds as $userId) {
+                try {
+                    $this->addStudent($team, (int) $userId, $expiredAt);
+                    $processed++;
+                } catch (Throwable $e) {
+                    $failed[] = ['id' => (int) $userId, 'name' => null, 'reason' => $e->getMessage()];
+                }
+            }
+        }
+
+        return ['processed' => $processed, 'failed' => $failed];
+    }
+
+    /**
+     * @param  array<int, int>  $teamIds
+     * @return array{processed: int, failed: array<int, array{id: int, name: ?string, reason: string}>}
+     */
+    public function bulkSetStatus(array $teamIds, string $status): array
+    {
+        return $this->runBulk(
+            $teamIds,
+            fn (int $id) => Team::query()->find($id),
+            fn (Team $team) => $this->update($team, ['status' => $status]),
+        );
+    }
+
+    /**
+     * @param  array<int, int>  $teamIds
+     * @return array{processed: int, failed: array<int, array{id: int, name: ?string, reason: string}>}
+     */
+    public function bulkDelete(array $teamIds): array
+    {
+        return $this->runBulk(
+            $teamIds,
+            fn (int $id) => Team::query()->find($id),
+            fn (Team $team) => $this->delete($team),
+        );
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     * @return array{processed: int, failed: array<int, array{id: int, name: ?string, reason: string}>}
+     */
+    private function runBulk(array $ids, callable $resolve, callable $worker): array
+    {
+        $processed = 0;
+        $failed = [];
+
+        foreach ($ids as $id) {
+            $id = (int) $id;
+            $model = $resolve($id);
+
+            if (! $model) {
+                $failed[] = ['id' => $id, 'name' => null, 'reason' => 'Não encontrado.'];
+
+                continue;
+            }
+
+            try {
+                $worker($model);
+                $processed++;
+            } catch (Throwable $e) {
+                $failed[] = ['id' => $id, 'name' => $model->name ?? null, 'reason' => $e->getMessage()];
+            }
+        }
+
+        return ['processed' => $processed, 'failed' => $failed];
     }
 
     public function addStudent(Team $team, int $userId, ?string $expiredAt = null): void

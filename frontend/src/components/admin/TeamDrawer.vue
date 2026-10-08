@@ -212,7 +212,10 @@
                     <span class="td-name">{{ s.name }}</span>
                     <span class="td-sub">{{ s.path }}</span>
                   </span>
-                  <span class="td-sched-when">{{ formatDateTime(s.availableAt) }}</span>
+                  <span class="td-sched-when">
+                    {{ formatDateTime(s.effectiveAt) }}
+                    <span v-if="s.coveredBy" class="td-sched-cover" :title="`Data própria: ${formatDateTime(s.availableAt)}`">coberto por {{ levelLabel(s.coveredBy.type).toLowerCase() }}</span>
+                  </span>
                   <button type="button" class="btn btn-outline btn-sm" @click="editSchedule(s)">Editar</button>
                   <button type="button" class="td-sched-clear" title="Limpar" @click="clearSchedule(s)">×</button>
                 </div>
@@ -358,7 +361,46 @@ const flatItems = computed(() => {
   return items;
 });
 
-const scheduledList = computed(() => flatItems.value.filter((item) => item.availableAt));
+const scheduledList = computed(() => {
+  const courseById = new Map();
+  const moduleById = new Map();
+
+  for (const item of flatItems.value) {
+    if (item.type === 'course') courseById.set(item.id, item);
+    if (item.type === 'module') moduleById.set(item.id, item);
+  }
+
+  return flatItems.value
+    .filter((item) => item.availableAt)
+    .map((item) => {
+      const ownTime = new Date(item.availableAt).getTime();
+      const ancestors = [];
+
+      if (item.type === 'module' || item.type === 'lesson') {
+        const course = courseById.get(item.courseId);
+        if (course?.availableAt) ancestors.push({ type: 'course', item: course });
+      }
+      if (item.type === 'lesson') {
+        const module = moduleById.get(item.moduleId);
+        if (module?.availableAt) ancestors.push({ type: 'module', item: module });
+      }
+
+      let effectiveAt = item.availableAt;
+      let effectiveTime = ownTime;
+      let coveredBy = null;
+
+      for (const ancestor of ancestors) {
+        const time = new Date(ancestor.item.availableAt).getTime();
+        if (time >= effectiveTime && time > ownTime) {
+          effectiveTime = time;
+          effectiveAt = ancestor.item.availableAt;
+          coveredBy = { type: ancestor.type, name: ancestor.item.name };
+        }
+      }
+
+      return { ...item, effectiveAt, coveredBy };
+    });
+});
 
 const builderModules = computed(() => schedules.value.find((c) => c.id === builder.courseId)?.modules ?? []);
 const builderLessons = computed(() => builderModules.value.find((m) => m.id === builder.moduleId)?.lessons ?? []);
@@ -541,6 +583,7 @@ async function submitSchedule() {
     });
     await loadSchedules();
     builder.editingId = currentTargetKey.value;
+    emit('changed');
     toast.success('Agendamento salvo.');
   } catch (e) {
     toast.error(e?.message || 'Não foi possível salvar o agendamento.');
@@ -564,6 +607,7 @@ async function clearSchedule(entry) {
     }
 
     await loadSchedules();
+    emit('changed');
     toast.success('Agendamento removido.');
   } catch (e) {
     toast.error(e?.message || 'Não foi possível remover o agendamento.');
@@ -855,7 +899,8 @@ onBeforeUnmount(() => {
 .td-sched-badge{flex-shrink:0;font-size:10px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:3px 7px;border-radius:6px;background:var(--accent-soft);color:var(--accent);}
 .td-sched-badge.module{background:rgba(59,130,246,.15);color:#3b82f6;}
 .td-sched-badge.lesson{background:rgba(148,163,184,.18);color:var(--text-secondary);}
-.td-sched-when{font-size:11.5px;color:var(--text-secondary);white-space:nowrap;}
+.td-sched-when{font-size:11.5px;color:var(--text-secondary);white-space:nowrap;text-align:right;}
+.td-sched-cover{display:block;margin-top:2px;font-size:10px;font-weight:700;letter-spacing:.2px;color:#b45309;text-transform:none;}
 .td-sched-clear{
   display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex-shrink:0;padding:0;
   border:1.5px solid var(--border);border-radius:9px;background:transparent;color:var(--text-muted);cursor:pointer;

@@ -106,6 +106,17 @@
       </form>
     </div>
 
+    <div v-if="bulkCount" class="bulk-bar">
+      <strong>{{ bulkCount }} usuário(s) selecionado(s)</strong>
+      <div class="bulk-bar-actions">
+        <button type="button" class="btn btn-outline btn-sm" :disabled="bulkBusy" @click="openPicker">Adicionar a turma(s)</button>
+        <button type="button" class="btn btn-outline btn-sm" :disabled="bulkBusy" @click="bulkStatus('activate')">Ativar</button>
+        <button type="button" class="btn btn-outline btn-sm" :disabled="bulkBusy" @click="bulkStatus('deactivate')">Inativar</button>
+        <button type="button" class="btn btn-danger btn-sm" :disabled="bulkBusy" @click="bulkDelete">Excluir</button>
+        <button type="button" class="btn btn-outline btn-sm" :disabled="bulkBusy" @click="clearSelection">Limpar</button>
+      </div>
+    </div>
+
     <p v-if="users.loading" class="page-subtitle">Carregando...</p>
 
     <div v-else-if="users.items.length === 0" class="empty-state">
@@ -116,10 +127,31 @@
     <div v-else class="admin-table-wrap">
       <table class="admin-table">
         <thead>
-          <tr><th>Usuário</th><th>E-mail</th><th>Tipo</th><th>Status</th><th></th></tr>
+          <tr>
+            <th class="bulk-col">
+              <input
+                class="admin-check"
+                type="checkbox"
+                :checked="isAllSelected(pageIds)"
+                :indeterminate.prop="isPartial(pageIds)"
+                aria-label="Selecionar todos"
+                @change="toggleAll(pageIds, $event.target.checked)"
+              >
+            </th>
+            <th>Usuário</th><th>E-mail</th><th>Tipo</th><th>Status</th><th></th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="user in users.items" :key="user.id">
+            <td class="bulk-col">
+              <input
+                class="admin-check"
+                type="checkbox"
+                :checked="isSelected(user.id)"
+                :aria-label="`Selecionar ${user.name}`"
+                @change="toggle(user.id)"
+              >
+            </td>
             <td>
               <span class="user-cell">
                 <span class="user-avatar">
@@ -157,15 +189,30 @@
 
     </template>
 
+    <BulkPickerModal
+      :open="picker.open"
+      title="Adicionar a turmas"
+      label="Turma"
+      placeholder="Buscar turma..."
+      confirm-label="Adicionar"
+      search-endpoint="/admin/teams"
+      :map-results="mapPickerResult"
+      @close="picker.open = false"
+      @confirm="confirmPicker"
+    />
+
   </main>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
+import { useBulkSelection } from '../composables/useBulkSelection';
 import { useAuthStore } from '../stores/auth';
 import { useUsersStore } from '../stores/users';
 import { useUserTypesStore } from '../stores/userTypes';
+import BulkPickerModal from '../components/admin/BulkPickerModal.vue';
 
 const toast = useToast();
 const auth = useAuthStore();
@@ -176,6 +223,11 @@ const showForm = ref(false);
 const editingId = ref(null);
 const saving = ref(false);
 const busyId = ref(null);
+
+const { selectedIds, count: bulkCount, isSelected, toggle, toggleAll, isAllSelected, isPartial, clear: clearSelection } = useBulkSelection();
+const bulkBusy = ref(false);
+const picker = reactive({ open: false });
+const pageIds = computed(() => users.items.map((user) => user.id));
 
 const search = ref('');
 const typeFilter = ref('');
@@ -317,6 +369,60 @@ async function remove(user) {
   }
 }
 
+function openPicker() {
+  picker.open = true;
+}
+
+function mapPickerResult(item) {
+  return { value: item.id, label: item.name, sub: item.status === 'active' ? 'Ativa' : 'Inativa' };
+}
+
+function reportSummary(summary) {
+  const processed = summary?.processed ?? 0;
+  const failed = summary?.failed ?? [];
+
+  if (failed.length) {
+    toast.error(`${processed} aplicado(s), ${failed.length} falha(s).`);
+    return;
+  }
+
+  toast.success(`${processed} aplicado(s).`);
+}
+
+async function runBulk(payload) {
+  bulkBusy.value = true;
+
+  try {
+    const { data } = await api.post('/admin/users/bulk', payload);
+    reportSummary(data.data);
+    await load(users.meta.current_page || 1);
+    clearSelection();
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível concluir a ação.');
+  } finally {
+    bulkBusy.value = false;
+  }
+}
+
+function confirmPicker(items) {
+  const teamIds = items.map((item) => item.value);
+  picker.open = false;
+
+  return runBulk({ action: 'add-to-teams', user_ids: selectedIds.value, team_ids: teamIds });
+}
+
+function bulkStatus(action) {
+  return runBulk({ action, user_ids: selectedIds.value });
+}
+
+function bulkDelete() {
+  if (!window.confirm(`Excluir ${bulkCount.value} usuário(s) selecionado(s)?`)) {
+    return;
+  }
+
+  return runBulk({ action: 'delete', user_ids: selectedIds.value });
+}
+
 onMounted(async () => {
   await userTypes.fetchUserTypes();
   await load(1);
@@ -363,5 +469,30 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card-alt);
+}
+.bulk-bar strong {
+  font-size: 13px;
+}
+.bulk-bar-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bulk-col {
+  width: 44px;
+  text-align: center;
+  vertical-align: middle;
 }
 </style>

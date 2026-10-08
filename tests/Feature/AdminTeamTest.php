@@ -220,4 +220,93 @@ class AdminTeamTest extends TestCase
             ])
             ->assertStatus(422);
     }
+
+    public function test_admin_can_bulk_attach_courses_to_teams(): void
+    {
+        ['course' => $course] = $this->buildCourse($this->company->id);
+        $a = Team::factory()->create(['company_id' => $this->company->id]);
+        $b = Team::factory()->create(['company_id' => $this->company->id]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/teams/bulk', [
+                'action' => 'attach-courses',
+                'team_ids' => [$a->id, $b->id],
+                'course_ids' => [$course->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.processed', 2)
+            ->assertJsonCount(0, 'data.failed');
+
+        $this->assertDatabaseHas('team_courses', ['team_id' => $a->id, 'course_id' => $course->id]);
+        $this->assertDatabaseHas('team_courses', ['team_id' => $b->id, 'course_id' => $course->id]);
+    }
+
+    public function test_admin_can_bulk_add_students_to_teams(): void
+    {
+        $a = Team::factory()->create(['company_id' => $this->company->id]);
+        $b = Team::factory()->create(['company_id' => $this->company->id]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/teams/bulk', [
+                'action' => 'add-students',
+                'team_ids' => [$a->id, $b->id],
+                'user_ids' => [$this->student->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.processed', 2)
+            ->assertJsonCount(0, 'data.failed');
+
+        $this->assertDatabaseHas('team_users', ['team_id' => $a->id, 'user_id' => $this->student->id]);
+        $this->assertDatabaseHas('team_users', ['team_id' => $b->id, 'user_id' => $this->student->id]);
+    }
+
+    public function test_admin_can_bulk_update_team_status(): void
+    {
+        $a = Team::factory()->create(['company_id' => $this->company->id]);
+        $b = Team::factory()->create(['company_id' => $this->company->id]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/teams/bulk', [
+                'action' => 'deactivate',
+                'team_ids' => [$a->id, $b->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.processed', 2);
+
+        $this->assertSame('inactive', $a->fresh()->status);
+        $this->assertSame('inactive', $b->fresh()->status);
+    }
+
+    public function test_admin_can_bulk_delete_teams(): void
+    {
+        $a = Team::factory()->create(['company_id' => $this->company->id]);
+        $b = Team::factory()->create(['company_id' => $this->company->id]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/teams/bulk', [
+                'action' => 'delete',
+                'team_ids' => [$a->id, $b->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.processed', 2);
+
+        $this->assertDatabaseMissing('teams', ['id' => $a->id]);
+        $this->assertDatabaseMissing('teams', ['id' => $b->id]);
+    }
+
+    public function test_bulk_reports_foreign_teams_as_failures(): void
+    {
+        $other = Team::factory()->create();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/teams/bulk', [
+                'action' => 'delete',
+                'team_ids' => [$other->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.processed', 0)
+            ->assertJsonCount(1, 'data.failed');
+
+        $this->assertDatabaseHas('teams', ['id' => $other->id]);
+    }
 }

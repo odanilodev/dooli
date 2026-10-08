@@ -52,6 +52,18 @@
       <input class="form-control admin-search" type="search" v-model="search" @input="onSearchInput" placeholder="Buscar turma...">
     </div>
 
+    <div v-if="bulkCount" class="bulk-bar">
+      <strong>{{ bulkCount }} turma(s) selecionada(s)</strong>
+      <div class="bulk-bar-actions">
+        <button type="button" class="btn btn-outline btn-sm" :disabled="bulkBusy" @click="openPicker('courses')">Associar curso(s)</button>
+        <button type="button" class="btn btn-outline btn-sm" :disabled="bulkBusy" @click="openPicker('users')">Adicionar aluno(s)</button>
+        <button type="button" class="btn btn-outline btn-sm" :disabled="bulkBusy" @click="bulkStatus('activate')">Ativar</button>
+        <button type="button" class="btn btn-outline btn-sm" :disabled="bulkBusy" @click="bulkStatus('deactivate')">Inativar</button>
+        <button type="button" class="btn btn-danger btn-sm" :disabled="bulkBusy" @click="bulkDelete">Excluir</button>
+        <button type="button" class="btn btn-outline btn-sm" :disabled="bulkBusy" @click="clearSelection">Limpar</button>
+      </div>
+    </div>
+
     <p v-if="loading" class="page-subtitle">Carregando...</p>
 
     <div v-else-if="!teams.length" class="empty-state">
@@ -63,10 +75,31 @@
     <div v-else class="admin-table-wrap">
       <table class="admin-table">
         <thead>
-          <tr><th>Turma</th><th>Alunos</th><th>Cursos</th><th>Agendamentos</th><th>Status</th><th></th></tr>
+          <tr>
+            <th class="bulk-col">
+              <input
+                class="admin-check"
+                type="checkbox"
+                :checked="isAllSelected(pageIds)"
+                :indeterminate.prop="isPartial(pageIds)"
+                aria-label="Selecionar todas"
+                @change="toggleAll(pageIds, $event.target.checked)"
+              >
+            </th>
+            <th>Turma</th><th>Alunos</th><th>Cursos</th><th>Agendamentos</th><th>Status</th><th></th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="team in teams" :key="team.id">
+            <td class="bulk-col">
+              <input
+                class="admin-check"
+                type="checkbox"
+                :checked="isSelected(team.id)"
+                :aria-label="`Selecionar ${team.name}`"
+                @change="toggle(team.id)"
+              >
+            </td>
             <td>
               <strong>{{ team.name }}</strong>
               <span class="admin-sub">#{{ team.id }}</span>
@@ -130,15 +163,29 @@
       </div>
     </Teleport>
 
+    <BulkPickerModal
+      :open="picker.open"
+      :title="picker.mode === 'users' ? 'Adicionar alunos' : 'Associar cursos'"
+      :label="picker.mode === 'users' ? 'Aluno' : 'Curso'"
+      :placeholder="picker.mode === 'users' ? 'Buscar por nome ou e-mail...' : 'Buscar curso...'"
+      :confirm-label="picker.mode === 'users' ? 'Adicionar' : 'Associar'"
+      :search-endpoint="picker.mode === 'users' ? '/admin/users' : '/admin/courses'"
+      :map-results="mapPickerResult"
+      @close="picker.open = false"
+      @confirm="confirmPicker"
+    />
+
   </main>
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
+import { useBulkSelection } from '../composables/useBulkSelection';
 import { statusLabel } from '../utils/adminLabels';
 import TeamDrawer from '../components/admin/TeamDrawer.vue';
+import BulkPickerModal from '../components/admin/BulkPickerModal.vue';
 
 const toast = useToast();
 
@@ -166,6 +213,12 @@ const menuTeam = ref(null);
 const menuPos = reactive({ top: 0, left: 0, up: false });
 const MENU_WIDTH = 176;
 const MENU_HEIGHT = 186;
+
+const { selectedIds, count: bulkCount, isSelected, toggle, toggleAll, isAllSelected, isPartial, clear: clearSelection } = useBulkSelection();
+const bulkBusy = ref(false);
+const picker = reactive({ open: false, mode: 'courses' });
+
+const pageIds = computed(() => teams.value.map((team) => team.id));
 
 let searchTimer = null;
 
@@ -267,6 +320,70 @@ async function remove(team) {
   }
 }
 
+function openPicker(mode) {
+  picker.mode = mode;
+  picker.open = true;
+}
+
+function mapPickerResult(item) {
+  if (picker.mode === 'users') {
+    return { value: item.id, label: item.name, sub: item.email };
+  }
+
+  return { value: item.id, label: item.name, sub: item.status === 'active' ? 'Ativo' : 'Inativo' };
+}
+
+function reportSummary(summary) {
+  const processed = summary?.processed ?? 0;
+  const failed = summary?.failed ?? [];
+
+  if (failed.length) {
+    toast.error(`${processed} aplicado(s), ${failed.length} falha(s).`);
+    return;
+  }
+
+  toast.success(`${processed} aplicado(s).`);
+}
+
+async function runBulk(payload) {
+  bulkBusy.value = true;
+
+  try {
+    const { data } = await api.post('/admin/teams/bulk', payload);
+    reportSummary(data.data);
+    await load();
+    clearSelection();
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível concluir a ação.');
+  } finally {
+    bulkBusy.value = false;
+  }
+}
+
+function confirmPicker(items) {
+  const ids = items.map((item) => item.value);
+  const mode = picker.mode;
+  picker.open = false;
+
+  return runBulk(
+    mode === 'users'
+      ? { action: 'add-students', team_ids: selectedIds.value, user_ids: ids }
+      : { action: 'attach-courses', team_ids: selectedIds.value, course_ids: ids },
+  );
+}
+
+function bulkStatus(action) {
+  return runBulk({ action, team_ids: selectedIds.value });
+}
+
+function bulkDelete() {
+  if (!window.confirm(`Excluir ${bulkCount.value} turma(s) selecionada(s)? Os vínculos de alunos e cursos serão removidos.`)) {
+    return;
+  }
+
+  return runBulk({ action: 'delete', team_ids: selectedIds.value });
+}
+
 function openTeam(team, tab = 'details') {
   drawerTab.value = tab;
   selectedTeam.value = team;
@@ -344,6 +461,10 @@ onBeforeUnmount(() => {
 <style scoped>
 .status-count{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:800;}
 .status-count.sched{background:rgba(59,130,246,.15);color:#3b82f6;}
+.bulk-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px 0;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card-alt);}
+.bulk-bar strong{font-size:13px;}
+.bulk-bar-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.bulk-col{width:44px;text-align:center;vertical-align:middle;}
 .team-actions{text-align:right;white-space:nowrap;}
 .team-kebab{
   display:inline-flex;align-items:center;justify-content:center;width:30px;height:26px;padding:0;border-radius:9px;cursor:pointer;

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\DTO\CreateTeamDTO;
+use App\Enums\GeneralStatus;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Requests\Admin\AddStudentRequest;
+use App\Http\Requests\Admin\BulkTeamRequest;
 use App\Http\Requests\Admin\StoreTeamRequest;
 use App\Http\Requests\Admin\UpdateStudentRequest;
 use App\Http\Requests\Admin\UpdateTeamRequest;
@@ -67,6 +69,23 @@ class TeamController extends ApiController
         $this->teams->delete($team);
 
         return ApiResponse::noContent();
+    }
+
+    public function bulk(BulkTeamRequest $request): JsonResponse
+    {
+        $this->authorize('create', Team::class);
+
+        $validated = $request->validated();
+
+        $summary = match ($validated['action']) {
+            'attach-courses' => $this->teams->bulkAttachCourses($validated['team_ids'], $validated['course_ids']),
+            'add-students' => $this->teams->bulkEnroll($validated['team_ids'], $validated['user_ids'], $validated['expired_at'] ?? null),
+            'activate' => $this->teams->bulkSetStatus($validated['team_ids'], GeneralStatus::Active->value),
+            'deactivate' => $this->teams->bulkSetStatus($validated['team_ids'], GeneralStatus::Inactive->value),
+            'delete' => $this->teams->bulkDelete($validated['team_ids']),
+        };
+
+        return ApiResponse::success($summary);
     }
 
     public function addStudent(AddStudentRequest $request, Team $team): JsonResponse
