@@ -9,7 +9,10 @@ use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\Module;
 use App\Repositories\ModuleRepository;
+use App\Support\CompanyContext;
+use App\Support\ImageStorage;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
 class ModuleService
@@ -19,6 +22,8 @@ class ModuleService
         private readonly DatalogService $audit,
         private readonly LessonService $lessons,
         private readonly LessonOrderService $orders,
+        private readonly ImageStorage $images,
+        private readonly CompanyContext $context,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -36,8 +41,12 @@ class ModuleService
         return $this->modules->findWithContent($id);
     }
 
-    public function create(array $data): Module
+    public function create(array $data, ?UploadedFile $image = null): Module
     {
+        if ($image) {
+            $data['image'] = $this->images->store($image, 'modules', (int) $this->context->id());
+        }
+
         $module = $this->modules->create($data);
 
         $this->audit->log('module', 'create', 'module', "Módulo criado: {$module->name}");
@@ -45,8 +54,13 @@ class ModuleService
         return $module;
     }
 
-    public function update(Module $module, array $data): Module
+    public function update(Module $module, array $data, ?UploadedFile $image = null): Module
     {
+        if ($image) {
+            $this->images->delete($module->image);
+            $data['image'] = $this->images->store($image, 'modules', (int) $module->company_id);
+        }
+
         $module = $this->modules->update($module, $data);
 
         $this->audit->log('module', 'update', 'module', "Módulo atualizado: {$module->name}");

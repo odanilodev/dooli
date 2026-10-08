@@ -11,12 +11,17 @@ use App\Http\Resources\VideoResource;
 use App\Models\Video;
 use App\Services\VideoService;
 use App\Support\ApiResponse;
+use App\Support\CompanyContext;
+use App\Support\ImageStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class VideoController extends ApiController
 {
-    public function __construct(private readonly VideoService $videos) {}
+    public function __construct(
+        private readonly VideoService $videos,
+        private readonly ImageStorage $images,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -34,7 +39,14 @@ class VideoController extends ApiController
     {
         $this->authorize('create', Video::class);
 
-        return ApiResponse::success(new VideoResource($this->videos->create($request->validated())), 201);
+        $data = $request->validated();
+        unset($data['image_file']);
+
+        if ($image = $request->file('image_file')) {
+            $data['image'] = $this->images->store($image, 'videos', (int) app(CompanyContext::class)->id());
+        }
+
+        return ApiResponse::success(new VideoResource($this->videos->create($data)), 201);
     }
 
     public function show(Video $video): JsonResponse
@@ -48,7 +60,15 @@ class VideoController extends ApiController
     {
         $this->authorize('update', $video);
 
-        return ApiResponse::success(new VideoResource($this->videos->update($video, $request->validated())));
+        $data = $request->validated();
+        unset($data['image_file']);
+
+        if ($image = $request->file('image_file')) {
+            $this->images->delete($video->image);
+            $data['image'] = $this->images->store($image, 'videos', (int) $video->company_id);
+        }
+
+        return ApiResponse::success(new VideoResource($this->videos->update($video, $data)));
     }
 
     public function destroy(Video $video): JsonResponse

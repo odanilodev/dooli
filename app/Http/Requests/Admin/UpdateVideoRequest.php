@@ -19,6 +19,7 @@ class UpdateVideoRequest extends FormRequest
         return [
             'title' => ['sometimes', 'string', 'max:255'],
             'image' => ['nullable', 'string', 'max:255'],
+            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'time' => ['sometimes', 'integer', 'min:0'],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
             'player' => ['nullable', Rule::in(VideoPlayer::values())],

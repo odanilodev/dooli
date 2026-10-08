@@ -13,6 +13,8 @@ use App\Repositories\UserRepository;
 use App\Services\TeamService;
 use App\Services\UserService;
 use App\Support\ApiResponse;
+use App\Support\CompanyContext;
+use App\Support\ImageStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -22,6 +24,7 @@ class UserController extends ApiController
         private readonly UserRepository $users,
         private readonly UserService $userService,
         private readonly TeamService $teamService,
+        private readonly ImageStorage $images,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -41,7 +44,14 @@ class UserController extends ApiController
     {
         $this->authorize('create', User::class);
 
-        $user = $this->users->create($request->validated());
+        $data = $request->validated();
+        unset($data['image_file']);
+
+        if ($image = $request->file('image_file')) {
+            $data['image'] = $this->images->store($image, 'users', (int) app(CompanyContext::class)->id());
+        }
+
+        $user = $this->users->create($data);
 
         return ApiResponse::success(new UserResource($user->load('userType')), 201);
     }
@@ -73,7 +83,15 @@ class UserController extends ApiController
     {
         $this->authorize('update', $user);
 
-        return ApiResponse::success(new UserResource($this->users->update($user, $request->validated())));
+        $data = $request->validated();
+        unset($data['image_file']);
+
+        if ($image = $request->file('image_file')) {
+            $this->images->delete($user->image);
+            $data['image'] = $this->images->store($image, 'users', (int) $user->company_id);
+        }
+
+        return ApiResponse::success(new UserResource($this->users->update($user, $data)));
     }
 
     public function destroy(User $user): JsonResponse

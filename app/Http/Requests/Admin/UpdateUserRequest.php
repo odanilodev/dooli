@@ -26,6 +26,7 @@ class UpdateUserRequest extends FormRequest
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
             'user_type_id' => ['sometimes', 'integer', Rule::exists('user_types', 'id')],
             'image' => ['nullable', 'string', 'max:255'],
+            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'phone' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],

@@ -11,6 +11,7 @@ use App\Repositories\DocumentRepository;
 use App\Services\MaterialService;
 use App\Support\ApiResponse;
 use App\Support\CompanyContext;
+use App\Support\ImageStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -20,6 +21,7 @@ class DocumentController extends ApiController
     public function __construct(
         private readonly DocumentRepository $documents,
         private readonly MaterialService $materials,
+        private readonly ImageStorage $images,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -37,11 +39,15 @@ class DocumentController extends ApiController
         $this->authorize('create', Document::class);
 
         $data = $request->validated();
-        unset($data['file']);
+        unset($data['file'], $data['image_file']);
 
         if ($file = $request->file('file')) {
             $data['path'] = $this->materials->storeDocumentFile($file, (int) app(CompanyContext::class)->id());
             $data['url'] = null;
+        }
+
+        if ($image = $request->file('image_file')) {
+            $data['image'] = $this->images->store($image, 'documents', (int) app(CompanyContext::class)->id());
         }
 
         return ApiResponse::success(new DocumentResource($this->documents->create($data)), 201);
@@ -59,7 +65,7 @@ class DocumentController extends ApiController
         $this->authorize('update', $document);
 
         $data = $request->validated();
-        unset($data['file']);
+        unset($data['file'], $data['image_file']);
 
         if ($file = $request->file('file')) {
             $data['path'] = $this->materials->storeDocumentFile($file, $document->company_id);
@@ -71,6 +77,11 @@ class DocumentController extends ApiController
             if (empty($path) && empty($url)) {
                 throw ValidationException::withMessages(['path' => 'Informe um arquivo ou um link.']);
             }
+        }
+
+        if ($image = $request->file('image_file')) {
+            $this->images->delete($document->image);
+            $data['image'] = $this->images->store($image, 'documents', (int) $document->company_id);
         }
 
         return ApiResponse::success(new DocumentResource($this->documents->update($document, $data)));

@@ -14,6 +14,7 @@ class ModuleResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'image' => $this->image,
+            'image_url' => $this->imageUrl(),
             'status' => $this->status,
             'sort_order' => $this->whenPivotLoaded('course_modules', fn () => $this->pivot->sort_order) ?? $this->sort_order,
             'available_at' => $this->when(

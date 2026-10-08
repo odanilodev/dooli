@@ -27,6 +27,16 @@ export const useUsersStore = defineStore('users', () => {
   }
 
   async function saveUser(payload, id = null) {
+    if (payload instanceof FormData) {
+      if (id) {
+        payload.append('_method', 'PUT');
+      }
+
+      const { data } = await api.post(id ? `/admin/users/${id}` : '/admin/users', payload);
+
+      return data.data;
+    }
+
     const { data } = id
       ? await api.put(`/admin/users/${id}`, payload)
       : await api.post('/admin/users', payload);

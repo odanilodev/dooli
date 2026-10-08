@@ -38,21 +38,18 @@
           <template v-if="type === 'course' || type === 'module'">
             <div class="form-group">
               <label :for="`dw-image`">Imagem</label>
-              <template v-if="type === 'course'">
-                <div v-if="imagePreviewUrl" class="dw-image-preview">
-                  <img :src="imagePreviewUrl" alt="Pré-visualização da imagem">
-                  <button type="button" class="dw-image-remove" @click="clearImage">remover</button>
-                </div>
-                <FilePicker
-                  accept="image/png,image/jpeg,image/webp"
-                  title="Enviar imagem"
-                  hint="JPG, PNG ou WEBP até 4MB"
-                  :file-name="imageFile?.name || ''"
-                  @change="onImagePicked"
-                />
-                <input :id="`dw-image`" class="form-control" v-model="form.image" placeholder="ou cole uma URL https://...">
-              </template>
-              <input v-else :id="`dw-image`" class="form-control" v-model="form.image" placeholder="https://...">
+              <div v-if="imagePreviewUrl" class="dw-image-preview">
+                <img :src="imagePreviewUrl" alt="Pré-visualização da imagem">
+                <button type="button" class="dw-image-remove" @click="clearImage">remover</button>
+              </div>
+              <FilePicker
+                accept="image/png,image/jpeg,image/webp"
+                title="Enviar imagem"
+                hint="JPG, PNG ou WEBP até 4MB"
+                :file-name="imageFile?.name || ''"
+                @change="onImagePicked"
+              />
+              <input :id="`dw-image`" class="form-control" v-model="form.image" placeholder="ou cole uma URL https://...">
             </div>
           </template>
 
@@ -616,7 +613,7 @@ async function save() {
     const payload = basePayload();
     let response;
 
-    if (props.type === 'course' && imageFile.value) {
+    if ((props.type === 'course' || props.type === 'module') && imageFile.value) {
       const body = new FormData();
 
       Object.entries(payload).forEach(([key, value]) => {

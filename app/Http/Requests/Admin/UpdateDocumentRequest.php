@@ -20,6 +20,7 @@ class UpdateDocumentRequest extends FormRequest
             'path' => ['nullable', 'string', 'max:255'],
             'url' => ['nullable', 'url', 'max:2048'],
             'image' => ['nullable', 'string', 'max:255'],
+            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
         ];
     }

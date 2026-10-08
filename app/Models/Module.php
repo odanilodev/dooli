@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\BelongsToCompany;
+use App\Concerns\HasImageUrl;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 #[Fillable(['name', 'company_id', 'image', 'description', 'status'])]
 class Module extends Model
 {
-    use BelongsToCompany, HasFactory;
+    use BelongsToCompany, HasFactory, HasImageUrl;
 
     protected $attributes = ['status' => 'active'];
 

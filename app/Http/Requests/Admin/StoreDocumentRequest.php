@@ -20,6 +20,7 @@ class StoreDocumentRequest extends FormRequest
             'path' => ['nullable', 'string', 'max:255', 'required_without_all:file,url'],
             'url' => ['nullable', 'url', 'max:2048', 'required_without_all:file,path'],
             'image' => ['nullable', 'string', 'max:255'],
+            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
         ];
     }

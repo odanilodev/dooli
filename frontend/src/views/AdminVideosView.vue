@@ -72,8 +72,19 @@
         </div>
 
         <div class="form-group">
-          <label for="v-image">Imagem (url)</label>
-          <input id="v-image" class="form-control" v-model="form.image">
+          <label for="v-image">Imagem</label>
+          <div v-if="form.imagePreview" class="video-image-preview">
+            <img :src="form.imagePreview" alt="Pré-visualização">
+            <button type="button" class="btn btn-outline btn-sm" @click="clearImage">remover</button>
+          </div>
+          <FilePicker
+            accept="image/png,image/jpeg,image/webp"
+            title="Enviar imagem"
+            hint="JPG, PNG ou WEBP até 4MB"
+            :file-name="form.imageFile?.name || ''"
+            @change="onImagePicked"
+          />
+          <input id="v-image" class="form-control" v-model="form.image" placeholder="ou cole uma URL https://...">
         </div>
 
         <div v-if="isVdoCipher && form.code" class="form-group">
@@ -186,6 +197,7 @@ import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
 import { formatDuration } from '../utils/format';
 import VideoUploader from '../components/admin/VideoUploader.vue';
+import FilePicker from '../components/admin/FilePicker.vue';
 
 const toast = useToast();
 
@@ -285,7 +297,7 @@ const showForm = ref(false);
 const editingId = ref(null);
 const editingVideo = ref(null);
 const saving = ref(false);
-const form = reactive({ title: '', image: '', time: 0, status: 'active', player: '', code: '', link: '' });
+const form = reactive({ title: '', image: '', time: 0, status: 'active', player: '', code: '', link: '', imageFile: null, imagePreview: '' });
 
 const isVdoCipher = computed(() => form.player === 'vdocipher');
 const isVdoCipherNew = computed(() => !editingId.value && isVdoCipher.value);
@@ -300,6 +312,28 @@ function resetForm() {
   form.player = '';
   form.code = '';
   form.link = '';
+  revokePreview();
+  form.imageFile = null;
+  form.imagePreview = '';
+}
+
+function revokePreview() {
+  if (form.imagePreview?.startsWith('blob:')) {
+    URL.revokeObjectURL(form.imagePreview);
+  }
+}
+
+function onImagePicked(file) {
+  revokePreview();
+  form.imageFile = file;
+  form.imagePreview = file ? URL.createObjectURL(file) : '';
+}
+
+function clearImage() {
+  revokePreview();
+  form.imageFile = null;
+  form.imagePreview = '';
+  form.image = '';
 }
 
 async function load() {
@@ -352,6 +386,9 @@ function openEdit(video) {
   editingVideo.value = video;
   form.title = video.title ?? '';
   form.image = video.image ?? '';
+  revokePreview();
+  form.imageFile = null;
+  form.imagePreview = video.image_url || video.image || '';
   form.time = video.time ?? 0;
   form.status = video.status ?? 'active';
   form.player = video.player ?? '';
@@ -382,20 +419,39 @@ async function save() {
   saving.value = true;
 
   try {
-    const payload = {
-      title: form.title,
-      image: form.image || null,
-      time: form.time || 0,
-      status: form.status,
-      player: form.player || null,
-      code: form.code || null,
-      link: form.link || null,
-    };
+    const url = editingId.value ? `/admin/videos/${editingId.value}` : '/admin/videos';
+    let response;
 
-    if (editingId.value) {
-      await api.put(`/admin/videos/${editingId.value}`, payload);
+    if (form.imageFile) {
+      const body = new FormData();
+      body.append('title', form.title);
+      body.append('image', form.image || '');
+      body.append('time', form.time || 0);
+      body.append('status', form.status);
+      if (form.player) body.append('player', form.player);
+      if (form.code) body.append('code', form.code);
+      if (form.link) body.append('link', form.link);
+      body.append('image_file', form.imageFile);
+
+      if (editingId.value) {
+        body.append('_method', 'PUT');
+      }
+
+      response = await api.post(url, body);
     } else {
-      await api.post('/admin/videos', payload);
+      const payload = {
+        title: form.title,
+        image: form.image || null,
+        time: form.time || 0,
+        status: form.status,
+        player: form.player || null,
+        code: form.code || null,
+        link: form.link || null,
+      };
+
+      response = editingId.value
+        ? await api.put(url, payload)
+        : await api.post(url, payload);
     }
 
     showForm.value = false;
@@ -458,4 +514,6 @@ onMounted(load);
 .provider-pill.is-pending{color:#eab308;border-color:rgba(234,179,8,.45);}
 .provider-pill.is-ready{color:#17c993;border-color:rgba(23,201,147,.45);}
 .provider-status-row{display:flex;align-items:center;gap:10px;}
+.video-image-preview{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.video-image-preview img{width:96px;height:54px;border-radius:8px;object-fit:cover;border:1px solid var(--border);}
 </style>

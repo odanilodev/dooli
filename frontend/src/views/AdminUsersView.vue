@@ -67,8 +67,19 @@
           <input id="u-phone" class="form-control" v-model="form.phone">
         </div>
         <div class="form-group">
-          <label for="u-image">Imagem (URL)</label>
-          <input id="u-image" class="form-control" v-model="form.image" placeholder="https://...">
+          <label for="u-image">Imagem</label>
+          <div v-if="form.imagePreview" class="user-image-preview">
+            <img :src="form.imagePreview" alt="Pré-visualização">
+            <button type="button" class="btn btn-outline btn-sm" @click="clearImage">remover</button>
+          </div>
+          <FilePicker
+            accept="image/png,image/jpeg,image/webp"
+            title="Enviar imagem"
+            hint="JPG, PNG ou WEBP até 4MB"
+            :file-name="form.imageFile?.name || ''"
+            @change="onImagePicked"
+          />
+          <input id="u-image" class="form-control" v-model="form.image" placeholder="ou cole uma URL https://...">
         </div>
       </div>
 
@@ -155,7 +166,7 @@
             <td>
               <span class="user-cell">
                 <span class="user-avatar">
-                  <img v-if="user.image" :src="user.image" :alt="user.name">
+                  <img v-if="user.image_url || user.image" :src="user.image_url || user.image" :alt="user.name">
                   <span v-else>{{ initials(user.name) }}</span>
                 </span>
                 <span>
@@ -213,6 +224,7 @@ import { useAuthStore } from '../stores/auth';
 import { useUsersStore } from '../stores/users';
 import { useUserTypesStore } from '../stores/userTypes';
 import BulkPickerModal from '../components/admin/BulkPickerModal.vue';
+import FilePicker from '../components/admin/FilePicker.vue';
 
 const toast = useToast();
 const auth = useAuthStore();
@@ -244,6 +256,8 @@ const form = reactive({
   phone: '',
   address: '',
   city: '',
+  imageFile: null,
+  imagePreview: '',
 });
 
 function resetForm() {
@@ -257,6 +271,28 @@ function resetForm() {
   form.phone = '';
   form.address = '';
   form.city = '';
+  revokePreview();
+  form.imageFile = null;
+  form.imagePreview = '';
+}
+
+function revokePreview() {
+  if (form.imagePreview?.startsWith('blob:')) {
+    URL.revokeObjectURL(form.imagePreview);
+  }
+}
+
+function onImagePicked(file) {
+  revokePreview();
+  form.imageFile = file;
+  form.imagePreview = file ? URL.createObjectURL(file) : '';
+}
+
+function clearImage() {
+  revokePreview();
+  form.imageFile = null;
+  form.imagePreview = '';
+  form.image = '';
 }
 
 function statusLabel(status) {
@@ -314,6 +350,9 @@ function openEdit(user) {
   form.phone = user.phone ?? '';
   form.address = user.address ?? '';
   form.city = user.city ?? '';
+  revokePreview();
+  form.imageFile = null;
+  form.imagePreview = user.image_url || user.image || '';
   showForm.value = true;
 }
 
@@ -321,20 +360,37 @@ async function save() {
   saving.value = true;
 
   try {
-    const payload = {
-      name: form.name,
-      username: form.username,
-      email: form.email,
-      user_type_id: Number(form.user_type_id),
-      status: form.status,
-      image: form.image || null,
-      phone: form.phone || null,
-      address: form.address || null,
-      city: form.city || null,
-    };
+    let payload;
 
-    if (form.password?.trim()) {
-      payload.password = form.password.trim();
+    if (form.imageFile) {
+      payload = new FormData();
+      payload.append('name', form.name);
+      payload.append('username', form.username);
+      payload.append('email', form.email);
+      payload.append('user_type_id', Number(form.user_type_id));
+      payload.append('status', form.status);
+      payload.append('image', form.image || '');
+      if (form.phone) payload.append('phone', form.phone);
+      if (form.address) payload.append('address', form.address);
+      if (form.city) payload.append('city', form.city);
+      if (form.password?.trim()) payload.append('password', form.password.trim());
+      payload.append('image_file', form.imageFile);
+    } else {
+      payload = {
+        name: form.name,
+        username: form.username,
+        email: form.email,
+        user_type_id: Number(form.user_type_id),
+        status: form.status,
+        image: form.image || null,
+        phone: form.phone || null,
+        address: form.address || null,
+        city: form.city || null,
+      };
+
+      if (form.password?.trim()) {
+        payload.password = form.password.trim();
+      }
     }
 
     await users.saveUser(payload, editingId.value);
@@ -469,6 +525,19 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.user-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.user-image-preview img {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
 }
 .bulk-bar {
   display: flex;

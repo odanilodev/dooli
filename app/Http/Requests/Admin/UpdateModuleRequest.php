@@ -19,6 +19,7 @@ class UpdateModuleRequest extends FormRequest
             'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'image' => ['nullable', 'string', 'max:255'],
+            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
         ];
     }

@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
 
@@ -68,6 +70,28 @@ class AdminUserTest extends TestCase
         $this->assertNotNull($user);
         $this->assertTrue(Hash::check('secret-password', $user->password));
         $this->assertSame($this->company->id, $user->company_id);
+    }
+
+    public function test_admin_can_upload_a_user_image(): void
+    {
+        Storage::fake('public');
+
+        $response = $this->withToken($this->apiLogin($this->admin))
+            ->post('/api/v1/admin/users', [
+                'name' => 'Com Foto',
+                'username' => 'com.foto',
+                'email' => 'foto@cursos.test',
+                'password' => 'secret-password',
+                'user_type_id' => $this->student->user_type_id,
+                'image_file' => UploadedFile::fake()->image('avatar.png', 200, 200),
+            ])
+            ->assertCreated();
+
+        $user = User::query()->where('email', 'foto@cursos.test')->firstOrFail();
+
+        $this->assertNotNull($user->image);
+        Storage::disk('public')->assertExists($user->image);
+        $this->assertSame(Storage::disk('public')->url($user->image), $response->json('data.image_url'));
     }
 
     public function test_create_user_validates_unique_email_and_username(): void

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\BelongsToCompany;
+use App\Concerns\HasImageUrl;
 use App\Enums\UserTypeCode;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -23,7 +24,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use BelongsToCompany, HasApiTokens, HasFactory, Notifiable;
+    use BelongsToCompany, HasApiTokens, HasFactory, HasImageUrl, Notifiable;
 
     protected $attributes = ['status' => 'active'];
 

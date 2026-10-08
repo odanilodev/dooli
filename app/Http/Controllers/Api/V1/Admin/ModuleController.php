@@ -32,7 +32,10 @@ class ModuleController extends ApiController
     {
         $this->authorize('create', Module::class);
 
-        $module = $this->modules->create($request->validated());
+        $data = $request->validated();
+        unset($data['image_file']);
+
+        $module = $this->modules->create($data, $request->file('image_file'));
 
         return ApiResponse::success(new ModuleResource($module), 201);
     }
@@ -48,7 +51,10 @@ class ModuleController extends ApiController
     {
         $this->authorize('update', $module);
 
-        return ApiResponse::success(new ModuleResource($this->modules->update($module, $request->validated())));
+        $data = $request->validated();
+        unset($data['image_file']);
+
+        return ApiResponse::success(new ModuleResource($this->modules->update($module, $data, $request->file('image_file'))));
     }
 
     public function destroy(Module $module): JsonResponse
