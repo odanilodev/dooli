@@ -83,6 +83,42 @@
           <p v-if="type === 'topic'" class="form-hint">Módulo: {{ course?.modules?.find((m) => m.id === item.module_id)?.name || `#${item.module_id}` }}</p>
         </template>
 
+        <!-- CURSOS -->
+        <template v-else-if="tab === 'courses'">
+          <div class="form-group">
+            <label>Cursos vinculados ({{ linkedCourses.length }})</label>
+            <div v-if="linkedCourses.length" class="dw-list">
+              <div v-for="c in linkedCourses" :key="c.id" class="dw-row">
+                <span class="dw-info">
+                  <span class="dw-row-name">{{ c.name }}</span>
+                  <span class="dw-row-sub">#{{ c.id }}</span>
+                </span>
+                <button type="button" class="btn btn-danger btn-sm" :disabled="busy" @click="unlinkCourse(c)">Desassociar</button>
+              </div>
+            </div>
+            <p v-else class="form-hint">Nenhum curso vinculado.</p>
+          </div>
+
+          <div class="drawer-divider"></div>
+
+          <div class="form-group">
+            <label for="dw-course-search">Vincular a um curso</label>
+            <input id="dw-course-search" class="form-control" v-model="courseSearch" @input="searchCourses" placeholder="Buscar curso...">
+          </div>
+
+          <p v-if="searchingCourses" class="form-hint">Buscando...</p>
+          <div v-else-if="courseResults.length" class="dw-list">
+            <div v-for="c in courseResults" :key="c.id" class="dw-row">
+              <span class="dw-info">
+                <span class="dw-row-name">{{ c.name }}</span>
+                <span class="dw-row-sub">#{{ c.id }}</span>
+              </span>
+              <button type="button" class="btn btn-outline btn-sm" :disabled="busy" @click="linkCourse(c)">Vincular</button>
+            </div>
+          </div>
+          <p v-else-if="courseSearch" class="form-hint">Nenhum curso encontrado.</p>
+        </template>
+
         <!-- CONTEÚDO -->
         <template v-else-if="tab === 'content'">
           <div class="form-group">
@@ -280,7 +316,7 @@ const props = defineProps({
   closeOnSave: { type: Boolean, default: true },
 });
 
-const emit = defineEmits(['close', 'saved']);
+const emit = defineEmits(['close', 'saved', 'changed']);
 const toast = useToast();
 
 const tab = ref('details');
@@ -295,6 +331,12 @@ const form = reactive({
   webinar_link: '', webinar_starts_at: '',
 });
 const selectedAttachments = ref([]);
+
+const linkedCourses = ref([]);
+const courseSearch = ref('');
+const courseResults = ref([]);
+const searchingCourses = ref(false);
+let courseTimer = null;
 
 const imageFile = ref(null);
 const imagePreview = ref('');
@@ -430,6 +472,10 @@ const tabs = computed(() => {
     return ['details', 'publish'];
   }
 
+  if (props.type === 'module') {
+    return ['details', 'courses'];
+  }
+
   return ['details'];
 });
 
@@ -459,6 +505,9 @@ function sync() {
   form.webinar_link = data.webinar_link ?? '';
   form.webinar_starts_at = toDateTimeInput(data.webinar_starts_at);
   selectedAttachments.value = (data.attachments ?? []).map((a) => a.id);
+  linkedCourses.value = (data.courses ?? []).map((c) => ({ id: c.id, name: c.name }));
+  courseSearch.value = '';
+  courseResults.value = [];
   tab.value = 'details';
 }
 
@@ -507,6 +556,11 @@ function setContentType(value) {
 }
 
 async function ensureReferences() {
+  if (props.type === 'module') {
+    await ensureModuleCourses();
+    return;
+  }
+
   if (props.type !== 'lesson' || attachments.value.length) {
     return;
   }
@@ -516,6 +570,75 @@ async function ensureReferences() {
     attachments.value = data.data ?? [];
   } catch (e) {
     /* silencioso */
+  }
+}
+
+async function ensureModuleCourses() {
+  if (props.item.courses) {
+    return;
+  }
+
+  try {
+    const { data } = await api.get(`/admin/modules/${props.item.id}`);
+    linkedCourses.value = (data.data?.courses ?? []).map((c) => ({ id: c.id, name: c.name }));
+  } catch (e) {
+    /* silencioso */
+  }
+}
+
+function searchCourses() {
+  clearTimeout(courseTimer);
+  const term = courseSearch.value.trim();
+
+  if (!term) {
+    courseResults.value = [];
+    return;
+  }
+
+  courseTimer = setTimeout(async () => {
+    searchingCourses.value = true;
+
+    try {
+      const { data } = await api.get('/admin/courses', { params: { search: term, per_page: 20 } });
+      const linked = new Set(linkedCourses.value.map((c) => c.id));
+      courseResults.value = (data.data ?? []).filter((c) => !linked.has(c.id));
+    } catch (e) {
+      toast.error(e?.message || 'Não foi possível buscar cursos.');
+    } finally {
+      searchingCourses.value = false;
+    }
+  }, 350);
+}
+
+async function linkCourse(course) {
+  busy.value = true;
+
+  try {
+    await api.post(`/admin/courses/${course.id}/modules`, { module_id: props.item.id });
+    linkedCourses.value = [...linkedCourses.value, { id: course.id, name: course.name }];
+    courseSearch.value = '';
+    courseResults.value = [];
+    emit('changed', { type: props.type, id: props.item.id, data: { courses: [...linkedCourses.value] } });
+    toast.success('Curso vinculado.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível vincular o curso.');
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function unlinkCourse(course) {
+  busy.value = true;
+
+  try {
+    await api.delete(`/admin/courses/${course.id}/modules/${props.item.id}`);
+    linkedCourses.value = linkedCourses.value.filter((c) => c.id !== course.id);
+    emit('changed', { type: props.type, id: props.item.id, data: { courses: [...linkedCourses.value] } });
+    toast.success('Curso desvinculado.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível desvincular o curso.');
+  } finally {
+    busy.value = false;
   }
 }
 
@@ -777,6 +900,11 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 
 <style scoped>
 .drawer-divider{height:1px;background:var(--border);margin:4px 0;}
+.dw-list{display:flex;flex-direction:column;gap:8px;}
+.dw-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card-alt);}
+.dw-info{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.dw-row-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dw-row-sub{font-size:11px;color:var(--text-muted);}
 .drawer-link{
   align-self:flex-start;background:none;border:none;color:var(--accent);font-weight:700;font-size:12.5px;cursor:pointer;
   padding:2px 0;font-family:inherit;

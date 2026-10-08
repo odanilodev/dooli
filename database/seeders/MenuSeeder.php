@@ -12,6 +12,7 @@ class MenuSeeder extends Seeder
      */
     private const ADMIN_ITEMS = [
         ['Cursos', '/admin/cursos', 'content'],
+        ['Módulos', '/admin/modulos', 'modules'],
         ['Turmas', '/admin/turmas', 'teams'],
         ['Vídeos', '/admin/videos', 'videos'],
         ['Documentos', '/admin/documentos', 'documents'],

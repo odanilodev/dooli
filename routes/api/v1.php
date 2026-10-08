@@ -145,6 +145,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::delete('courses/{course}/modules/{module}', [AdminCourseController::class, 'detachModule'])->whereNumber('module');
         Route::put('courses/{course}/modules/reorder', [AdminCourseController::class, 'reorderModules']);
 
+        Route::get('modules/tree', [AdminModuleController::class, 'tree']);
         Route::apiResource('modules', AdminModuleController::class);
         Route::put('modules/{module}/topics/reorder', [AdminTopicController::class, 'reorder']);
         Route::put('modules/{module}/lessons/reorder', [AdminLessonController::class, 'reorderModule']);

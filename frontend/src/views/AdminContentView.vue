@@ -88,27 +88,12 @@
       </div>
     </div>
 
-    <div v-if="reorderConflicts.length" class="admin-modal-backdrop" @mousedown="onBackdropDown" @click.self="backdropDown && cancelReorder()">
-      <div class="panel admin-modal">
-        <div class="admin-panel-head">
-          <h2 class="panel-title">Travas de pré-requisito vão ser removidas</h2>
-          <button class="admin-modal-close" @click="cancelReorder">×</button>
-        </div>
-
-        <p class="page-subtitle">Com esta nova ordem, as aulas abaixo ficariam antes da aula que exigem concluir. Para não travar o aluno, a trava será removida:</p>
-
-        <ul class="admin-conflict-list">
-          <li v-for="conflict in reorderConflicts" :key="conflict.lesson_id">
-            <strong>{{ conflict.lesson_name }}</strong> — exigia <em>{{ conflict.required_lesson_name }}</em>
-          </li>
-        </ul>
-
-        <div class="admin-modal-actions">
-          <button class="btn btn-outline" @click="cancelReorder">Cancelar</button>
-          <button class="btn btn-danger" @click="confirmReorder">Reordenar e remover travas</button>
-        </div>
-      </div>
-    </div>
+    <ReorderConflictModal
+      v-if="reorderConflicts.length"
+      :conflicts="reorderConflicts"
+      @cancel="cancelReorder"
+      @confirm="confirmReorder"
+    />
 
   </main>
 </template>
@@ -118,9 +103,11 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
+import { useCurriculumModules } from '../composables/useCurriculumModules';
 import { statusLabel } from '../utils/adminLabels';
 import CurriculumBuilder from '../components/admin/CurriculumBuilder.vue';
 import ItemDrawer from '../components/admin/ItemDrawer.vue';
+import ReorderConflictModal from '../components/admin/ReorderConflictModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -140,52 +127,47 @@ const moduleMeta = ref({ current_page: 1, last_page: 1, total: 0 });
 const moduleSearch = ref('');
 const selectedModuleIds = ref([]);
 const backdropDown = ref(false);
-const reorderConflicts = ref([]);
-const pendingReorder = ref(null);
 
 function onBackdropDown(e) {
   backdropDown.value = e.target === e.currentTarget;
 }
 
+const modules = computed({
+  get: () => course.value?.modules ?? [],
+  set: (value) => { if (course.value) course.value.modules = value; },
+});
+
+const root = computed(() => course.value);
+
+function openDrawer(type, id, options = {}) {
+  selected.value = { type, id };
+  drawerFocus.value = options.focus ?? null;
+}
+
+const {
+  findNode,
+  createModule,
+  createTopic,
+  createLesson,
+  createModuleLesson,
+  rename,
+  removeNode,
+  reorder,
+  confirmReorder,
+  cancelReorder,
+  reorderConflicts,
+} = useCurriculumModules({
+  modules,
+  root,
+  courseId,
+  attachModuleToCourse: true,
+  openDrawer,
+  reload: () => load(),
+});
+
 const selectedItem = computed(() => (selected.value ? findNode(selected.value.type, selected.value.id) : null));
 const linkedModuleIds = computed(() => new Set((course.value?.modules ?? []).map((m) => m.id)));
 const selectableSelected = computed(() => selectedModuleIds.value.filter((id) => !linkedModuleIds.value.has(id)));
-
-function findNode(type, id) {
-  if (!course.value) {
-    return null;
-  }
-
-  if (type === 'course') {
-    return course.value;
-  }
-
-  for (const module of course.value.modules ?? []) {
-    if (type === 'module' && module.id === id) {
-      return module;
-    }
-
-    for (const topic of module.topics ?? []) {
-      if (type === 'topic' && topic.id === id) {
-        return topic;
-      }
-
-      for (const lesson of topic.lessons ?? []) {
-        if (type === 'lesson' && lesson.id === id) {
-          return lesson;
-        }
-      }
-    }
-
-    for (const lesson of module.lessons ?? []) {
-      if (type === 'lesson' && lesson.id === id) {
-        return lesson;
-      }
-    }
-  }
-
-  return null;
-}
 
 async function load() {
   if (!courseId.value) {
@@ -221,203 +203,12 @@ function closeDrawer() {
   drawerFocus.value = null;
 }
 
-function openDrawer(type, id, options = {}) {
-  selected.value = { type, id };
-  drawerFocus.value = options.focus ?? null;
-}
-
-async function onSaved({ type, id, data }) {
+function onSaved({ type, id, data }) {
   const node = findNode(type, id);
 
   if (node) {
     Object.assign(node, data);
   }
-}
-
-async function createModule() {
-
-  try {
-    const { data } = await api.post('/admin/modules', { name: 'Novo módulo', status: 'active' });
-    await api.post(`/admin/courses/${courseId.value}/modules`, { module_id: data.data.id });
-    const module = { ...data.data, topics: [], lessons: [] };
-    course.value.modules = [...(course.value.modules ?? []), module];
-    openDrawer('module', module.id);
-  } catch (e) {
-    toast.error(e?.message || 'Não foi possível criar o módulo.');
-  }
-}
-
-async function createTopic(module) {
-
-  try {
-    const { data } = await api.post('/admin/topics', {
-      name: 'Novo tópico',
-      module_id: module.id,
-      status: 'active',
-    });
-    const topic = { ...data.data, lessons: [] };
-    module.topics = [...(module.topics ?? []), topic];
-    openDrawer('topic', topic.id);
-  } catch (e) {
-    toast.error(e?.message || 'Não foi possível criar o tópico.');
-  }
-}
-
-async function createLesson(topic) {
-
-  try {
-    const { data } = await api.post('/admin/lessons', {
-      name: 'Nova aula',
-      module_id: topic.module_id,
-      topic_id: topic.id,
-      status: 'active',
-    });
-    const lesson = { ...data.data, attachments: data.data.attachments ?? [] };
-    topic.lessons = [...(topic.lessons ?? []), lesson];
-    openDrawer('lesson', lesson.id);
-  } catch (e) {
-    toast.error(e?.message || 'Não foi possível criar a aula.');
-  }
-}
-
-async function createModuleLesson(module) {
-
-  try {
-    const { data } = await api.post('/admin/lessons', {
-      name: 'Nova aula',
-      module_id: module.id,
-      status: 'active',
-    });
-    const lesson = { ...data.data, attachments: data.data.attachments ?? [] };
-    module.lessons = [...(module.lessons ?? []), lesson];
-    openDrawer('lesson', lesson.id);
-  } catch (e) {
-    toast.error(e?.message || 'Não foi possível criar a aula.');
-  }
-}
-
-async function rename({ type, id, name }) {
-
-  const paths = { module: 'modules', topic: 'topics', lesson: 'lessons' };
-
-  try {
-    await api.put(`/admin/${paths[type]}/${id}`, { name });
-    const node = findNode(type, id);
-
-    if (node) {
-      node.name = name;
-    }
-  } catch (e) {
-    toast.error(e?.message || 'Não foi possível renomear.');
-    await load();
-  }
-}
-
-async function removeNode({ type, node }) {
-  const labels = { module: 'o módulo', topic: 'o tópico', lesson: 'a aula' };
-  const warning = type === 'lesson'
-    ? ' Isso também apaga progresso, comentários e avaliações dos alunos nesta aula.'
-    : ' As aulas dele (com progresso, comentários e avaliações dos alunos) também serão apagadas.';
-
-  if (!window.confirm(`Remover ${labels[type]} "${node.name}"?${warning}`)) {
-    return;
-  }
-
-
-  try {
-    if (type === 'module') {
-      await api.delete(`/admin/courses/${courseId.value}/modules/${node.id}`);
-    } else {
-      const paths = { topic: 'topics', lesson: 'lessons' };
-      await api.delete(`/admin/${paths[type]}/${node.id}`);
-    }
-
-    if (type === 'module') {
-      course.value.modules = (course.value.modules ?? []).filter((m) => m.id !== node.id);
-    } else if (type === 'topic') {
-      for (const module of course.value.modules ?? []) {
-        module.topics = (module.topics ?? []).filter((t) => t.id !== node.id);
-      }
-    } else {
-      for (const module of course.value.modules ?? []) {
-        module.lessons = (module.lessons ?? []).filter((l) => l.id !== node.id);
-
-        for (const topic of module.topics ?? []) {
-          topic.lessons = (topic.lessons ?? []).filter((l) => l.id !== node.id);
-        }
-      }
-    }
-
-    if (selected.value && selected.value.type === type && selected.value.id === node.id) {
-      selected.value = null;
-    }
-  } catch (e) {
-    toast.error(e?.message || 'Não foi possível remover o item.');
-    await load();
-  }
-}
-
-async function reorder(payload) {
-  pendingReorder.value = payload;
-
-  await sendReorder(payload, false);
-}
-
-async function sendReorder(payload, force) {
-  const { level, parentId, ids } = payload;
-
-  const endpoints = {
-    module: `/admin/courses/${parentId}/modules/reorder`,
-    topic: `/admin/modules/${parentId}/topics/reorder`,
-    lesson: `/admin/topics/${parentId}/lessons/reorder`,
-    'module-lesson': `/admin/modules/${parentId}/lessons/reorder`,
-  };
-
-  try {
-    const { data } = await api.put(endpoints[level], { ids, force });
-    const cleared = data?.data?.cleared ?? [];
-
-    for (const lessonId of cleared) {
-      const node = findNode('lesson', lessonId);
-
-      if (node) {
-        node.required_lesson_id = null;
-      }
-    }
-
-    if (pendingReorder.value === payload) {
-      reorderConflicts.value = [];
-      pendingReorder.value = null;
-    }
-  } catch (e) {
-    if (e?.status === 409 && e?.errors?.conflicts?.length) {
-      reorderConflicts.value = e.errors.conflicts;
-      pendingReorder.value = payload;
-
-      return;
-    }
-
-    toast.error(e?.message || 'Não foi possível reordenar.');
-
-    if (pendingReorder.value === payload) {
-      reorderConflicts.value = [];
-      pendingReorder.value = null;
-    }
-
-    await load();
-  }
-}
-
-async function confirmReorder() {
-  if (pendingReorder.value) {
-    await sendReorder(pendingReorder.value, true);
-  }
-}
-
-function cancelReorder() {
-  reorderConflicts.value = [];
-  pendingReorder.value = null;
-  load();
 }
 
 async function openAttach() {

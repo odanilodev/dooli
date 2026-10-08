@@ -41,6 +41,14 @@ class ModuleService
         return $this->modules->findWithContent($id);
     }
 
+    public function tree(array $filters, int $perPage = 10): LengthAwarePaginator
+    {
+        return $this->modules->paginateWithContent([
+            'search' => $filters['search'] ?? null,
+            'usage' => $filters['usage'] ?? null,
+        ], $perPage);
+    }
+
     public function create(array $data, ?UploadedFile $image = null): Module
     {
         if ($image) {

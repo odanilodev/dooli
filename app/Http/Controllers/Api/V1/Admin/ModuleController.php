@@ -28,6 +28,18 @@ class ModuleController extends ApiController
         return ApiResponse::paginated($paginator, ModuleResource::class);
     }
 
+    public function tree(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Module::class);
+
+        $paginator = $this->modules->tree(
+            filters: $request->only(['search', 'usage']),
+            perPage: $this->perPage($request),
+        );
+
+        return ApiResponse::paginated($paginator, ModuleResource::class);
+    }
+
     public function store(StoreModuleRequest $request): JsonResponse
     {
         $this->authorize('create', Module::class);

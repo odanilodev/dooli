@@ -25,6 +25,7 @@ class ModuleResource extends JsonResource
                 ($this->schedule_available_at ?? null) !== null,
                 fn () => (bool) $this->schedule_locked,
             ),
+            'courses' => CourseResource::collection($this->whenLoaded('courses')),
             'topics' => TopicResource::collection($this->whenLoaded('topics')),
             'lessons' => LessonResource::collection($this->whenLoaded('looseLessons')),
             'created_at' => $this->created_at?->toIso8601String(),

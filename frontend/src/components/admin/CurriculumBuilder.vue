@@ -2,12 +2,12 @@
   <section class="cb">
     <header class="cb-bar">
       <div class="cb-bar-text">
-        <span class="cb-bar-title">{{ course.name }}</span>
-        <span class="cb-bar-sub">{{ moduleCount }} módulo(s) · {{ lessonCount }} aula(s)</span>
+        <span class="cb-bar-title">{{ headerTitle }}</span>
+        <span v-if="headerSub" class="cb-bar-sub">{{ headerSub }}</span>
       </div>
       <div class="cb-bar-actions">
-        <button class="btn btn-outline btn-sm" @click="emit('attach-module')">Vincular módulo</button>
-        <button class="btn btn-primary btn-sm" @click="emit('add-module')">+ Módulo</button>
+        <button v-if="showAttach" class="btn btn-outline btn-sm" @click="emit('attach-module')">Vincular módulo</button>
+        <button v-if="showAddModule" class="btn btn-primary btn-sm" @click="emit('add-module')">+ Módulo</button>
       </div>
     </header>
 
@@ -16,9 +16,10 @@
       item-key="id"
       handle=".cb-handle"
       :animation="160"
+      :disabled="!allowModuleReorder"
       ghost-class="cb-ghost"
       class="cb-modules"
-      @end="reorder('module', course.id, modules)"
+      @end="reorder('module', course?.id, modules)"
     >
       <template #item="{ element: module }">
         <article class="cb-module">
@@ -27,7 +28,7 @@
             :class="{ active: isSelected('module', module.id) }"
             @click="emit('select', { type: 'module', id: module.id })"
           >
-            <span class="cb-handle" title="Arrastar" @click.stop>⠿</span>
+            <span v-if="allowModuleReorder" class="cb-handle" title="Arrastar" @click.stop>⠿</span>
             <button class="cb-caret" :class="{ open: !isCollapsed(`m-${module.id}`) }" @click.stop="toggleCollapse(`m-${module.id}`)">▸</button>
 
             <input
@@ -223,11 +224,11 @@
     </draggable>
 
     <div v-if="!modules.length" class="cb-empty-root">
-      <strong>Sem conteúdo ainda</strong>
-      <span>Comece adicionando um módulo ou vinculando um existente.</span>
+      <strong>{{ emptyTitle }}</strong>
+      <span>{{ emptyHint }}</span>
       <div class="cb-empty-actions">
-        <button class="btn btn-primary btn-sm" @click="emit('add-module')">+ Módulo</button>
-        <button class="btn btn-outline btn-sm" @click="emit('attach-module')">Vincular módulo</button>
+        <button v-if="showAddModule" class="btn btn-primary btn-sm" @click="emit('add-module')">+ Módulo</button>
+        <button v-if="showAttach" class="btn btn-outline btn-sm" @click="emit('attach-module')">Vincular módulo</button>
       </div>
     </div>
   </section>
@@ -238,11 +239,19 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'v
 import draggable from 'vuedraggable';
 
 const props = defineProps({
-  course: { type: Object, required: true },
+  course: { type: Object, default: null },
+  modules: { type: Array, default: null },
   selected: { type: Object, default: null },
+  title: { type: String, default: null },
+  subtitle: { type: String, default: null },
+  showAttach: { type: Boolean, default: true },
+  showAddModule: { type: Boolean, default: true },
+  allowModuleReorder: { type: Boolean, default: true },
+  emptyTitle: { type: String, default: null },
+  emptyHint: { type: String, default: null },
 });
 
-const emit = defineEmits(['select', 'rename', 'add-module', 'attach-module', 'add-topic', 'add-lesson', 'add-module-lesson', 'remove', 'reorder']);
+const emit = defineEmits(['select', 'rename', 'add-module', 'attach-module', 'add-topic', 'add-lesson', 'add-module-lesson', 'remove', 'reorder', 'update:modules']);
 
 const collapsed = reactive({});
 const openMenu = ref(null);
@@ -257,14 +266,26 @@ function setRenameInput(el) {
 }
 
 const modules = computed({
-  get: () => props.course.modules ?? [],
-  set: (value) => { props.course.modules = value; },
+  get: () => props.modules ?? props.course?.modules ?? [],
+  set: (value) => {
+    if (props.modules) {
+      emit('update:modules', value);
+    } else if (props.course) {
+      props.course.modules = value;
+    }
+  },
 });
 
-const moduleCount = computed(() => (props.course.modules ?? []).length);
+const headerTitle = computed(() => props.title ?? props.course?.name ?? '');
+const moduleCount = computed(() => modules.value.length);
 const lessonCount = computed(() =>
-  (props.course.modules ?? []).reduce((total, module) => total + moduleLessonCount(module), 0),
+  modules.value.reduce((total, module) => total + moduleLessonCount(module), 0),
 );
+const headerSub = computed(() => props.subtitle ?? `${moduleCount.value} módulo(s) · ${lessonCount.value} aula(s)`);
+const emptyTitle = computed(() => props.emptyTitle ?? 'Sem conteúdo ainda');
+const emptyHint = computed(() => props.emptyHint ?? (props.showAttach
+  ? 'Comece adicionando um módulo ou vinculando um existente.'
+  : 'Crie o primeiro módulo para começar.'));
 
 function moduleLessonCount(module) {
   return (module.topics ?? []).reduce((sum, topic) => sum + (topic.lessons?.length ?? 0), 0)
