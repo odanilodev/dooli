@@ -71,12 +71,15 @@ Regra central (em `StudentCourseService::activeEnrollmentConstraint` o aluno tem
 
 | Vínculo | Condição |
 | ------- | -------- |
+| `teams` (turma) | `status = active` |
 | `team_users` (aluno na turma) | `status = active` **e** (`expired_at` nulo **ou** `> agora`) |
 | `team_courses` (curso na turma) | `status = active` |
 | Curso / aula | `status = active` (e aula publicada) |
 
 - **Sem turma não há aula.** O acesso nunca é concedido direto no curso.
+- **Turma inativa bloqueia o acesso.** Inativar uma turma corta o acesso de todos os alunos matriculados aos cursos associados até que ela seja reativada (nada é apagado; reativar restaura).
 - A checagem está centralizada em `StudentCourseService::assertAccess(...)`, que retorna a `Team` ativa usada para acessar o curso (e também é usada no progresso, pois `timelines` é escopada por turma).
+- A compra (`EnrollmentService::grantAccess`) **ignora** turmas inativas — não cria `team_courses`/`team_users` por elas.
 - `user_types.code` (`admin` / `instructor` / `student`) é **permissão**, não acesso — é outro eixo, tratado por `role:` e Policies.
 
 Referências: `app/Services/StudentCourseService.php`, `app/Models/Team.php`, `app/Models/User.php`.

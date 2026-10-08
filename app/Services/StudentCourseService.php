@@ -45,7 +45,8 @@ class StudentCourseService
         return Course::query()
             ->where('status', GeneralStatus::Active->value)
             ->whereHas('teams', function ($q) use ($user) {
-                $q->whereHas('users', fn ($u) => $this->activeEnrollmentConstraint($u, $user->id))
+                $q->where('teams.status', GeneralStatus::Active->value)
+                    ->whereHas('users', fn ($u) => $this->activeEnrollmentConstraint($u, $user->id))
                     ->where('team_courses.status', GeneralStatus::Active->value);
             })
             ->orderBy('sort_order');
@@ -57,6 +58,7 @@ class StudentCourseService
     public function accessibleTeams(User $user, int $courseId): Collection
     {
         return Team::query()
+            ->where('status', GeneralStatus::Active->value)
             ->whereHas('users', fn ($q) => $this->activeEnrollmentConstraint($q, $user->id))
             ->whereHas('courses', fn ($q) => $q->where('courses.id', $courseId)
                 ->where('team_courses.status', GeneralStatus::Active->value))
@@ -87,7 +89,8 @@ class StudentCourseService
     {
         return Course::query()
             ->whereHas('teams', function ($q) use ($user) {
-                $q->whereHas('users', fn ($u) => $this->activeEnrollmentConstraint($u, $user->id))
+                $q->where('teams.status', GeneralStatus::Active->value)
+                    ->whereHas('users', fn ($u) => $this->activeEnrollmentConstraint($u, $user->id))
                     ->where('team_courses.status', GeneralStatus::Active->value);
             })
             ->pluck('id')

@@ -6,7 +6,7 @@
           <span class="drawer-eyebrow">Turma</span>
           <h2 class="drawer-title">{{ form.name || team.name }}</h2>
         </div>
-        <span class="status-pill" :class="form.status">{{ statusLabel(form.status) }}</span>
+        <span class="status-pill" :class="form.status">{{ teamStatusLabel(form.status) }}</span>
         <button class="drawer-close" @click="emit('close')" aria-label="Fechar">×</button>
       </header>
 
@@ -289,7 +289,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { api } from '../../api/http';
 import SearchSelect from './SearchSelect.vue';
 import { useToast } from '../../composables/useToast';
-import { statusLabel } from '../../utils/adminLabels';
+import { teamStatusLabel } from '../../utils/adminLabels';
 import { formatDateTime, toDateTimeInput } from '../../utils/format';
 
 const props = defineProps({
@@ -711,6 +711,17 @@ function searchCourses() {
 async function saveDetails() {
   if (!form.name.trim()) {
     toast.error('Informe o nome.');
+    return;
+  }
+
+  const studentsCount = props.team.users_count ?? students.value.length;
+
+  if (
+    form.status === 'inactive'
+    && props.team.status !== 'inactive'
+    && studentsCount > 0
+    && !window.confirm(`Esta turma tem ${studentsCount} aluno(s). Inativá-la bloqueia o acesso aos cursos até ser reativada. Continuar?`)
+  ) {
     return;
   }
 

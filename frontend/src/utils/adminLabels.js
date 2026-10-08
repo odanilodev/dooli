@@ -20,6 +20,15 @@ export function statusLabel(status) {
   return STATUS_LABELS[status] ?? status ?? '';
 }
 
+export const TEAM_STATUS_LABELS = {
+  active: 'Ativa',
+  inactive: 'Inativa',
+};
+
+export function teamStatusLabel(status) {
+  return TEAM_STATUS_LABELS[status] ?? status ?? '';
+}
+
 export const PLAYER_LABELS = {
   vdocipher: 'VdoCipher',
   panda: 'Panda Video',

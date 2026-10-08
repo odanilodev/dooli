@@ -332,7 +332,9 @@ class DashboardService
     private function studentsPerCourse(): array
     {
         $rows = TeamCourse::query()
+            ->join('teams', 'teams.id', '=', 'team_courses.team_id')
             ->join('team_users', 'team_users.team_id', '=', 'team_courses.team_id')
+            ->where('teams.status', GeneralStatus::Active->value)
             ->where('team_courses.status', GeneralStatus::Active->value)
             ->where('team_users.status', GeneralStatus::Active->value)
             ->where(function ($query) {

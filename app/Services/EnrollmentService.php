@@ -36,6 +36,10 @@ class EnrollmentService
                 continue;
             }
 
+            if ($team->status !== GeneralStatus::Active->value) {
+                continue;
+            }
+
             $team->courses()->syncWithoutDetaching([
                 $storeProduct->course_id => [
                     'company_id' => $team->company_id,

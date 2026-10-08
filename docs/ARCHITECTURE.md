@@ -73,10 +73,10 @@ O padrão do projeto é **rota = tabela**: tabela plural snake_case, model singu
 ## Fluxos principais
 
 ### Acesso do aluno
-`team_users` (ativo, não expirado) + `team_courses` (ativo) + curso/aulas ativos. Centralizado em `StudentCourseService::assertAccess`.
+`teams` (ativo) + `team_users` (ativo, não expirado) + `team_courses` (ativo) + curso/aulas ativos. Centralizado em `StudentCourseService::assertAccess`. Turma inativa bloqueia o acesso (reativar restaura).
 
 ### Compra → acesso
-`Order` → `Payment` (gateway) → confirmação (webhook/manual) → `EnrollmentService::grantAccessForOrder` → cria `team_courses` + `team_users` a partir de `store_product_teams`.
+`Order` → `Payment` (gateway) → confirmação (webhook/manual) → `EnrollmentService::grantAccessForOrder` → cria `team_courses` + `team_users` a partir de `store_product_teams` (turmas inativas são ignoradas).
 
 ### Conclusão → certificado
 `ProgressService::completeLesson` grava `timelines` (idempotente) e chama `CertificateService::issueIfEligible`, que valida total × concluídas antes de emitir.

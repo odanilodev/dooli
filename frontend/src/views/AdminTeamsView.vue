@@ -110,7 +110,7 @@
               <span v-if="team.schedules_count" class="status-count sched">{{ team.schedules_count }}</span>
               <span v-else class="admin-muted">—</span>
             </td>
-            <td><span class="status-pill" :class="team.status">{{ statusLabel(team.status) }}</span></td>
+            <td><span class="status-pill" :class="team.status">{{ teamStatusLabel(team.status) }}</span></td>
             <td class="team-actions">
               <button
                 type="button"
@@ -183,7 +183,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
 import { useBulkSelection } from '../composables/useBulkSelection';
-import { statusLabel } from '../utils/adminLabels';
+import { teamStatusLabel } from '../utils/adminLabels';
 import TeamDrawer from '../components/admin/TeamDrawer.vue';
 import BulkPickerModal from '../components/admin/BulkPickerModal.vue';
 
@@ -373,6 +373,20 @@ function confirmPicker(items) {
 }
 
 function bulkStatus(action) {
+  if (action === 'deactivate') {
+    const studentsCount = teams.value
+      .filter((team) => selectedIds.value.includes(team.id))
+      .reduce((sum, team) => sum + (team.users_count ?? 0), 0);
+
+    const message = studentsCount > 0
+      ? `Inativar as turmas selecionadas bloqueará o acesso de ${studentsCount} aluno(s) aos cursos até serem reativadas. Continuar?`
+      : 'Inativar as turmas selecionadas?';
+
+    if (!window.confirm(message)) {
+      return;
+    }
+  }
+
   return runBulk({ action, team_ids: selectedIds.value });
 }
 
