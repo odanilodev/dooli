@@ -22,10 +22,11 @@ class MyCourseController extends ApiController
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
+        $teamId = $request->integer('team_id') ?: null;
 
-        $paginator = $this->studentCourses->myCourses($user, $this->perPage($request));
+        $paginator = $this->studentCourses->myCourses($user, $this->perPage($request), $teamId);
 
-        $summary = $this->progress->progressSummaryFor($user, $paginator->getCollection());
+        $summary = $this->progress->progressSummaryFor($user, $paginator->getCollection(), $teamId);
 
         $paginator->getCollection()->each(
             fn (Course $course) => $course->setAttribute('progress', $summary[$course->id] ?? null),
@@ -36,7 +37,8 @@ class MyCourseController extends ApiController
 
     public function show(Request $request, int $course): JsonResponse
     {
-        $course = $this->studentCourses->courseContent($request->user(), $course);
+        $teamId = $request->integer('team_id') ?: null;
+        $course = $this->studentCourses->courseContent($request->user(), $course, $teamId);
 
         return ApiResponse::success(new CourseResource($course));
     }
@@ -59,6 +61,8 @@ class MyCourseController extends ApiController
 
     public function continueWatching(Request $request): JsonResponse
     {
-        return ApiResponse::success($this->progress->continueWatching($request->user()));
+        $teamId = $request->integer('team_id') ?: null;
+
+        return ApiResponse::success($this->progress->continueWatching($request->user(), $teamId));
     }
 }

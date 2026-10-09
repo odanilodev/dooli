@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\Timeline;
+use Illuminate\Support\Collection;
 
 class TimelineRepository extends BaseRepository
 {
@@ -73,5 +74,30 @@ class TimelineRepository extends BaseRepository
     public function completedLessonIds(int $userId, int $courseId, int $teamId, int $completedActionId): array
     {
         return $this->lessonIdsForAction($userId, $courseId, $teamId, $completedActionId);
+    }
+
+    /**
+     * Completed lesson ids for a user across many courses/teams, grouped by
+     * "course_id:team_id" in a single query.
+     *
+     * @param  array<int, int>  $courseIds
+     * @param  array<int, int>  $teamIds
+     * @return array<string, array<int, int>>
+     */
+    public function completedLessonIdsGrouped(int $userId, array $courseIds, array $teamIds, int $actionId): array
+    {
+        if ($courseIds === [] || $teamIds === []) {
+            return [];
+        }
+
+        return $this->query()
+            ->where('user_id', $userId)
+            ->where('action_id', $actionId)
+            ->whereIn('course_id', $courseIds)
+            ->whereIn('team_id', $teamIds)
+            ->get(['course_id', 'team_id', 'lesson_id'])
+            ->groupBy(fn (Timeline $row) => $row->course_id.':'.$row->team_id)
+            ->map(fn (Collection $rows) => $rows->pluck('lesson_id')->unique()->values()->all())
+            ->all();
     }
 }

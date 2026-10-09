@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Admin\AttachmentController as AdminAttachmentCon
 use App\Http\Controllers\Api\V1\Admin\BannerController as AdminBannerController;
 use App\Http\Controllers\Api\V1\Admin\CertificateController as AdminCertificateController;
 use App\Http\Controllers\Api\V1\Admin\CommentController as AdminCommentController;
+use App\Http\Controllers\Api\V1\Admin\CompanySettingController as AdminCompanySettingController;
 use App\Http\Controllers\Api\V1\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Api\V1\Admin\CourseController as AdminCourseController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController as AdminDashboardController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Api\V1\Admin\DatalogController as AdminDatalogControlle
 use App\Http\Controllers\Api\V1\Admin\DocumentController as AdminDocumentController;
 use App\Http\Controllers\Api\V1\Admin\GatewayController as AdminGatewayController;
 use App\Http\Controllers\Api\V1\Admin\LessonController as AdminLessonController;
+use App\Http\Controllers\Api\V1\Admin\LiveClassController as AdminLiveClassController;
 use App\Http\Controllers\Api\V1\Admin\MenuController as AdminMenuController;
 use App\Http\Controllers\Api\V1\Admin\ModuleController as AdminModuleController;
 use App\Http\Controllers\Api\V1\Admin\NotificationController as AdminNotificationController;
@@ -30,16 +32,20 @@ use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\MyMenuController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\Public\BannerController as PublicBannerController;
+use App\Http\Controllers\Api\V1\Public\BrandingController as PublicBrandingController;
 use App\Http\Controllers\Api\V1\Public\CertificateVerifyController;
 use App\Http\Controllers\Api\V1\Public\StoreController;
 use App\Http\Controllers\Api\V1\Student\CertificateController as StudentCertificateController;
 use App\Http\Controllers\Api\V1\Student\CommentController;
+use App\Http\Controllers\Api\V1\Student\HomeController as StudentHomeController;
+use App\Http\Controllers\Api\V1\Student\LiveClassController as StudentLiveClassController;
 use App\Http\Controllers\Api\V1\Student\MaterialController;
 use App\Http\Controllers\Api\V1\Student\MyCourseController;
 use App\Http\Controllers\Api\V1\Student\NotificationController as StudentNotificationController;
 use App\Http\Controllers\Api\V1\Student\OrderController as StudentOrderController;
 use App\Http\Controllers\Api\V1\Student\ProgressController;
 use App\Http\Controllers\Api\V1\Student\RatingController;
+use App\Http\Controllers\Api\V1\Student\TeamController as StudentTeamController;
 use App\Http\Controllers\Api\V1\Student\VideoController as StudentVideoController;
 use App\Http\Controllers\Api\V1\Webhook\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -53,6 +59,7 @@ Route::middleware(['company', 'company.required', 'throttle:public'])->group(fun
     Route::get('store/products', [StoreController::class, 'index']);
     Route::get('store/products/{slug}', [StoreController::class, 'show']);
     Route::get('banners', [PublicBannerController::class, 'index']);
+    Route::get('branding', [PublicBrandingController::class, 'show']);
     Route::get('certificates/{code}/verify', [CertificateVerifyController::class, 'verify']);
 });
 
@@ -99,6 +106,9 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     /*
     | Student area
     */
+    Route::get('me/teams', [StudentTeamController::class, 'index']);
+    Route::get('me/home', [StudentHomeController::class, 'index']);
+    Route::get('me/live-classes', [StudentLiveClassController::class, 'index']);
     Route::get('me/courses', [MyCourseController::class, 'index']);
     Route::get('me/courses/{course}', [MyCourseController::class, 'show']);
     Route::get('me/courses/{course}/progress', [MyCourseController::class, 'progress']);
@@ -138,6 +148,9 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     Route::middleware(['admin.access', 'throttle:admin'])->prefix('admin')->group(function () {
         Route::get('dashboard', [AdminDashboardController::class, 'index']);
 
+        Route::get('company/settings', [AdminCompanySettingController::class, 'show']);
+        Route::put('company/settings', [AdminCompanySettingController::class, 'update']);
+
         Route::apiResource('courses', AdminCourseController::class);
         Route::post('courses/{course}/publish', [AdminCourseController::class, 'publish']);
         Route::post('courses/{course}/unpublish', [AdminCourseController::class, 'unpublish']);
@@ -156,6 +169,8 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::apiResource('lessons', AdminLessonController::class);
         Route::post('lessons/{lesson}/publish', [AdminLessonController::class, 'publish']);
         Route::post('lessons/{lesson}/unpublish', [AdminLessonController::class, 'unpublish']);
+
+        Route::apiResource('live-classes', AdminLiveClassController::class)->parameters(['live-classes' => 'liveClass']);
 
         Route::apiResource('teams', AdminTeamController::class);
         Route::post('teams/bulk', [AdminTeamController::class, 'bulk']);

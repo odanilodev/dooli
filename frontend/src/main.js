@@ -3,6 +3,7 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
 import { useAuthStore } from './stores/auth';
+import { useBrandingStore } from './stores/branding';
 import { resetUserStores } from './stores/resetUserStores';
 import { setUnauthorizedHandler } from './api/http';
 import './assets/style.css';
@@ -26,5 +27,6 @@ setUnauthorizedHandler(() => {
 });
 
 auth.init();
+useBrandingStore(pinia).fetch();
 
 app.mount('#app');

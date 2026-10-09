@@ -165,6 +165,41 @@ class StudentContinueWatchingTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_continue_watching_can_be_filtered_by_team(): void
+    {
+        $a = $this->buildCourse($this->company->id);
+        $teamA = $this->enroll($this->student, $a['course'], $this->company->id);
+        Lesson::factory()->create(['company_id' => $this->company->id, 'topic_id' => $a['topic']->id, 'sort_order' => 1]);
+
+        $b = $this->buildCourse($this->company->id);
+        $teamB = $this->enroll($this->student, $b['course'], $this->company->id);
+        Lesson::factory()->create(['company_id' => $this->company->id, 'topic_id' => $b['topic']->id, 'sort_order' => 1]);
+
+        $token = $this->apiLogin($this->student);
+
+        foreach ([[$a, $teamA], [$b, $teamB]] as [$data, $team]) {
+            $this->withToken($token)
+                ->postJson('/api/v1/me/progress/complete', [
+                    'lesson_id' => $data['lesson']->id,
+                    'course_id' => $data['course']->id,
+                    'team_id' => $team->id,
+                    'module_id' => $data['module']->id,
+                ])
+                ->assertOk();
+        }
+
+        $this->withToken($token)
+            ->getJson('/api/v1/me/continue-watching')
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+
+        $this->withToken($token)
+            ->getJson("/api/v1/me/continue-watching?team_id={$teamA->id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.course_id', $a['course']->id);
+    }
+
     public function test_continue_watching_requires_authentication(): void
     {
         $this->getJson('/api/v1/me/continue-watching')->assertStatus(401);

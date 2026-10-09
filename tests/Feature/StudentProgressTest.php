@@ -6,6 +6,7 @@ use App\Enums\VideoPlayer;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\Module;
+use App\Models\Team;
 use App\Models\Topic;
 use App\Models\Video;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -96,6 +97,41 @@ class StudentProgressTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.completed_lessons', 1)
             ->assertJsonPath('data.0.percentage', 100);
+    }
+
+    public function test_my_courses_can_be_filtered_by_team(): void
+    {
+        $a = $this->buildCourse($this->company->id);
+        $teamA = $this->enroll($this->student, $a['course'], $this->company->id);
+
+        $b = $this->buildCourse($this->company->id);
+        $this->enroll($this->student, $b['course'], $this->company->id);
+
+        $token = $this->apiLogin($this->student);
+
+        $this->withToken($token)
+            ->getJson('/api/v1/me/courses')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 2);
+
+        $this->withToken($token)
+            ->getJson("/api/v1/me/courses?team_id={$teamA->id}")
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', $a['course']->id);
+    }
+
+    public function test_my_courses_ignores_team_the_student_is_not_enrolled_in(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $this->enroll($this->student, $course['course'], $this->company->id);
+
+        $foreign = Team::factory()->create(['company_id' => $this->company->id, 'status' => 'active']);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson("/api/v1/me/courses?team_id={$foreign->id}")
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_student_cannot_access_course_without_enrollment(): void

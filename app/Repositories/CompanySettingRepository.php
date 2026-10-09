@@ -13,6 +13,20 @@ class CompanySettingRepository extends BaseRepository
         parent::__construct(new CompanySetting);
     }
 
+    /**
+     * All settings of a company as a name => value map.
+     *
+     * @return array<string, string|null>
+     */
+    public function all(int $companyId): array
+    {
+        return $this->query()
+            ->where('company_id', $companyId)
+            ->get()
+            ->mapWithKeys(fn (CompanySetting $setting) => [$setting->name => $setting->value])
+            ->all();
+    }
+
     public function get(int $companyId, string $name, mixed $default = null): mixed
     {
         $setting = $this->query()

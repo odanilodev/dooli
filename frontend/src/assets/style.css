@@ -99,6 +99,7 @@ svg{display:block;}
   transition:transform .25s ease;
 }
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:34px;padding:0 4px;flex-shrink:0;}
+.brand-logo{max-height:40px;max-width:100%;width:auto;object-fit:contain;display:block;}
 .brand-mark{
   width:38px;height:38px;border-radius:11px;flex-shrink:0;
   background:var(--accent-grad);

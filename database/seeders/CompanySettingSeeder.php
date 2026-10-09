@@ -19,7 +19,6 @@ class CompanySettingSeeder extends Seeder
             'document' => '12.345.678/0001-90',
             'address' => 'Av. Paulista, 1000',
             'city' => 'São Paulo',
-            'primary_color' => '#2563eb',
             'terms_url' => 'https://cursos.test/termos',
             'privacy_url' => 'https://cursos.test/privacidade',
         ];

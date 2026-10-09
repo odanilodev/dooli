@@ -4,6 +4,8 @@ import { useCommentsStore } from './comments';
 import { useRatingsStore } from './ratings';
 import { useProfileStore } from './profile';
 import { useNotificationsStore } from './notifications';
+import { useStudentTeamsStore } from './studentTeams';
+import { useLiveClassesStore } from './liveClasses';
 
 /**
  * Clears every user-scoped store so stale data from a previous session is never
@@ -16,4 +18,6 @@ export function resetUserStores() {
   useRatingsStore().reset();
   useProfileStore().reset();
   useNotificationsStore().reset();
+  useStudentTeamsStore().reset();
+  useLiveClassesStore().reset();
 }

@@ -9,13 +9,7 @@
     <div class="auth-visual">
       <span class="auth-visual-glow"></span>
       <router-link to="/" class="brand" style="position:relative;">
-        <span class="brand-mark">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 18H3z"/></svg>
-        </span>
-        <span class="brand-text">
-          <span class="brand-name" style="color:#fff;">DELTA CLASS</span>
-          <span class="brand-tag" style="color:#c7d2de;">Conhecimento que gera resultados</span>
-        </span>
+        <BrandLogo variant="auth" />
       </router-link>
       <p class="auth-visual-quote">{{ route.meta.quote }} <span>{{ route.meta.quoteHighlight }}</span></p>
       <span class="auth-visual-foot">© 2026 Delta Class. Todos os direitos reservados.</span>
@@ -29,6 +23,7 @@
 
 <script setup>
 import { useRoute } from 'vue-router';
+import BrandLogo from '../components/BrandLogo.vue';
 import { useTheme } from '../composables/useTheme';
 
 const route = useRoute();

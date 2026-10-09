@@ -35,6 +35,13 @@ class Team extends Model
             ->withTimestamps();
     }
 
+    public function liveClasses(): BelongsToMany
+    {
+        return $this->belongsToMany(LiveClass::class, 'team_live_classes')
+            ->withPivot(['status'])
+            ->withTimestamps();
+    }
+
     public function teamUsers(): HasMany
     {
         return $this->hasMany(TeamUser::class);

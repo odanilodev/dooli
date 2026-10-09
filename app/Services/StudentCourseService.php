@@ -25,9 +25,9 @@ class StudentCourseService
         private readonly ScheduleService $schedules,
     ) {}
 
-    public function myCourses(User $user, int $perPage = 20): LengthAwarePaginator
+    public function myCourses(User $user, int $perPage = 20, ?int $teamId = null): LengthAwarePaginator
     {
-        return $this->enrolledCoursesQuery($user)->paginate($perPage);
+        return $this->enrolledCoursesQuery($user, $teamId)->paginate($perPage);
     }
 
     /**
@@ -35,19 +35,58 @@ class StudentCourseService
      *
      * @return Collection<int, Course>
      */
-    public function enrolledCourses(User $user): Collection
+    public function enrolledCourses(User $user, ?int $teamId = null): Collection
     {
-        return $this->enrolledCoursesQuery($user)->get();
+        return $this->enrolledCoursesQuery($user, $teamId)->get();
     }
 
-    private function enrolledCoursesQuery(User $user): Builder
+    /**
+     * Active courses the user is enrolled in across all their teams, with the
+     * matching active teams eager-loaded. Built for the grouped home so the
+     * courses (and their team memberships) are resolved in a single query.
+     *
+     * @return Collection<int, Course>
+     */
+    public function enrolledCoursesForTeams(User $user): Collection
+    {
+        $teamConstraint = function ($query) use ($user) {
+            $query->where('teams.status', GeneralStatus::Active->value)
+                ->where('team_courses.status', GeneralStatus::Active->value)
+                ->whereHas('users', fn ($u) => $this->activeEnrollmentConstraint($u, $user->id));
+        };
+
+        return Course::query()
+            ->where('status', GeneralStatus::Active->value)
+            ->whereHas('teams', $teamConstraint)
+            ->with(['teams' => $teamConstraint])
+            ->orderBy('sort_order')
+            ->get();
+    }
+
+    /**
+     * Active teams the user is enrolled in, ordered for display.
+     *
+     * @return Collection<int, Team>
+     */
+    public function myTeams(User $user): Collection
+    {
+        return Team::query()
+            ->where('status', GeneralStatus::Active->value)
+            ->whereHas('users', fn ($q) => $this->activeEnrollmentConstraint($q, $user->id))
+            ->withCount('courses')
+            ->orderBy('sort_order')
+            ->get();
+    }
+
+    private function enrolledCoursesQuery(User $user, ?int $teamId = null): Builder
     {
         return Course::query()
             ->where('status', GeneralStatus::Active->value)
-            ->whereHas('teams', function ($q) use ($user) {
+            ->whereHas('teams', function ($q) use ($user, $teamId) {
                 $q->where('teams.status', GeneralStatus::Active->value)
                     ->whereHas('users', fn ($u) => $this->activeEnrollmentConstraint($u, $user->id))
-                    ->where('team_courses.status', GeneralStatus::Active->value);
+                    ->where('team_courses.status', GeneralStatus::Active->value)
+                    ->when($teamId, fn ($t) => $t->where('teams.id', $teamId));
             })
             ->orderBy('sort_order');
     }
@@ -163,9 +202,9 @@ class StudentCourseService
         $this->schedules->assertLessonAvailable($availableAt);
     }
 
-    public function courseContent(User $user, int $courseId): Course
+    public function courseContent(User $user, int $courseId, ?int $teamId = null): Course
     {
-        $team = $this->assertAccess($user, $courseId);
+        $team = $this->assertAccess($user, $courseId, $teamId);
 
         $course = Course::query()
             ->with([

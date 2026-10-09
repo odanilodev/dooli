@@ -14,6 +14,7 @@ use App\Repositories\CourseRepository;
 use App\Repositories\DocumentRepository;
 use App\Repositories\GatewayRepository;
 use App\Repositories\LessonRepository;
+use App\Repositories\LiveClassRepository;
 use App\Repositories\MenuRepository;
 use App\Repositories\ModuleRepository;
 use App\Repositories\NotificationRepository;
@@ -52,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
         DocumentRepository::class,
         GatewayRepository::class,
         LessonRepository::class,
+        LiveClassRepository::class,
         MenuRepository::class,
         ModuleRepository::class,
         NotificationRepository::class,

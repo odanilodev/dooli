@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Enums\GeneralStatus;
 use App\Models\VideoProgress;
+use Illuminate\Support\Collection;
 
 class VideoProgressRepository extends BaseRepository
 {
@@ -38,6 +39,34 @@ class VideoProgressRepository extends BaseRepository
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
             ->first();
+    }
+
+    /**
+     * Most recent in-progress video of the user per "course_id:team_id", in a
+     * single query, for the grouped "continue watching" shelf.
+     *
+     * @param  array<int, int>  $courseIds
+     * @param  array<int, int>  $teamIds
+     * @return Collection<string, VideoProgress>
+     */
+    public function latestForCourses(int $userId, array $courseIds, array $teamIds): Collection
+    {
+        if ($courseIds === [] || $teamIds === []) {
+            return new Collection;
+        }
+
+        return $this->query()
+            ->with(['lesson.module', 'lesson.video'])
+            ->where('user_id', $userId)
+            ->whereIn('course_id', $courseIds)
+            ->whereIn('team_id', $teamIds)
+            ->where('position_seconds', '>', 0)
+            ->whereHas('lesson', fn ($q) => $q->where('lessons.status', GeneralStatus::Active->value))
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy(fn (VideoProgress $row) => $row->course_id.':'.$row->team_id)
+            ->map(fn (Collection $rows) => $rows->first());
     }
 
     public function savePosition(

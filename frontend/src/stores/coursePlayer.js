@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { api } from '../api/http';
+import { useStudentTeamsStore } from './studentTeams';
 
 export const useCoursePlayerStore = defineStore('coursePlayer', () => {
   const course = ref(null);
@@ -154,20 +155,22 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
     activeLessonId.value = Number(lessonId);
   }
 
-  async function load(courseId) {
+  async function load(courseId, force = false) {
     const id = Number(courseId);
 
-    if (loadedCourseId.value === id && course.value) {
+    if (!force && loadedCourseId.value === id && course.value) {
       return;
     }
+
+    const teamId = useStudentTeamsStore().selectedTeamId || undefined;
 
     loading.value = true;
     error.value = null;
 
     try {
       const [courseResponse, progressResponse] = await Promise.all([
-        api.get(`/me/courses/${id}`),
-        api.get(`/me/courses/${id}/progress`),
+        api.get(`/me/courses/${id}`, { params: { team_id: teamId } }),
+        api.get(`/me/courses/${id}/progress`, { params: { team_id: teamId } }),
       ]);
 
       course.value = courseResponse.data.data;

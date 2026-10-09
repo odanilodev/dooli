@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { api, getToken, setToken } from '../api/http';
+import { api, getToken, setCompanyId, setToken } from '../api/http';
+import { useBrandingStore } from './branding';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
@@ -51,6 +52,8 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = data.data.token;
       setToken(token.value);
       user.value = data.data.user;
+      setCompanyId(user.value.company_id);
+      useBrandingStore().fetch();
 
       return user.value;
     } finally {
@@ -78,6 +81,8 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const { data } = await api.get('/auth/me');
       user.value = data.data;
+      setCompanyId(user.value.company_id);
+      useBrandingStore().fetch();
 
       return user.value;
     } catch (error) {

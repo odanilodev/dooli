@@ -339,6 +339,7 @@ import { useCoursePlayerStore } from '../stores/coursePlayer';
 import { useCommentsStore } from '../stores/comments';
 import { useRatingsStore } from '../stores/ratings';
 import { useAuthStore } from '../stores/auth';
+import { useStudentTeamsStore } from '../stores/studentTeams';
 import { api, getToken } from '../api/http';
 import { useToast } from '../composables/useToast';
 import VideoPlayer from '../components/VideoPlayer.vue';
@@ -349,6 +350,7 @@ const store = useCoursePlayerStore();
 const comments = useCommentsStore();
 const ratings = useRatingsStore();
 const auth = useAuthStore();
+const studentTeams = useStudentTeamsStore();
 const toast = useToast();
 
 const activeTab = ref('descricao');
@@ -709,6 +711,12 @@ watch(
   },
   { immediate: true },
 );
+
+watch(() => studentTeams.selectedTeamId, () => {
+  if (courseId.value) {
+    store.load(courseId.value, true);
+  }
+});
 
 watch(lessonIdParam, (id) => {
   if (id) {

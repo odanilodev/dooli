@@ -56,6 +56,8 @@
         </div>
       </div>
 
+      <TeamSwitcher v-if="!auth.isAdmin && route.name !== 'dashboard'" />
+
       <div class="v-divider"></div>
 
       <div class="user-menu" :class="{ open: userMenuOpen }" ref="menuRef">
@@ -86,6 +88,7 @@ import { useSearch } from '../composables/useSearch';
 import { useAuthStore } from '../stores/auth';
 import { useNotificationsStore } from '../stores/notifications';
 import { resetUserStores } from '../stores/resetUserStores';
+import TeamSwitcher from './TeamSwitcher.vue';
 
 const route = useRoute();
 const router = useRouter();

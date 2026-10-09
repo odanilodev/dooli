@@ -1,13 +1,7 @@
 <template>
   <aside class="sidebar" :class="{ open: isOpen }">
     <router-link to="/" class="brand" @click="close">
-      <span class="brand-mark">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 18H3z"/></svg>
-      </span>
-      <span class="brand-text">
-        <span class="brand-name">DELTA CLASS</span>
-        <span class="brand-tag">Conhecimento que gera resultados</span>
-      </span>
+      <BrandLogo />
     </router-link>
 
     <nav class="nav">
@@ -23,6 +17,10 @@
         <router-link to="/cursos" class="nav-link" :class="{ active: ['cursos', 'curso', 'aula'].includes($route.name) }" @click="close">
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/></svg>
           <span>Meus cursos</span>
+        </router-link>
+        <router-link to="/aulas-ao-vivo" class="nav-link" :class="{ active: $route.name === 'aulas-ao-vivo' }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2.5"/><path d="m16 10 6-3v10l-6-3z"/><circle cx="7" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+          <span>Aulas ao vivo</span>
         </router-link>
         <router-link to="/perfil" class="nav-link" :class="{ active: $route.name === 'perfil' }" @click="close">
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
@@ -53,6 +51,7 @@ import { useSidebar } from '../composables/useSidebar';
 import { useAuthStore } from '../stores/auth';
 import { useMenusStore } from '../stores/menus';
 import { useNavMenu } from '../composables/useNavMenu';
+import BrandLogo from './BrandLogo.vue';
 import NavItem from './NavItem.vue';
 
 const { isOpen, close } = useSidebar();
@@ -73,6 +72,7 @@ const FALLBACK_MENU = [
     children: [
       { id: 'fb-content', name: 'Cursos', type: 'link', depth: 1, link: '/admin/cursos', icon: 'content' },
       { id: 'fb-modules', name: 'Módulos', type: 'link', depth: 1, link: '/admin/modulos', icon: 'modules' },
+      { id: 'fb-live-classes', name: 'Aulas ao vivo', type: 'link', depth: 1, link: '/admin/aulas-ao-vivo', icon: 'live' },
       { id: 'fb-teams', name: 'Turmas', type: 'link', depth: 1, link: '/admin/turmas', icon: 'teams' },
       { id: 'fb-videos', name: 'Vídeos', type: 'link', depth: 1, link: '/admin/videos', icon: 'videos' },
       { id: 'fb-documents', name: 'Documentos', type: 'link', depth: 1, link: '/admin/documentos', icon: 'documents' },

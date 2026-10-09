@@ -8,6 +8,7 @@ use App\Enums\ActionCode;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Course;
 use App\Models\Lesson;
+use App\Models\Team;
 use App\Models\Timeline;
 use App\Models\User;
 use App\Repositories\ActionRepository;
@@ -236,16 +237,27 @@ class ProgressService
     }
 
     /**
+     * The team to read progress from: the selected one when given, otherwise
+     * the first team the user can access for the course.
+     */
+    private function resolveTeam(User $user, int $courseId, ?int $teamId): ?Team
+    {
+        $teams = $this->studentCourses->accessibleTeams($user, $courseId);
+
+        return $teamId ? $teams->firstWhere('id', $teamId) : $teams->first();
+    }
+
+    /**
      * @return array<int, array{total_lessons: int, completed_lessons: int, percentage: float}>
      */
-    public function progressSummaryFor(User $user, Collection $courses): array
+    public function progressSummaryFor(User $user, Collection $courses, ?int $teamId = null): array
     {
         $completedAction = $this->actions->findByCode(ActionCode::Completed->value);
 
         $summary = [];
 
         foreach ($courses as $course) {
-            $team = $this->studentCourses->accessibleTeams($user, $course->id)->first();
+            $team = $this->resolveTeam($user, $course->id, $teamId);
 
             if (! $team) {
                 $summary[$course->id] = [
@@ -280,7 +292,7 @@ class ProgressService
      *
      * @return array<int, array<string, mixed>>
      */
-    public function continueWatching(User $user): array
+    public function continueWatching(User $user, ?int $teamId = null): array
     {
         $completedAction = $this->actions->findByCode(ActionCode::Completed->value);
 
@@ -290,8 +302,8 @@ class ProgressService
 
         $shelf = [];
 
-        foreach ($this->studentCourses->enrolledCourses($user) as $course) {
-            $team = $this->studentCourses->accessibleTeams($user, $course->id)->first();
+        foreach ($this->studentCourses->enrolledCourses($user, $teamId) as $course) {
+            $team = $this->resolveTeam($user, $course->id, $teamId);
 
             if (! $team) {
                 continue;

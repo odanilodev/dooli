@@ -1,6 +1,8 @@
 import axios from 'axios';
 
 const TOKEN_KEY = 'delta-class-token';
+const COMPANY_KEY = 'delta-class-company';
+const DEFAULT_COMPANY_ID = import.meta.env.VITE_COMPANY_ID ? Number(import.meta.env.VITE_COMPANY_ID) : null;
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1',
@@ -23,6 +25,32 @@ export function setToken(token) {
       localStorage.setItem(TOKEN_KEY, token);
     } else {
       localStorage.removeItem(TOKEN_KEY);
+    }
+  } catch (e) {
+    /* localStorage unavailable */
+  }
+}
+
+export function getCompanyId() {
+  try {
+    const stored = localStorage.getItem(COMPANY_KEY);
+
+    if (stored) {
+      return Number(stored);
+    }
+  } catch (e) {
+    /* localStorage unavailable */
+  }
+
+  return DEFAULT_COMPANY_ID;
+}
+
+export function setCompanyId(id) {
+  try {
+    if (id) {
+      localStorage.setItem(COMPANY_KEY, String(id));
+    } else {
+      localStorage.removeItem(COMPANY_KEY);
     }
   } catch (e) {
     /* localStorage unavailable */
@@ -60,6 +88,12 @@ api.interceptors.request.use((config) => {
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  const companyId = getCompanyId();
+
+  if (companyId) {
+    config.headers['X-Company'] = String(companyId);
   }
 
   return config;

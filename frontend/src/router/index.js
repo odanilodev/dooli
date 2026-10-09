@@ -7,6 +7,7 @@ import AuthLayout from '../layouts/AuthLayout.vue';
 
 import HomeView from '../views/HomeView.vue';
 import CoursesView from '../views/CoursesView.vue';
+import LiveClassesView from '../views/LiveClassesView.vue';
 import LessonView from '../views/LessonView.vue';
 import StoreView from '../views/StoreView.vue';
 import StoreProductView from '../views/StoreProductView.vue';
@@ -21,6 +22,7 @@ import AdminVideosView from '../views/AdminVideosView.vue';
 import AdminDocumentsView from '../views/AdminDocumentsView.vue';
 import AdminAttachmentsView from '../views/AdminAttachmentsView.vue';
 import AdminBannersView from '../views/AdminBannersView.vue';
+import AdminLiveClassesView from '../views/AdminLiveClassesView.vue';
 import AdminUsersView from '../views/AdminUsersView.vue';
 import AdminUserTypesView from '../views/AdminUserTypesView.vue';
 import AdminMenusView from '../views/AdminMenusView.vue';
@@ -40,6 +42,7 @@ const routes = [
       { path: 'cursos', name: 'cursos', component: CoursesView, meta: { title: 'Meus cursos', searchPlaceholder: 'Buscar nos meus cursos...' } },
       { path: 'cursos/:courseId', name: 'curso', component: LessonView, meta: { title: 'Curso', searchPlaceholder: 'Buscar no curso...' } },
       { path: 'cursos/:courseId/aula/:lessonId', name: 'aula', component: LessonView, meta: { title: 'Aula', searchPlaceholder: 'Buscar no curso...' } },
+      { path: 'aulas-ao-vivo', name: 'aulas-ao-vivo', component: LiveClassesView, meta: { title: 'Aulas ao vivo' } },
       { path: 'loja', name: 'loja', component: StoreView, meta: { title: 'Loja', searchPlaceholder: 'Buscar na loja...' } },
       { path: 'loja/:slug', name: 'loja-produto', component: StoreProductView, meta: { title: 'Produto', searchPlaceholder: 'Buscar na loja...' } },
       { path: 'perfil', name: 'perfil', component: ProfileView, meta: { title: 'Meu perfil' } },
@@ -49,6 +52,7 @@ const routes = [
       { path: 'admin/cursos/novo', redirect: { name: 'admin-cursos' } },
       { path: 'admin/cursos/:courseId', name: 'admin-curso', component: AdminContentView, meta: { title: 'Curso (admin)', requiresAdminMenu: true } },
       { path: 'admin/modulos', name: 'admin-modulos', component: AdminModulesView, meta: { title: 'Módulos (admin)', requiresAdminMenu: true } },
+      { path: 'admin/aulas-ao-vivo', name: 'admin-live-classes', component: AdminLiveClassesView, meta: { title: 'Aulas ao vivo (admin)', requiresAdminMenu: true } },
       { path: 'admin/turmas', name: 'admin-turmas', component: AdminTeamsView, meta: { title: 'Turmas (admin)', requiresAdminMenu: true } },
       { path: 'admin/videos', name: 'admin-videos', component: AdminVideosView, meta: { title: 'Vídeos (admin)', requiresAdminMenu: true } },
       { path: 'admin/documentos', name: 'admin-documentos', component: AdminDocumentsView, meta: { title: 'Documentos (admin)', requiresAdminMenu: true } },
