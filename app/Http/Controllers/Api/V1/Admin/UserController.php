@@ -33,7 +33,7 @@ class UserController extends ApiController
 
         $paginator = $this->users->paginate(
             perPage: $this->perPage($request),
-            filters: $request->only(['search', 'status', 'user_type_id', 'sort', 'direction']),
+            filters: $request->only(['search', 'status', 'user_type_id', 'exclude_team_id', 'sort', 'direction']),
             with: ['userType'],
         );
 

@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserRepository extends BaseRepository
 {
@@ -28,5 +29,17 @@ class UserRepository extends BaseRepository
     public function findWithRelations(int $id): User
     {
         return $this->query()->with(['userType', 'teams'])->findOrFail($id);
+    }
+
+    protected function applyFilters(Builder $query, array $filters): void
+    {
+        $excludeTeamId = $filters['exclude_team_id'] ?? null;
+        unset($filters['exclude_team_id']);
+
+        if (is_numeric($excludeTeamId)) {
+            $query->whereDoesntHave('teams', fn (Builder $q) => $q->whereKey((int) $excludeTeamId));
+        }
+
+        parent::applyFilters($query, $filters);
     }
 }

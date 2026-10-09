@@ -249,12 +249,9 @@ class TeamService
         $this->audit->log('team', 'update_student', 'team', "Vínculo do aluno {$userId} atualizado na turma {$team->name}");
     }
 
-    /**
-     * @return Collection<int, User>
-     */
-    public function students(Team $team): Collection
+    public function students(Team $team, array $filters, int $perPage = 10): LengthAwarePaginator
     {
-        return $team->users()->orderBy('users.name')->get();
+        return $this->teams->paginateStudents($team, $filters, $perPage);
     }
 
     /**

@@ -115,11 +115,17 @@ class TeamController extends ApiController
         return ApiResponse::success(['message' => 'Vínculo do aluno atualizado.']);
     }
 
-    public function students(Team $team): JsonResponse
+    public function students(Request $request, Team $team): JsonResponse
     {
         $this->authorize('view', $team);
 
-        return ApiResponse::collection(TeamStudentResource::collection($this->teams->students($team)));
+        $paginator = $this->teams->students(
+            $team,
+            $request->only(['search', 'status']),
+            $this->perPage($request),
+        );
+
+        return ApiResponse::paginated($paginator, TeamStudentResource::class);
     }
 
     public function courses(Team $team): JsonResponse

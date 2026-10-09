@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Schedule;
 use App\Models\Team;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
@@ -169,7 +170,82 @@ class AdminTeamTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.id', $this->student->id)
             ->assertJsonPath('data.0.status', 'active')
-            ->assertJsonPath('data.0.expired_at', $expires->toIso8601String());
+            ->assertJsonPath('data.0.expired_at', $expires->toIso8601String())
+            ->assertJsonPath('meta.total', 1);
+    }
+
+    public function test_team_students_list_is_paginated_and_filterable(): void
+    {
+        $team = Team::factory()->create(['company_id' => $this->company->id]);
+
+        $students = User::factory()->count(12)->create([
+            'company_id' => $this->company->id,
+            'user_type_id' => $this->student->user_type_id,
+        ]);
+
+        foreach ($students as $student) {
+            $team->users()->attach($student->id, [
+                'company_id' => $this->company->id,
+                'status' => 'active',
+                'expired_at' => null,
+            ]);
+        }
+
+        $inactive = $students->last();
+        $team->users()->updateExistingPivot($inactive->id, ['status' => 'inactive']);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson("/api/v1/admin/teams/{$team->id}/students?per_page=10")
+            ->assertOk()
+            ->assertJsonCount(10, 'data')
+            ->assertJsonPath('meta.total', 12)
+            ->assertJsonPath('meta.last_page', 2);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson("/api/v1/admin/teams/{$team->id}/students?status=inactive")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $inactive->id);
+
+        $needle = User::factory()->create([
+            'company_id' => $this->company->id,
+            'user_type_id' => $this->student->user_type_id,
+            'name' => 'Aaa Buscavel',
+        ]);
+        $team->users()->attach($needle->id, [
+            'company_id' => $this->company->id,
+            'status' => 'active',
+            'expired_at' => null,
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson("/api/v1/admin/teams/{$team->id}/students?search=Buscavel")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Aaa Buscavel');
+    }
+
+    public function test_user_search_can_exclude_users_from_a_team(): void
+    {
+        $team = Team::factory()->create(['company_id' => $this->company->id]);
+        $team->users()->attach($this->student->id, [
+            'company_id' => $this->company->id,
+            'status' => 'active',
+            'expired_at' => null,
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson('/api/v1/admin/users?'.http_build_query(['search' => $this->student->name]))
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson('/api/v1/admin/users?'.http_build_query([
+                'search' => $this->student->name,
+                'exclude_team_id' => $team->id,
+            ]))
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_admin_can_update_student_expiry_and_status_without_touching_account(): void

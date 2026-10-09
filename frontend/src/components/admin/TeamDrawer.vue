@@ -48,7 +48,20 @@
         <!-- ALUNOS -->
         <template v-else-if="tab === 'students'">
           <div class="form-group">
-            <label>Alunos na turma ({{ students.length }})</label>
+            <label>Alunos na turma ({{ studentMeta.total }})</label>
+
+            <div class="td-filters">
+              <div class="filter-tabs">
+                <button
+                  v-for="f in studentFilters"
+                  :key="f.value"
+                  class="filter-tab"
+                  :class="{ active: studentStatus === f.value }"
+                  @click="setStudentStatus(f.value)"
+                >{{ f.label }}</button>
+              </div>
+              <input class="form-control admin-search td-search" type="search" v-model="studentListSearch" @input="onStudentListSearch" placeholder="Buscar aluno...">
+            </div>
 
             <div v-if="students.length" class="td-table-wrap">
               <table class="td-table">
@@ -101,7 +114,14 @@
                 </tbody>
               </table>
             </div>
-            <p v-else class="form-hint">Nenhum aluno matriculado.</p>
+            <p v-else class="form-hint">{{ studentListSearch || studentStatus ? 'Nenhum aluno encontrado.' : 'Nenhum aluno matriculado.' }}</p>
+
+            <div v-if="studentMeta.last_page > 1" class="admin-pager">
+              <button class="btn btn-outline btn-sm" :disabled="studentMeta.current_page <= 1" @click="goStudentPage(studentMeta.current_page - 1)">Anterior</button>
+              <span class="admin-muted">Página {{ studentMeta.current_page }} de {{ studentMeta.last_page }}</span>
+              <button class="btn btn-outline btn-sm" :disabled="studentMeta.current_page >= studentMeta.last_page" @click="goStudentPage(studentMeta.current_page + 1)">Próxima</button>
+            </div>
+
             <p class="form-hint">Expirar ou inativar aqui afeta só o vínculo nesta turma; a conta do aluno continua ativa.</p>
           </div>
 
@@ -312,6 +332,17 @@ const backdropDown = ref(false);
 const students = ref([]);
 const courses = ref([]);
 
+const studentMeta = ref({ current_page: 1, last_page: 1, total: 0 });
+const studentStatus = ref('');
+const studentListSearch = ref('');
+let studentListTimer = null;
+
+const studentFilters = [
+  { value: '', label: 'Todos' },
+  { value: 'active', label: 'Ativos' },
+  { value: 'inactive', label: 'Inativos' },
+];
+
 const editingStudentId = ref(null);
 const editExpiry = ref('');
 const editStatus = ref('active');
@@ -505,13 +536,50 @@ function sync() {
 
 async function loadStudents() {
   try {
-    const { data } = await api.get(`/admin/teams/${props.team.id}/students`);
+    const { data } = await api.get(`/admin/teams/${props.team.id}/students`, {
+      params: {
+        search: studentListSearch.value || undefined,
+        status: studentStatus.value || undefined,
+        page: studentMeta.value.current_page || 1,
+        per_page: 10,
+      },
+    });
+
     students.value = data.data ?? [];
+    studentMeta.value = data.meta ?? { current_page: 1, last_page: 1, total: 0 };
+
+    if (!students.value.length && studentMeta.value.current_page > 1 && studentMeta.value.current_page > studentMeta.value.last_page) {
+      goStudentPage(studentMeta.value.last_page);
+    }
+
     const enrolled = new Set(students.value.map((s) => s.id));
     studentResults.value = studentResults.value.filter((s) => !enrolled.has(s.id));
   } catch (e) {
     toast.error(e?.message || 'Não foi possível carregar os alunos.');
   }
+}
+
+function setStudentStatus(value) {
+  studentStatus.value = value;
+  studentMeta.value.current_page = 1;
+  loadStudents();
+}
+
+function onStudentListSearch() {
+  clearTimeout(studentListTimer);
+  studentListTimer = setTimeout(() => {
+    studentMeta.value.current_page = 1;
+    loadStudents();
+  }, 350);
+}
+
+function goStudentPage(page) {
+  if (page < 1 || page > studentMeta.value.last_page) {
+    return;
+  }
+
+  studentMeta.value.current_page = page;
+  loadStudents();
 }
 
 async function loadCourses() {
@@ -672,7 +740,12 @@ function searchStudents() {
 
     try {
       const { data } = await api.get('/admin/users', {
-        params: { search: term, user_type_id: studentTypeId.value || undefined, per_page: 20 },
+        params: {
+          search: term,
+          user_type_id: studentTypeId.value || undefined,
+          exclude_team_id: props.team.id,
+          per_page: 20,
+        },
       });
       const enrolled = new Set(students.value.map((s) => s.id));
       studentResults.value = (data.data ?? []).filter((u) => !enrolled.has(u.id));
@@ -832,6 +905,9 @@ watch(() => props.team, sync, { immediate: true });
 watch(() => props.team?.id, () => {
   tab.value = tabs.includes(props.initialTab) ? props.initialTab : 'details';
   schedulesLoaded = false;
+  studentStatus.value = '';
+  studentListSearch.value = '';
+  studentMeta.value = { current_page: 1, last_page: 1, total: 0 };
   closeRowMenu();
   cancelEditStudent();
 });
@@ -860,6 +936,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.td-filters{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;}
+.td-search{max-width:none;width:100%;}
 .td-list{display:flex;flex-direction:column;gap:8px;}
 .td-row{display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:10px;}
 .td-avatar{width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
