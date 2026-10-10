@@ -61,13 +61,7 @@
         </div>
         <div class="form-group">
           <label>Turmas com acesso</label>
-          <div class="live-teams">
-            <label v-for="team in teams" :key="team.id" class="live-team-option">
-              <input type="checkbox" :value="team.id" v-model="form.team_ids">
-              <span>{{ team.name }}</span>
-            </label>
-            <span v-if="!teams.length" class="admin-muted">Nenhuma turma cadastrada.</span>
-          </div>
+          <TeamPicker v-model="selectedTeams" />
         </div>
       </div>
 
@@ -142,6 +136,7 @@ import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
 import { formatDateTime, toDateTimeInput } from '../utils/format';
 import FilePicker from '../components/admin/FilePicker.vue';
+import TeamPicker from '../components/admin/TeamPicker.vue';
 
 const toast = useToast();
 
@@ -152,7 +147,7 @@ const statusFilters = [
 ];
 
 const items = ref([]);
-const teams = ref([]);
+const selectedTeams = ref([]);
 const meta = ref({ current_page: 1, last_page: 1, total: 0 });
 const status = ref('');
 const loading = ref(true);
@@ -168,7 +163,6 @@ const form = reactive({
   duration: 60,
   status: 'active',
   description: '',
-  team_ids: [],
   imageFile: null,
   imagePreview: '',
 });
@@ -182,7 +176,7 @@ function resetForm() {
   form.duration = 60;
   form.status = 'active';
   form.description = '';
-  form.team_ids = [];
+  selectedTeams.value = [];
   form.imageFile = null;
 
   if (form.imagePreview.startsWith('blob:')) {
@@ -190,15 +184,6 @@ function resetForm() {
   }
 
   form.imagePreview = '';
-}
-
-async function loadTeams() {
-  try {
-    const { data } = await api.get('/admin/teams', { params: { per_page: 100 } });
-    teams.value = data.data ?? [];
-  } catch (e) {
-    teams.value = [];
-  }
 }
 
 async function load() {
@@ -261,7 +246,7 @@ function openEdit(item) {
   form.duration = item.duration ?? 0;
   form.status = item.status ?? 'active';
   form.description = item.description ?? '';
-  form.team_ids = (item.teams ?? []).map((team) => team.id);
+  selectedTeams.value = (item.teams ?? []).map((team) => ({ id: team.id, name: team.name }));
   form.imageFile = null;
 
   if (form.imagePreview.startsWith('blob:')) {
@@ -294,7 +279,7 @@ async function save() {
           data.append(key, value);
         }
       });
-      form.team_ids.forEach((id) => data.append('team_ids[]', id));
+      selectedTeams.value.forEach((team) => data.append('team_ids[]', team.id));
       data.append('image', form.imageFile);
 
       if (editingId.value) {
@@ -303,7 +288,7 @@ async function save() {
 
       await api.post(url, data);
     } else {
-      const body = { ...payload, team_ids: form.team_ids };
+      const body = { ...payload, team_ids: selectedTeams.value.map((team) => team.id) };
 
       if (editingId.value) {
         await api.put(url, body);
@@ -344,17 +329,10 @@ async function remove(item) {
 
 onMounted(() => {
   load();
-  loadTeams();
 });
 </script>
 
 <style scoped>
-.live-teams{
-  display:flex;flex-direction:column;gap:6px;max-height:150px;overflow-y:auto;
-  border:1px solid var(--border);border-radius:10px;background:var(--bg-input);padding:10px 12px;
-}
-.live-team-option{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--text-primary);cursor:pointer;}
-.live-team-option input{accent-color:var(--accent);}
 .live-preview{margin:4px 0 14px;}
 .live-preview img{max-width:360px;width:100%;border-radius:12px;border:1px solid var(--border);object-fit:cover;}
 </style>

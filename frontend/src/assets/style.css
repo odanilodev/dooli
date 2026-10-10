@@ -649,7 +649,7 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 
 .panel{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:18px;box-shadow:var(--shadow-sm);}
 .panel-title{font-size:15px;font-weight:800;}
-.panel-desc{font-size:12.5px;color:var(--text-muted);margin-top:-10px;}
+.panel-desc{font-size:12.5px;color:var(--text-muted);}
 
 /* ==========================================================================
    Settings page
