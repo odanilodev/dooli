@@ -67,10 +67,13 @@ export function normalizeError(error) {
   const response = error.response;
 
   if (response) {
+    const payloadTooLarge = response.status === 413;
+
     return {
       status: response.status,
-      message: response.data?.message || 'Não foi possível concluir a requisição.',
-      code: response.data?.code || null,
+      message: response.data?.message
+        || (payloadTooLarge ? 'O arquivo enviado é muito grande.' : 'Não foi possível concluir a requisição.'),
+      code: response.data?.code || (payloadTooLarge ? 'payload_too_large' : null),
       errors: response.data?.errors || null,
     };
   }

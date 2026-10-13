@@ -11,7 +11,7 @@
         <FilePicker
           accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.zip"
           title="Escolher documento"
-          hint="ou arraste e solte · até 20&nbsp;MB"
+          :hint="hint"
           :file-name="file?.name"
           :disabled="busy"
           @change="onFilePicked"
@@ -49,6 +49,10 @@ const emit = defineEmits(['uploaded', 'state']);
 
 const uid = `du-${Math.random().toString(36).slice(2, 8)}`;
 
+const MAX_MB = Number(import.meta.env.VITE_MAX_UPLOAD_MB ?? 20);
+const MAX_BYTES = MAX_MB * 1024 * 1024;
+const hint = `ou arraste e solte · até ${MAX_MB} MB`;
+
 const mode = ref('file');
 const file = ref(null);
 const url = ref('');
@@ -69,7 +73,19 @@ watch([busy, canSubmit, mode], () => {
   emit('state', { busy: busy.value, canSubmit: canSubmit.value, mode: mode.value });
 }, { immediate: true });
 
+function formatMb(bytes) {
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function onFilePicked(selected) {
+  error.value = '';
+
+  if (selected && selected.size > MAX_BYTES) {
+    file.value = null;
+    error.value = `O arquivo tem ${formatMb(selected.size)} e excede o limite de ${MAX_MB} MB.`;
+    return;
+  }
+
   file.value = selected;
 }
 
@@ -107,7 +123,10 @@ async function submitFile() {
     file.value = null;
     emit('uploaded', data.data);
   } catch (e) {
-    error.value = e?.message || 'Não foi possível enviar o documento.';
+    error.value = e?.errors?.file?.[0]
+      || (e?.status === 413 ? `O arquivo é muito grande. O tamanho máximo é de ${MAX_MB} MB.` : '')
+      || e?.message
+      || 'Não foi possível enviar o documento.';
   } finally {
     busy.value = false;
   }

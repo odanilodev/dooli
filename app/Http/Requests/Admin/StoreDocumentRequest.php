@@ -24,4 +24,15 @@ class StoreDocumentRequest extends FormRequest
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'file.max' => 'O arquivo é muito grande. O tamanho máximo é de 20 MB.',
+            'file.uploaded' => 'Não foi possível enviar o arquivo. Verifique se ele não ultrapassa 20 MB e tente novamente.',
+            'file.file' => 'Não foi possível enviar o arquivo. Verifique se ele não ultrapassa 20 MB e tente novamente.',
+            'file.mimes' => 'Formato de arquivo não permitido. Envie PDF, Word, PowerPoint, Excel, TXT, CSV ou ZIP.',
+            'image_file.max' => 'A imagem é muito grande. O tamanho máximo é de 4 MB.',
+        ];
+    }
 }

@@ -59,6 +59,19 @@ class AdminDocumentTest extends TestCase
         ]);
     }
 
+    public function test_oversized_document_file_is_rejected_with_a_clear_message(): void
+    {
+        $this->withToken($this->apiLogin($this->admin))
+            ->post('/api/v1/admin/documents', [
+                'file' => UploadedFile::fake()->create('apostila-grande.pdf', 21000, 'application/pdf'),
+                'status' => 'active',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.file.0', 'O arquivo é muito grande. O tamanho máximo é de 20 MB.');
+
+        $this->assertDatabaseCount('documents', 0);
+    }
+
     public function test_document_requires_a_file_path_or_link(): void
     {
         $this->withToken($this->apiLogin($this->admin))

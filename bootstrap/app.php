@@ -12,6 +12,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Validation\ValidationException;
@@ -97,6 +98,18 @@ return Application::configure(basePath: dirname(__DIR__))
                     'message' => 'Muitas requisições. Tente novamente em instantes.',
                     'code' => 'too_many_requests',
                 ], 429);
+            }
+        });
+
+        // The uploaded payload exceeded PHP's post_max_size, so Laravel never
+        // sees the request body. Return a clear 413 instead of a generic error.
+        $exceptions->render(function (PostTooLargeException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'O arquivo é muito grande. O tamanho máximo é de 20 MB.',
+                    'code' => 'payload_too_large',
+                ], 413);
             }
         });
 
