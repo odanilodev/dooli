@@ -69,6 +69,16 @@ class Course extends Model
         return $this->hasMany(Timeline::class);
     }
 
+    public function videoProgresses(): HasMany
+    {
+        return $this->hasMany(VideoProgress::class);
+    }
+
+    public function studentProgress(): HasMany
+    {
+        return $this->hasMany(StudentLessonProgress::class);
+    }
+
     public function schedules(): MorphMany
     {
         return $this->morphMany(Schedule::class, 'schedulable');
@@ -76,6 +86,11 @@ class Course extends Model
 
     protected static function booted(): void
     {
-        static::deleting(fn (Course $course) => $course->schedules()->delete());
+        static::deleting(function (Course $course) {
+            $course->schedules()->delete();
+            $course->timeline()->delete();
+            $course->videoProgresses()->delete();
+            $course->studentProgress()->delete();
+        });
     }
 }

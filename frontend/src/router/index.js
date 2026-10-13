@@ -23,6 +23,7 @@ import AdminDocumentsView from '../views/AdminDocumentsView.vue';
 import AdminAttachmentsView from '../views/AdminAttachmentsView.vue';
 import AdminBannersView from '../views/AdminBannersView.vue';
 import AdminLiveClassesView from '../views/AdminLiveClassesView.vue';
+import AdminReportsView from '../views/AdminReportsView.vue';
 import AdminUsersView from '../views/AdminUsersView.vue';
 import AdminUserTypesView from '../views/AdminUserTypesView.vue';
 import AdminMenusView from '../views/AdminMenusView.vue';
@@ -54,6 +55,7 @@ const routes = [
       { path: 'admin/modulos', name: 'admin-modulos', component: AdminModulesView, meta: { title: 'Módulos (admin)', requiresAdminMenu: true } },
       { path: 'admin/aulas-ao-vivo', name: 'admin-live-classes', component: AdminLiveClassesView, meta: { title: 'Aulas ao vivo (admin)', requiresAdminMenu: true } },
       { path: 'admin/turmas', name: 'admin-turmas', component: AdminTeamsView, meta: { title: 'Turmas (admin)', requiresAdminMenu: true } },
+      { path: 'admin/relatorios', name: 'admin-relatorios', component: AdminReportsView, meta: { title: 'Relatórios (admin)', requiresAdminMenu: true } },
       { path: 'admin/videos', name: 'admin-videos', component: AdminVideosView, meta: { title: 'Vídeos (admin)', requiresAdminMenu: true } },
       { path: 'admin/documentos', name: 'admin-documentos', component: AdminDocumentsView, meta: { title: 'Documentos (admin)', requiresAdminMenu: true } },
       { path: 'admin/anexos', name: 'admin-anexos', component: AdminAttachmentsView, meta: { title: 'Anexos (admin)', requiresAdminMenu: true } },

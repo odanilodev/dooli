@@ -13,6 +13,7 @@ use App\Models\Timeline;
 use App\Models\User;
 use App\Repositories\ActionRepository;
 use App\Repositories\LessonRepository;
+use App\Repositories\StudentLessonProgressRepository;
 use App\Repositories\TimelineRepository;
 use App\Repositories\VideoProgressRepository;
 use Illuminate\Database\Eloquent\Collection;
@@ -34,6 +35,7 @@ class ProgressService
         private readonly CertificateService $certificates,
         private readonly DatalogService $audit,
         private readonly VideoProgressRepository $videoProgress,
+        private readonly StudentLessonProgressRepository $snapshot,
     ) {}
 
     /**
@@ -83,6 +85,14 @@ class ProgressService
                     'action_id' => $action->id,
                     'team_id' => $team->id,
                 ]);
+
+                $this->snapshot->markCompleted(
+                    $user->id,
+                    $lesson->id,
+                    $dto->courseId,
+                    $team->id,
+                    $module->id,
+                );
             });
 
             $this->audit->log('progress', 'complete_lesson', 'lesson', "Aula concluída: {$lesson->name}", $user->id);
@@ -128,9 +138,11 @@ class ProgressService
 
     /**
      * Records that the student opened a lesson. Two timeline actions are kept:
-     * "started" is written only once (the first time the lesson is opened),
-     * while "viewed" is upserted — the same row is updated (timestamp) on every
-     * revisit, so it always reflects the last time the screen was seen.
+     * "started" is written once per course/team (the first time the lesson is
+     * opened in that enrollment), while "viewed" is upserted — the same row is
+     * updated (timestamp) on every revisit, so it always reflects the last time
+     * the screen was seen. The materialized snapshot is written in the same
+     * transaction so it can never drift from the timeline.
      *
      * @return array{already_started: bool}
      */
@@ -153,22 +165,25 @@ class ProgressService
         ];
 
         $startedAction = $this->actions->findByCode(ActionCode::Started->value);
-        $alreadyStarted = true;
+        $alreadyStarted = $startedAction === null
+            || $this->timeline->existsFor($user->id, $lesson->id, $dto->courseId, $team->id, $startedAction->id);
 
-        if ($startedAction) {
-            $alreadyStarted = $this->timeline->existsForLesson($user->id, $lesson->id, $startedAction->id);
-
-            if (! $alreadyStarted) {
-                DB::transaction(function () use ($user, $attributes, $startedAction) {
-                    Timeline::query()->create([
-                        'user_id' => $user->id,
-                        'action_id' => $startedAction->id,
-                        ...$attributes,
-                    ]);
-                });
-
-                $this->audit->log('progress', 'start_lesson', 'lesson', "Aula iniciada: {$lesson->name}", $user->id);
+        DB::transaction(function () use ($user, $lesson, $dto, $team, $module, $attributes, $startedAction, $alreadyStarted) {
+            if ($startedAction !== null && ! $alreadyStarted) {
+                Timeline::query()->create([
+                    'user_id' => $user->id,
+                    'action_id' => $startedAction->id,
+                    ...$attributes,
+                ]);
             }
+
+            if ($module) {
+                $this->snapshot->markStarted($user->id, $lesson->id, $dto->courseId, $team->id, $module->id);
+            }
+        });
+
+        if ($startedAction !== null && ! $alreadyStarted) {
+            $this->audit->log('progress', 'start_lesson', 'lesson', "Aula iniciada: {$lesson->name}", $user->id);
         }
 
         $this->recordViewed($user, $attributes);

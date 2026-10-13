@@ -74,6 +74,7 @@ const FALLBACK_MENU = [
       { id: 'fb-modules', name: 'Módulos', type: 'link', depth: 1, link: '/admin/modulos', icon: 'modules' },
       { id: 'fb-live-classes', name: 'Aulas ao vivo', type: 'link', depth: 1, link: '/admin/aulas-ao-vivo', icon: 'live' },
       { id: 'fb-teams', name: 'Turmas', type: 'link', depth: 1, link: '/admin/turmas', icon: 'teams' },
+      { id: 'fb-reports', name: 'Relatórios', type: 'link', depth: 1, link: '/admin/relatorios', icon: 'report' },
       { id: 'fb-videos', name: 'Vídeos', type: 'link', depth: 1, link: '/admin/videos', icon: 'videos' },
       { id: 'fb-documents', name: 'Documentos', type: 'link', depth: 1, link: '/admin/documentos', icon: 'documents' },
       { id: 'fb-attachments', name: 'Anexos', type: 'link', depth: 1, link: '/admin/anexos', icon: 'attachments' },

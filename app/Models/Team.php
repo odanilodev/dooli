@@ -69,8 +69,28 @@ class Team extends Model
         return $this->hasMany(Schedule::class);
     }
 
+    public function timeline(): HasMany
+    {
+        return $this->hasMany(Timeline::class);
+    }
+
+    public function videoProgresses(): HasMany
+    {
+        return $this->hasMany(VideoProgress::class);
+    }
+
+    public function studentProgress(): HasMany
+    {
+        return $this->hasMany(StudentLessonProgress::class);
+    }
+
     protected static function booted(): void
     {
-        static::deleting(fn (Team $team) => $team->schedules()->delete());
+        static::deleting(function (Team $team) {
+            $team->schedules()->delete();
+            $team->timeline()->delete();
+            $team->videoProgresses()->delete();
+            $team->studentProgress()->delete();
+        });
     }
 }

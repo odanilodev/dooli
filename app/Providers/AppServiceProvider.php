@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use App\Repositories\ActionRepository;
 use App\Repositories\AttachmentRepository;
 use App\Repositories\BannerRepository;
@@ -21,6 +22,7 @@ use App\Repositories\NotificationRepository;
 use App\Repositories\OrderRepository;
 use App\Repositories\PaymentRepository;
 use App\Repositories\StoreProductRepository;
+use App\Repositories\StudentLessonProgressRepository;
 use App\Repositories\TeamRepository;
 use App\Repositories\TimelineRepository;
 use App\Repositories\TopicRepository;
@@ -31,6 +33,7 @@ use App\Support\CompanyContext;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -61,6 +64,7 @@ class AppServiceProvider extends ServiceProvider
         PaymentRepository::class,
         CourseRepository::class,
         StoreProductRepository::class,
+        StudentLessonProgressRepository::class,
         TeamRepository::class,
         TimelineRepository::class,
         TopicRepository::class,
@@ -79,6 +83,8 @@ class AppServiceProvider extends ServiceProvider
         foreach ($this->repositories as $repository) {
             $this->app->bind($repository, $repository);
         }
+
+        Gate::define('viewReports', fn (User $user) => $user->isAdmin());
 
         $this->configurePasswordResetUrl();
         $this->configureRateLimiting();

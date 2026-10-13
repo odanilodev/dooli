@@ -45,8 +45,16 @@ class Module extends Model
         return $this->morphMany(Schedule::class, 'schedulable');
     }
 
+    public function studentProgress(): HasMany
+    {
+        return $this->hasMany(StudentLessonProgress::class);
+    }
+
     protected static function booted(): void
     {
-        static::deleting(fn (Module $module) => $module->schedules()->delete());
+        static::deleting(function (Module $module) {
+            $module->schedules()->delete();
+            $module->studentProgress()->delete();
+        });
     }
 }

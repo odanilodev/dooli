@@ -15,6 +15,7 @@ class MenuSeeder extends Seeder
         ['Módulos', '/admin/modulos', 'modules'],
         ['Aulas ao vivo', '/admin/aulas-ao-vivo', 'live'],
         ['Turmas', '/admin/turmas', 'teams'],
+        ['Relatórios', '/admin/relatorios', 'report'],
         ['Vídeos', '/admin/videos', 'videos'],
         ['Documentos', '/admin/documentos', 'documents'],
         ['Anexos', '/admin/anexos', 'attachments'],

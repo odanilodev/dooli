@@ -5,7 +5,9 @@ namespace App\Services;
 use App\DTO\SaveVideoPositionDTO;
 use App\Models\Lesson;
 use App\Models\User;
+use App\Repositories\StudentLessonProgressRepository;
 use App\Repositories\VideoProgressRepository;
+use Illuminate\Support\Facades\DB;
 
 class VideoProgressService
 {
@@ -13,6 +15,7 @@ class VideoProgressService
         private readonly VideoProgressRepository $progress,
         private readonly StudentCourseService $studentCourses,
         private readonly DatalogService $audit,
+        private readonly StudentLessonProgressRepository $snapshot,
     ) {}
 
     /**
@@ -25,14 +28,29 @@ class VideoProgressService
         $lesson = Lesson::query()->findOrFail($dto->lessonId);
         $this->studentCourses->assertLessonUnlocked($user, $lesson, $dto->courseId, $team->id);
 
-        $progress = $this->progress->savePosition(
-            userId: $user->id,
-            lessonId: $dto->lessonId,
-            courseId: $dto->courseId,
-            teamId: $team->id,
-            position: $dto->position,
-            duration: $dto->duration,
-        );
+        $progress = DB::transaction(function () use ($user, $dto, $lesson, $team) {
+            $progress = $this->progress->savePosition(
+                userId: $user->id,
+                lessonId: $dto->lessonId,
+                courseId: $dto->courseId,
+                teamId: $team->id,
+                position: $dto->position,
+                duration: $dto->duration,
+            );
+
+            if ($lesson->module_id !== null) {
+                $this->snapshot->markWatched(
+                    $user->id,
+                    $dto->lessonId,
+                    $dto->courseId,
+                    $team->id,
+                    (int) $lesson->module_id,
+                    $dto->position,
+                );
+            }
+
+            return $progress;
+        });
 
         $this->audit->log('progress', 'save_video_position', 'lesson', "Posição de vídeo salva: {$dto->position}s", $user->id);
 

@@ -4,6 +4,8 @@ namespace App\Repositories;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class UserRepository extends BaseRepository
 {
@@ -29,6 +31,11 @@ class UserRepository extends BaseRepository
     public function findWithRelations(int $id): User
     {
         return $this->query()->with(['userType', 'teams'])->findOrFail($id);
+    }
+
+    public function delete(Model $model): bool
+    {
+        return DB::transaction(fn () => parent::delete($model));
     }
 
     protected function applyFilters(Builder $query, array $filters): void

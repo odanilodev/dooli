@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\Admin\NotificationController as AdminNotificatio
 use App\Http\Controllers\Api\V1\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Api\V1\Admin\RatingController as AdminRatingController;
+use App\Http\Controllers\Api\V1\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Api\V1\Admin\ScheduleController as AdminScheduleController;
 use App\Http\Controllers\Api\V1\Admin\StoreProductController as AdminStoreProductController;
 use App\Http\Controllers\Api\V1\Admin\TeamController as AdminTeamController;
@@ -147,6 +148,12 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     */
     Route::middleware(['admin.access', 'throttle:admin'])->prefix('admin')->group(function () {
         Route::get('dashboard', [AdminDashboardController::class, 'index']);
+
+        Route::get('reports/progress', [AdminReportController::class, 'progress']);
+        Route::get('reports/students/{user}', [AdminReportController::class, 'student'])->whereNumber('user');
+        Route::get('reports/lessons/{lesson}', [AdminReportController::class, 'lesson'])->whereNumber('lesson');
+        Route::get('reports/activity', [AdminReportController::class, 'activity']);
+        Route::get('reports/export', [AdminReportController::class, 'export']);
 
         Route::get('company/settings', [AdminCompanySettingController::class, 'show']);
         Route::put('company/settings', [AdminCompanySettingController::class, 'update']);

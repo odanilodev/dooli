@@ -15,6 +15,7 @@ use App\Models\Timeline;
 use App\Models\Topic;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 
 class EngagementSeeder extends Seeder
 {
@@ -135,5 +136,7 @@ class EngagementSeeder extends Seeder
                 ],
             );
         }
+
+        Artisan::call('progress:rebuild', ['--company' => $company->id]);
     }
 }

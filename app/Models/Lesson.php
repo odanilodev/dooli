@@ -97,6 +97,11 @@ class Lesson extends Model
         return $this->hasMany(VideoProgress::class);
     }
 
+    public function studentProgress(): HasMany
+    {
+        return $this->hasMany(StudentLessonProgress::class);
+    }
+
     public function schedules(): MorphMany
     {
         return $this->morphMany(Schedule::class, 'schedulable');
@@ -104,7 +109,10 @@ class Lesson extends Model
 
     protected static function booted(): void
     {
-        static::deleting(fn (Lesson $lesson) => $lesson->schedules()->delete());
+        static::deleting(function (Lesson $lesson) {
+            $lesson->schedules()->delete();
+            $lesson->studentProgress()->delete();
+        });
     }
 
     public function isPublished(): bool

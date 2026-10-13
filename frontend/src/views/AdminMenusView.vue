@@ -127,7 +127,7 @@ const toast = useToast();
 const menus = useMenusStore();
 
 const iconOptions = [
-  'dashboard', 'content', 'modules', 'live', 'teams', 'videos', 'documents', 'attachments',
+  'dashboard', 'content', 'modules', 'live', 'teams', 'report', 'videos', 'documents', 'attachments',
   'banners', 'video-platforms', 'menu', 'users', 'user-types', 'profile', 'settings', 'home',
 ];
 

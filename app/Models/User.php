@@ -35,6 +35,16 @@ class User extends Authenticatable
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (User $user) {
+            $user->teamLinks()->delete();
+            $user->timeline()->delete();
+            $user->videoProgresses()->delete();
+            $user->studentProgress()->delete();
+        });
+    }
+
     public function userType(): BelongsTo
     {
         return $this->belongsTo(UserType::class);
@@ -65,6 +75,16 @@ class User extends Authenticatable
     public function timeline(): HasMany
     {
         return $this->hasMany(Timeline::class);
+    }
+
+    public function videoProgresses(): HasMany
+    {
+        return $this->hasMany(VideoProgress::class);
+    }
+
+    public function studentProgress(): HasMany
+    {
+        return $this->hasMany(StudentLessonProgress::class);
     }
 
     public function comments(): HasMany
