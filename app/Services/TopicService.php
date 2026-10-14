@@ -72,7 +72,10 @@ class TopicService
             $module->loadMissing('courses');
             $courseIds = $module->courses->pluck('id')->all();
 
-            $conflicts = $this->orders->conflictsForCourses($courseIds);
+            $conflicts = $this->orders->mergeConflicts(
+                $this->orders->conflictsForCourses($courseIds),
+                $this->orders->conflictsForModule($module->id),
+            );
 
             if ($conflicts !== [] && ! $force) {
                 throw new PrerequisiteConflictException($conflicts);

@@ -2,7 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\GeneralStatus;
+use App\Models\Lesson;
+use App\Models\Module;
 use App\Models\Timeline;
+use App\Models\Topic;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
@@ -58,6 +62,71 @@ class ModuleLessonTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('topic_id');
+    }
+
+    public function test_lesson_cannot_be_moved_to_another_module(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $other = $this->buildCourse($this->company->id);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'module_id' => $other['module']->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('module_id');
+
+        $this->assertSame($data['module']->id, $data['lesson']->fresh()->module_id);
+    }
+
+    public function test_lesson_cannot_move_to_a_topic_of_another_module(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $other = $this->buildCourse($this->company->id);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'topic_id' => $other['topic']->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('module_id');
+
+        $this->assertSame($data['module']->id, $data['lesson']->fresh()->module_id);
+        $this->assertSame($data['topic']->id, $data['lesson']->fresh()->topic_id);
+    }
+
+    public function test_lesson_can_still_move_between_topics_of_its_own_module(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $sibling = Topic::factory()->create([
+            'company_id' => $this->company->id,
+            'module_id' => $data['module']->id,
+            'status' => GeneralStatus::Active->value,
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'topic_id' => $sibling->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.topic_id', $sibling->id);
+
+        $this->assertSame($data['module']->id, $data['lesson']->fresh()->module_id);
+        $this->assertSame($sibling->id, $data['lesson']->fresh()->topic_id);
+    }
+
+    public function test_lesson_can_be_returned_to_the_module_level(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'topic_id' => null,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.topic_id', null);
+
+        $this->assertSame($data['module']->id, $data['lesson']->fresh()->module_id);
     }
 
     public function test_admin_can_reorder_module_lessons(): void
@@ -139,6 +208,78 @@ class ModuleLessonTest extends TestCase
         $this->withToken($token)
             ->postJson('/api/v1/me/progress/complete', $payload + ['lesson_id' => $second->id])
             ->assertOk();
+    }
+
+    public function test_reordering_module_lessons_without_a_course_asks_for_confirmation(): void
+    {
+        $module = $this->buildStandaloneModule();
+        $first = $this->buildModuleLesson($this->company->id, $module, ['name' => 'Primeira', 'sort_order' => 0]);
+        $second = $this->buildModuleLesson($this->company->id, $module, ['name' => 'Segunda', 'sort_order' => 1, 'required_lesson_id' => $first->id]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/modules/{$module->id}/lessons/reorder", [
+                'ids' => [$second->id, $first->id],
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'prerequisite_conflict')
+            ->assertJsonPath('errors.conflicts.0.lesson_id', $second->id);
+
+        $this->assertSame($first->id, $second->fresh()->required_lesson_id);
+        $this->assertSame(0, $first->fresh()->sort_order);
+        $this->assertSame(1, $second->fresh()->sort_order);
+    }
+
+    public function test_force_reordering_module_lessons_without_a_course_removes_the_lock(): void
+    {
+        $module = $this->buildStandaloneModule();
+        $first = $this->buildModuleLesson($this->company->id, $module, ['name' => 'Primeira', 'sort_order' => 0]);
+        $second = $this->buildModuleLesson($this->company->id, $module, ['name' => 'Segunda', 'sort_order' => 1, 'required_lesson_id' => $first->id]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/modules/{$module->id}/lessons/reorder", [
+                'ids' => [$second->id, $first->id],
+                'force' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.cleared.0', $second->id);
+
+        $this->assertNull($second->fresh()->required_lesson_id);
+    }
+
+    public function test_reordering_topic_lessons_without_a_course_asks_for_confirmation(): void
+    {
+        $module = $this->buildStandaloneModule();
+        $topic = Topic::factory()->create(['company_id' => $this->company->id, 'module_id' => $module->id]);
+
+        $first = Lesson::factory()->create([
+            'company_id' => $this->company->id,
+            'topic_id' => $topic->id,
+            'sort_order' => 0,
+            'status' => GeneralStatus::Active->value,
+        ]);
+        $second = Lesson::factory()->create([
+            'company_id' => $this->company->id,
+            'topic_id' => $topic->id,
+            'sort_order' => 1,
+            'required_lesson_id' => $first->id,
+            'status' => GeneralStatus::Active->value,
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/topics/{$topic->id}/lessons/reorder", [
+                'ids' => [$second->id, $first->id],
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'prerequisite_conflict')
+            ->assertJsonPath('errors.conflicts.0.lesson_id', $second->id);
+    }
+
+    private function buildStandaloneModule(): Module
+    {
+        return Module::factory()->create([
+            'company_id' => $this->company->id,
+            'status' => GeneralStatus::Active->value,
+        ]);
     }
 
     public function test_admin_course_show_includes_module_lessons(): void

@@ -30,7 +30,26 @@ class LessonOrderService
     }
 
     /**
-     * Lessons whose prerequisite is no longer earlier in the course order.
+     * Ordered lesson ids of a module, following the same order the admin
+     * curriculum builder shows: topic order -> lesson order, then loose lessons.
+     *
+     * @return array<int, int>
+     */
+    public function sequenceForModule(int $moduleId): array
+    {
+        return DB::table('lessons')
+            ->leftJoin('topics', 'topics.id', '=', 'lessons.topic_id')
+            ->where('lessons.module_id', $moduleId)
+            ->orderByRaw('lessons.topic_id IS NULL')
+            ->orderBy('topics.sort_order')
+            ->orderBy('lessons.sort_order')
+            ->orderBy('lessons.id')
+            ->pluck('lessons.id')
+            ->all();
+    }
+
+    /**
+     * Lessons whose prerequisite is no longer earlier in any of the course orders.
      *
      * @param  array<int, int>  $courseIds
      * @return array<int, array{lesson_id: int, lesson_name: string, required_lesson_id: int, required_lesson_name: string}>
@@ -53,8 +72,44 @@ class LessonOrderService
      */
     public function conflictsForCourse(int $courseId): array
     {
-        $sequence = $this->sequenceForCourse($courseId);
+        return $this->conflictsForSequence($this->sequenceForCourse($courseId));
+    }
 
+    /**
+     * Lessons whose prerequisite is no longer earlier in the module order.
+     *
+     * @return array<int, array{lesson_id: int, lesson_name: string, required_lesson_id: int, required_lesson_name: string}>
+     */
+    public function conflictsForModule(int $moduleId): array
+    {
+        return $this->conflictsForSequence($this->sequenceForModule($moduleId));
+    }
+
+    /**
+     * Merges conflict lists into a single list, one entry per lesson.
+     *
+     * @param  array<int, array{lesson_id: int, lesson_name: string, required_lesson_id: int, required_lesson_name: string}>  ...$lists
+     * @return array<int, array{lesson_id: int, lesson_name: string, required_lesson_id: int, required_lesson_name: string}>
+     */
+    public function mergeConflicts(array ...$lists): array
+    {
+        $conflicts = [];
+
+        foreach ($lists as $list) {
+            foreach ($list as $conflict) {
+                $conflicts[$conflict['lesson_id']] = $conflict;
+            }
+        }
+
+        return array_values($conflicts);
+    }
+
+    /**
+     * @param  array<int, int>  $sequence  ordered lesson ids
+     * @return array<int, array{lesson_id: int, lesson_name: string, required_lesson_id: int, required_lesson_name: string}>
+     */
+    private function conflictsForSequence(array $sequence): array
+    {
         if ($sequence === []) {
             return [];
         }
@@ -112,8 +167,8 @@ class LessonOrderService
     }
 
     /**
-     * A prerequisite must be another lesson of the same course that appears
-     * earlier in the course order.
+     * A prerequisite must be another lesson of the same module or course that
+     * appears earlier in the corresponding order.
      */
     public function assertValidPrerequisite(Lesson $lesson, ?int $requiredLessonId): void
     {
@@ -126,7 +181,6 @@ class LessonOrderService
         }
 
         $lesson->loadMissing('module.courses');
-        $courseIds = $lesson->module?->courses?->pluck('id')->all() ?? [];
 
         $required = Lesson::query()->with('module.courses')->find($requiredLessonId);
 
@@ -138,11 +192,22 @@ class LessonOrderService
             throw new BusinessRuleException('O pré-requisito precisa ser uma aula da mesma empresa.');
         }
 
+        if ($lesson->module_id !== null && (int) $lesson->module_id === (int) $required->module_id) {
+            $position = array_flip($this->sequenceForModule((int) $lesson->module_id));
+
+            if (isset($position[$lesson->id], $position[$requiredLessonId]) && $position[$requiredLessonId] >= $position[$lesson->id]) {
+                throw new BusinessRuleException('O pré-requisito precisa ser uma aula anterior na ordem do módulo.');
+            }
+
+            return;
+        }
+
+        $courseIds = $lesson->module?->courses?->pluck('id')->all() ?? [];
         $requiredCourseIds = $required->module?->courses?->pluck('id')->all() ?? [];
         $sharedCourseIds = array_values(array_intersect($courseIds, $requiredCourseIds));
 
         if ($sharedCourseIds === []) {
-            throw new BusinessRuleException('O pré-requisito precisa ser uma aula do mesmo curso.');
+            throw new BusinessRuleException('O pré-requisito precisa ser uma aula do mesmo módulo ou curso.');
         }
 
         foreach ($sharedCourseIds as $courseId) {

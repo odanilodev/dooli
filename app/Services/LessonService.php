@@ -123,7 +123,10 @@ class LessonService
             $topic->loadMissing('module.courses');
             $courseIds = $topic->module?->courses?->pluck('id')->all() ?? [];
 
-            $conflicts = $this->orders->conflictsForCourses($courseIds);
+            $conflicts = $this->orders->mergeConflicts(
+                $this->orders->conflictsForCourses($courseIds),
+                $this->orders->conflictsForModule($topic->module_id),
+            );
 
             if ($conflicts !== [] && ! $force) {
                 throw new PrerequisiteConflictException($conflicts);
@@ -156,7 +159,10 @@ class LessonService
             $module->loadMissing('courses');
             $courseIds = $module->courses?->pluck('id')->all() ?? [];
 
-            $conflicts = $this->orders->conflictsForCourses($courseIds);
+            $conflicts = $this->orders->mergeConflicts(
+                $this->orders->conflictsForCourses($courseIds),
+                $this->orders->conflictsForModule($module->id),
+            );
 
             if ($conflicts !== [] && ! $force) {
                 throw new PrerequisiteConflictException($conflicts);

@@ -23,7 +23,7 @@ class UpdateLessonRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'string', 'max:255'],
-            'module_id' => ['sometimes', 'integer', $this->companyExists('modules')],
+            'module_id' => ['sometimes', 'integer', $this->companyExists('modules'), $this->moduleUnchanged()],
             'topic_id' => ['sometimes', 'nullable', 'integer', $this->companyExists('topics'), $this->topicBelongsToModule()],
             'description' => ['nullable', 'string'],
             'content' => ['nullable', 'string'],
@@ -55,6 +55,17 @@ class UpdateLessonRequest extends FormRequest
         if ($moduleId !== null) {
             $this->merge(['module_id' => $moduleId]);
         }
+    }
+
+    private function moduleUnchanged(): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail): void {
+            $lesson = $this->route('lesson');
+
+            if ($lesson instanceof Lesson && (int) $value !== (int) $lesson->module_id) {
+                $fail('A aula não pode ser movida para outro módulo.');
+            }
+        };
     }
 
     private function topicBelongsToModule(): \Closure

@@ -346,7 +346,7 @@ function reorder(level, parentId, list) {
 }
 
 function lessonGroup(moduleId) {
-  return { name: `cb-lessons-${moduleId}`, pull: true, put: true };
+  return { name: `cb-lessons-${moduleId}` };
 }
 
 function onLessonChange(event, level, parentId, list) {

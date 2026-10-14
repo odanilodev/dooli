@@ -96,6 +96,64 @@ class LessonPrerequisiteTest extends TestCase
             ->assertJsonPath('code', 'business_rule');
     }
 
+    public function test_prerequisite_between_lessons_of_a_module_without_a_course(): void
+    {
+        [$first, $second] = $this->buildStandaloneModuleLessons();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$second->id}", ['required_lesson_id' => $first->id])
+            ->assertOk()
+            ->assertJsonPath('data.required_lesson_id', $first->id);
+
+        $this->assertSame($first->id, $second->fresh()->required_lesson_id);
+    }
+
+    public function test_prerequisite_must_be_an_earlier_lesson_in_a_module_without_a_course(): void
+    {
+        [$first, $second] = $this->buildStandaloneModuleLessons();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$first->id}", ['required_lesson_id' => $second->id])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'business_rule');
+
+        $this->assertNull($first->fresh()->required_lesson_id);
+    }
+
+    /**
+     * Two lessons inside a module that is not linked to any course.
+     *
+     * @return array{0: Lesson, 1: Lesson}
+     */
+    private function buildStandaloneModuleLessons(): array
+    {
+        $module = Module::factory()->create([
+            'company_id' => $this->company->id,
+            'status' => GeneralStatus::Active->value,
+        ]);
+
+        $topic = Topic::factory()->create([
+            'company_id' => $this->company->id,
+            'module_id' => $module->id,
+        ]);
+
+        $first = Lesson::factory()->create([
+            'company_id' => $this->company->id,
+            'topic_id' => $topic->id,
+            'sort_order' => 0,
+            'status' => GeneralStatus::Active->value,
+        ]);
+
+        $second = Lesson::factory()->create([
+            'company_id' => $this->company->id,
+            'topic_id' => $topic->id,
+            'sort_order' => 1,
+            'status' => GeneralStatus::Active->value,
+        ]);
+
+        return [$first, $second];
+    }
+
     public function test_prerequisite_must_belong_to_the_same_company(): void
     {
         $data = $this->buildCourse($this->company->id);

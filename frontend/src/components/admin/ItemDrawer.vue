@@ -64,7 +64,7 @@
                 allow-clear
                 clear-label="Nenhuma"
               />
-              <p class="form-hint">O aluno só libera esta aula após concluir a aula escolhida. Só aparecem aulas anteriores na ordem do curso.</p>
+              <p class="form-hint">O aluno só libera esta aula após concluir a aula escolhida. Só aparecem aulas anteriores na ordem do módulo ou curso.</p>
             </div>
 
             <div v-if="form.content_type === 'video'" class="form-group">
