@@ -4,8 +4,6 @@ import { useToast } from './useToast';
 
 const PATHS = { module: 'modules', topic: 'topics', lesson: 'lessons' };
 
-const REMOVE_LABELS = { module: 'o módulo', topic: 'o tópico', lesson: 'a aula' };
-
 export function useCurriculumModules({
   modules,
   root = null,
@@ -17,6 +15,7 @@ export function useCurriculumModules({
   const toast = useToast();
   const reorderConflicts = ref([]);
   const pendingReorder = ref(null);
+  const removeConfirm = ref(null);
 
   function getModules() {
     return modules?.value ?? [];
@@ -147,15 +146,76 @@ export function useCurriculumModules({
     }
   }
 
-  async function removeNode({ type, node }) {
-    const warning = type === 'lesson'
-      ? ' Isso também apaga progresso, comentários e avaliações dos alunos nesta aula.'
-      : ' As aulas dele (com progresso, comentários e avaliações dos alunos) também serão apagadas.';
+  function removeNode({ type, node }) {
+    removeConfirm.value = buildRemoveConfirm(type, node);
+  }
 
-    if (!window.confirm(`Remover ${REMOVE_LABELS[type]} "${node.name}"?${warning}`)) {
-      return;
+  function buildRemoveConfirm(type, node) {
+    if (type === 'module' && getCourseId()) {
+      return {
+        type,
+        node,
+        title: 'Remover módulo do curso',
+        message: `O módulo "${node.name}" será desvinculado deste curso. O módulo e suas aulas não serão apagados.`,
+        confirmLabel: 'Desvincular',
+        variant: 'primary',
+        courses: [],
+      };
     }
 
+    if (type === 'module') {
+      const courses = node.courses ?? [];
+
+      return {
+        type,
+        node,
+        title: 'Excluir módulo',
+        message: courses.length
+          ? `Tem certeza que deseja excluir o módulo "${node.name}"? As aulas dele (com progresso, comentários e avaliações dos alunos) também serão apagadas. Ele está vinculado aos cursos abaixo, que ficarão sem este módulo.`
+          : `Tem certeza que deseja excluir o módulo "${node.name}"? As aulas dele (com progresso, comentários e avaliações dos alunos) também serão apagadas.`,
+        confirmLabel: 'Excluir',
+        variant: 'danger',
+        courses,
+      };
+    }
+
+    if (type === 'topic') {
+      return {
+        type,
+        node,
+        title: 'Excluir tópico',
+        message: `Tem certeza que deseja excluir o tópico "${node.name}"? As aulas dele (com progresso, comentários e avaliações dos alunos) também serão apagadas.`,
+        confirmLabel: 'Excluir',
+        variant: 'danger',
+        courses: [],
+      };
+    }
+
+    return {
+      type,
+      node,
+      title: 'Excluir aula',
+      message: `Tem certeza que deseja excluir a aula "${node.name}"? Isso também apaga progresso, comentários e avaliações dos alunos nesta aula.`,
+      confirmLabel: 'Excluir',
+      variant: 'danger',
+      courses: [],
+    };
+  }
+
+  async function confirmRemove() {
+    const pending = removeConfirm.value;
+    removeConfirm.value = null;
+
+    if (pending) {
+      await performRemove(pending);
+    }
+  }
+
+  function cancelRemove() {
+    removeConfirm.value = null;
+  }
+
+  async function performRemove({ type, node }) {
     try {
       if (type === 'module' && getCourseId()) {
         await api.delete(`/admin/courses/${getCourseId()}/modules/${node.id}`);
@@ -254,6 +314,9 @@ export function useCurriculumModules({
     createModuleLesson,
     rename,
     removeNode,
+    confirmRemove,
+    cancelRemove,
+    removeConfirm,
     reorder,
     confirmReorder,
     cancelReorder,

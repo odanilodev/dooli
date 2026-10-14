@@ -159,6 +159,104 @@ class ModuleTreeTest extends TestCase
             ->assertJsonCount(1, 'data');
     }
 
+    public function test_admin_can_bulk_delete_modules(): void
+    {
+        $module = Module::factory()->create(['company_id' => $this->company->id, 'name' => 'Apagar']);
+        $topic = Topic::factory()->create(['company_id' => $this->company->id, 'module_id' => $module->id]);
+        $lesson = Lesson::factory()->create([
+            'company_id' => $this->company->id,
+            'module_id' => $module->id,
+            'topic_id' => $topic->id,
+        ]);
+
+        $course = Course::factory()->create(['company_id' => $this->company->id]);
+        $module->courses()->attach($course->id, [
+            'company_id' => $this->company->id,
+            'status' => 'active',
+            'sort_order' => 0,
+        ]);
+
+        $other = Module::factory()->create(['company_id' => $this->company->id, 'name' => 'Outro']);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/modules/bulk', [
+                'action' => 'delete',
+                'module_ids' => [$module->id, $other->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.processed', 2)
+            ->assertJsonPath('data.failed', []);
+
+        $this->assertDatabaseMissing('modules', ['id' => $module->id]);
+        $this->assertDatabaseMissing('modules', ['id' => $other->id]);
+        $this->assertDatabaseMissing('topics', ['id' => $topic->id]);
+        $this->assertDatabaseMissing('lessons', ['id' => $lesson->id]);
+        $this->assertDatabaseMissing('course_modules', ['module_id' => $module->id]);
+    }
+
+    public function test_admin_can_bulk_change_module_status(): void
+    {
+        $modules = Module::factory()->count(2)->create([
+            'company_id' => $this->company->id,
+            'status' => 'active',
+        ]);
+
+        $ids = $modules->pluck('id')->all();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/modules/bulk', ['action' => 'deactivate', 'module_ids' => $ids])
+            ->assertOk()
+            ->assertJsonPath('data.processed', 2);
+
+        foreach ($modules as $module) {
+            $this->assertSame('inactive', $module->fresh()->status);
+        }
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/modules/bulk', ['action' => 'activate', 'module_ids' => $ids])
+            ->assertOk();
+
+        foreach ($modules as $module) {
+            $this->assertSame('active', $module->fresh()->status);
+        }
+    }
+
+    public function test_bulk_reports_modules_from_other_companies_as_failures(): void
+    {
+        $foreign = Module::factory()->create(['name' => 'Outra empresa']);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/modules/bulk', [
+                'action' => 'delete',
+                'module_ids' => [$foreign->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.processed', 0)
+            ->assertJsonPath('data.failed.0.id', $foreign->id);
+
+        $this->assertDatabaseHas('modules', ['id' => $foreign->id]);
+    }
+
+    public function test_bulk_requires_module_ids(): void
+    {
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/modules/bulk', ['action' => 'delete', 'module_ids' => []])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('module_ids');
+    }
+
+    public function test_student_cannot_bulk_edit_modules(): void
+    {
+        $module = Module::factory()->create(['company_id' => $this->company->id]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->postJson('/api/v1/admin/modules/bulk', [
+                'action' => 'delete',
+                'module_ids' => [$module->id],
+            ])
+            ->assertForbidden();
+    }
+
     public function test_student_cannot_list_the_module_tree(): void
     {
         $this->withToken($this->apiLogin($this->student))

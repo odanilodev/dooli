@@ -95,6 +95,16 @@
       @confirm="confirmReorder"
     />
 
+    <ConfirmModal
+      v-if="removeConfirm"
+      :title="removeConfirm.title"
+      :message="removeConfirm.message"
+      :confirm-label="removeConfirm.confirmLabel"
+      :variant="removeConfirm.variant"
+      @cancel="cancelRemove"
+      @confirm="confirmRemove"
+    />
+
   </main>
 </template>
 
@@ -105,6 +115,7 @@ import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
 import { useCurriculumModules } from '../composables/useCurriculumModules';
 import { statusLabel } from '../utils/adminLabels';
+import ConfirmModal from '../components/admin/ConfirmModal.vue';
 import CurriculumBuilder from '../components/admin/CurriculumBuilder.vue';
 import ItemDrawer from '../components/admin/ItemDrawer.vue';
 import ReorderConflictModal from '../components/admin/ReorderConflictModal.vue';
@@ -152,6 +163,9 @@ const {
   createModuleLesson,
   rename,
   removeNode,
+  confirmRemove,
+  cancelRemove,
+  removeConfirm,
   reorder,
   confirmReorder,
   cancelReorder,

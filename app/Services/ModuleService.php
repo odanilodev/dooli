@@ -14,6 +14,7 @@ use App\Support\ImageStorage;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class ModuleService
 {
@@ -89,6 +90,54 @@ class ModuleService
         });
 
         $this->audit->log('module', 'delete', 'module', "Módulo excluído: {$module->name}");
+    }
+
+    /**
+     * @param  array<int, int>  $moduleIds
+     * @return array{processed: int, failed: array<int, array{id: int, name: ?string, reason: string}>}
+     */
+    public function bulkSetStatus(array $moduleIds, string $status): array
+    {
+        return $this->runBulk($moduleIds, fn (Module $module) => $this->update($module, ['status' => $status]));
+    }
+
+    /**
+     * @param  array<int, int>  $moduleIds
+     * @return array{processed: int, failed: array<int, array{id: int, name: ?string, reason: string}>}
+     */
+    public function bulkDelete(array $moduleIds): array
+    {
+        return $this->runBulk($moduleIds, fn (Module $module) => $this->delete($module));
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     * @return array{processed: int, failed: array<int, array{id: int, name: ?string, reason: string}>}
+     */
+    private function runBulk(array $ids, callable $worker): array
+    {
+        $processed = 0;
+        $failed = [];
+
+        foreach ($ids as $id) {
+            $id = (int) $id;
+            $module = Module::query()->find($id);
+
+            if (! $module) {
+                $failed[] = ['id' => $id, 'name' => null, 'reason' => 'Não encontrado.'];
+
+                continue;
+            }
+
+            try {
+                $worker($module);
+                $processed++;
+            } catch (Throwable $e) {
+                $failed[] = ['id' => $id, 'name' => $module->name, 'reason' => $e->getMessage()];
+            }
+        }
+
+        return ['processed' => $processed, 'failed' => $failed];
     }
 
     public function attachToCourse(Course $course, int $moduleId, int $sortOrder = 0): void

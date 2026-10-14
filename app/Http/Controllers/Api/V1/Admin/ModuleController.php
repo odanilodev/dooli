@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Enums\GeneralStatus;
 use App\Http\Controllers\Api\V1\ApiController;
+use App\Http\Requests\Admin\BulkModuleRequest;
 use App\Http\Requests\Admin\StoreModuleRequest;
 use App\Http\Requests\Admin\UpdateModuleRequest;
 use App\Http\Resources\ModuleResource;
@@ -76,5 +78,20 @@ class ModuleController extends ApiController
         $this->modules->delete($module);
 
         return ApiResponse::noContent();
+    }
+
+    public function bulk(BulkModuleRequest $request): JsonResponse
+    {
+        $this->authorize('create', Module::class);
+
+        $validated = $request->validated();
+
+        $summary = match ($validated['action']) {
+            'activate' => $this->modules->bulkSetStatus($validated['module_ids'], GeneralStatus::Active->value),
+            'deactivate' => $this->modules->bulkSetStatus($validated['module_ids'], GeneralStatus::Inactive->value),
+            'delete' => $this->modules->bulkDelete($validated['module_ids']),
+        };
+
+        return ApiResponse::success($summary);
     }
 }

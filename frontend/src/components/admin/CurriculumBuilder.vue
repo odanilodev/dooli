@@ -1,9 +1,21 @@
 <template>
   <section class="cb">
     <header class="cb-bar">
-      <div class="cb-bar-text">
-        <span class="cb-bar-title">{{ headerTitle }}</span>
-        <span v-if="headerSub" class="cb-bar-sub">{{ headerSub }}</span>
+      <div class="cb-bar-lead">
+        <label v-if="selectable" class="cb-check">
+          <input
+            class="admin-check"
+            type="checkbox"
+            :checked="allSelected"
+            :indeterminate.prop="partial"
+            aria-label="Selecionar todos os módulos"
+            @change="emit('toggle-select-all', $event.target.checked)"
+          >
+        </label>
+        <div class="cb-bar-text">
+          <span class="cb-bar-title">{{ headerTitle }}</span>
+          <span v-if="headerSub" class="cb-bar-sub">{{ headerSub }}</span>
+        </div>
       </div>
       <div class="cb-bar-actions">
         <button v-if="showAttach" class="btn btn-outline btn-sm" @click="emit('attach-module')">Vincular módulo</button>
@@ -28,6 +40,15 @@
             :class="{ active: isSelected('module', module.id) }"
             @click="emit('select', { type: 'module', id: module.id })"
           >
+            <label v-if="selectable" class="cb-check" @click.stop>
+              <input
+                class="admin-check"
+                type="checkbox"
+                :checked="isModuleSelected(module.id)"
+                :aria-label="`Selecionar ${module.name}`"
+                @change="emit('toggle-select', module.id)"
+              >
+            </label>
             <span v-if="allowModuleReorder" class="cb-handle" title="Arrastar" @click.stop>⠿</span>
             <button class="cb-caret" :class="{ open: !isCollapsed(`m-${module.id}`) }" @click.stop="toggleCollapse(`m-${module.id}`)">▸</button>
 
@@ -249,9 +270,11 @@ const props = defineProps({
   allowModuleReorder: { type: Boolean, default: true },
   emptyTitle: { type: String, default: null },
   emptyHint: { type: String, default: null },
+  selectable: { type: Boolean, default: false },
+  selectedIds: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(['select', 'rename', 'add-module', 'attach-module', 'add-topic', 'add-lesson', 'add-module-lesson', 'remove', 'reorder', 'update:modules']);
+const emit = defineEmits(['select', 'rename', 'add-module', 'attach-module', 'add-topic', 'add-lesson', 'add-module-lesson', 'remove', 'reorder', 'update:modules', 'toggle-select', 'toggle-select-all']);
 
 const collapsed = reactive({});
 const openMenu = ref(null);
@@ -286,6 +309,23 @@ const emptyTitle = computed(() => props.emptyTitle ?? 'Sem conteúdo ainda');
 const emptyHint = computed(() => props.emptyHint ?? (props.showAttach
   ? 'Comece adicionando um módulo ou vinculando um existente.'
   : 'Crie o primeiro módulo para começar.'));
+
+const allSelected = computed(() => {
+  const ids = modules.value.map((module) => module.id);
+
+  return ids.length > 0 && ids.every((id) => props.selectedIds.includes(id));
+});
+
+const partial = computed(() => {
+  const ids = modules.value.map((module) => module.id);
+  const selected = ids.filter((id) => props.selectedIds.includes(id)).length;
+
+  return selected > 0 && selected < ids.length;
+});
+
+function isModuleSelected(id) {
+  return props.selectedIds.includes(id);
+}
 
 function moduleLessonCount(module) {
   return (module.topics ?? []).reduce((sum, topic) => sum + (topic.lessons?.length ?? 0), 0)
@@ -386,7 +426,9 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenus));
 <style scoped>
 .cb{--lvl-module:#17c993;--lvl-topic:#3b82f6;--lvl-lesson:#a78bfa;display:flex;flex-direction:column;gap:14px;width:100%;max-width:1440px;}
 .cb-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.cb-bar-lead{display:flex;align-items:center;gap:10px;}
 .cb-bar-text{display:flex;flex-direction:column;gap:1px;}
+.cb-check{display:inline-flex;align-items:center;flex-shrink:0;cursor:pointer;}
 .cb-bar-title{font-size:15px;font-weight:800;}
 .cb-bar-sub{font-size:11.5px;color:var(--text-muted);}
 .cb-bar-actions{display:flex;gap:8px;}
