@@ -100,9 +100,7 @@
     <ConfirmModal
       v-if="bulkConfirm"
       title="Excluir módulos selecionados"
-      :message="bulkConfirm.courses.length
-        ? `Tem certeza que deseja excluir ${bulkConfirm.count} módulo(s)? As aulas deles (com progresso, comentários e avaliações dos alunos) também serão apagadas. Alguns estão vinculados aos cursos abaixo, que ficarão sem estes módulos.`
-        : `Tem certeza que deseja excluir ${bulkConfirm.count} módulo(s)? As aulas deles (com progresso, comentários e avaliações dos alunos) também serão apagadas.`"
+      :message="bulkMessage"
       confirm-label="Excluir"
       :busy="bulkBusy"
       @cancel="bulkConfirm = null"
@@ -148,6 +146,20 @@ const { selectedIds, count: bulkCount, toggle, toggleAll, clear: clearSelection 
 const bulkBusy = ref(false);
 const bulkConfirm = ref(null);
 const pageIds = computed(() => modules.value.map((module) => module.id));
+
+const bulkMessage = computed(() => {
+  if (!bulkConfirm.value) {
+    return '';
+  }
+
+  const { count, courses } = bulkConfirm.value;
+  const singular = count === 1;
+  const linked = courses.length
+    ? ` Os cursos abaixo ficarão sem ${singular ? 'ele' : 'eles'}.`
+    : '';
+
+  return `Excluir ${count} ${singular ? 'módulo' : 'módulos'}? As aulas e o progresso dos alunos também serão apagados.${linked}`;
+});
 
 function toggleAllPage(checked) {
   toggleAll(pageIds.value, checked);

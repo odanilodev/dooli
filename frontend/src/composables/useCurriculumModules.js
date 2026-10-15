@@ -171,8 +171,8 @@ export function useCurriculumModules({
         node,
         title: 'Excluir módulo',
         message: courses.length
-          ? `Tem certeza que deseja excluir o módulo "${node.name}"? As aulas dele (com progresso, comentários e avaliações dos alunos) também serão apagadas. Ele está vinculado aos cursos abaixo, que ficarão sem este módulo.`
-          : `Tem certeza que deseja excluir o módulo "${node.name}"? As aulas dele (com progresso, comentários e avaliações dos alunos) também serão apagadas.`,
+          ? `Excluir o módulo "${node.name}"? As aulas e o progresso dos alunos também serão apagados. Os cursos abaixo ficarão sem ele.`
+          : `Excluir o módulo "${node.name}"? As aulas e o progresso dos alunos também serão apagados.`,
         confirmLabel: 'Excluir',
         variant: 'danger',
         courses,
@@ -184,7 +184,7 @@ export function useCurriculumModules({
         type,
         node,
         title: 'Excluir tópico',
-        message: `Tem certeza que deseja excluir o tópico "${node.name}"? As aulas dele (com progresso, comentários e avaliações dos alunos) também serão apagadas.`,
+        message: `Excluir o tópico "${node.name}"? As aulas e o progresso dos alunos também serão apagados.`,
         confirmLabel: 'Excluir',
         variant: 'danger',
         courses: [],
@@ -195,7 +195,7 @@ export function useCurriculumModules({
       type,
       node,
       title: 'Excluir aula',
-      message: `Tem certeza que deseja excluir a aula "${node.name}"? Isso também apaga progresso, comentários e avaliações dos alunos nesta aula.`,
+      message: `Excluir a aula "${node.name}"? O progresso, comentários e avaliações dos alunos também serão apagados.`,
       confirmLabel: 'Excluir',
       variant: 'danger',
       courses: [],
