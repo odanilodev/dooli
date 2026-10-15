@@ -67,16 +67,6 @@
               <p class="form-hint">O aluno só libera esta aula após concluir a aula escolhida. Só aparecem aulas anteriores na ordem do módulo ou curso.</p>
             </div>
 
-            <div v-if="form.content_type === 'video'" class="form-group">
-              <label class="dw-option" :class="{ 'is-on': form.require_full_watch }">
-                <input type="checkbox" v-model="form.require_full_watch">
-                <span class="dw-option-text">
-                  <span class="dw-option-title">Exigir assistir até o final</span>
-                  <span class="dw-option-desc">O aluno só consegue marcar a aula como concluída depois de assistir o vídeo até o fim. Requer vídeo vinculado.</span>
-                </span>
-              </label>
-            </div>
-
             <p v-if="lessonLocation" class="form-hint">Local: {{ lessonLocation }}</p>
           </template>
 
@@ -179,6 +169,16 @@
               <button v-else type="button" class="btn btn-primary btn-sm" :disabled="creatingVideo" @click="createVideo">
                 {{ creatingVideo ? 'Criando...' : 'Criar e vincular' }}
               </button>
+            </div>
+
+            <div class="form-group">
+              <label class="dw-option" :class="{ 'is-on': form.require_full_watch }">
+                <input type="checkbox" v-model="form.require_full_watch">
+                <span class="dw-option-text">
+                  <span class="dw-option-title">Exigir assistir até o final</span>
+                  <span class="dw-option-desc">O aluno só consegue marcar a aula como concluída depois de assistir o vídeo até o fim. Requer vídeo vinculado.</span>
+                </span>
+              </label>
             </div>
           </template>
 
