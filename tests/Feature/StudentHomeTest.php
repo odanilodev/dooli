@@ -6,6 +6,7 @@ use App\Models\Lesson;
 use App\Models\Team;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
 
@@ -87,6 +88,32 @@ class StudentHomeTest extends TestCase
         $this->assertCount(1, $sections[$teamA->id]['continue_watching']);
         $this->assertSame($a['course']->id, $sections[$teamA->id]['continue_watching'][0]['course_id']);
         $this->assertCount(0, $sections[$teamB->id]['continue_watching']);
+    }
+
+    public function test_home_continue_watching_falls_back_to_the_course_cover_image(): void
+    {
+        $a = $this->buildCourse($this->company->id);
+        $a['course']->update(['image' => 'courses/'.$this->company->id.'/cover.jpg']);
+        $team = $this->enroll($this->student, $a['course'], $this->company->id);
+        Lesson::factory()->create(['company_id' => $this->company->id, 'topic_id' => $a['topic']->id, 'sort_order' => 1]);
+
+        $token = $this->apiLogin($this->student);
+
+        $this->withToken($token)
+            ->postJson('/api/v1/me/progress/complete', [
+                'lesson_id' => $a['lesson']->id,
+                'course_id' => $a['course']->id,
+                'team_id' => $team->id,
+                'module_id' => $a['module']->id,
+            ])
+            ->assertOk();
+
+        $sections = collect($this->withToken($token)->getJson('/api/v1/me/home')->json('data'))->keyBy('id');
+
+        $this->assertSame(
+            Storage::disk('public')->url('courses/'.$this->company->id.'/cover.jpg'),
+            $sections[$team->id]['continue_watching'][0]['image'],
+        );
     }
 
     public function test_home_ignores_inactive_and_expired_enrollments(): void

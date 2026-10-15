@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Lesson;
 use App\Models\Video;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
 
@@ -61,6 +62,42 @@ class StudentContinueWatchingTest extends TestCase
             ->assertJsonPath('data.0.image', 'https://cdn.example.com/poster.jpg')
             ->assertJsonPath('data.0.duration', 1250)
             ->assertJsonPath('data.0.percentage', 33.33);
+    }
+
+    public function test_continue_watching_falls_back_to_the_course_cover_when_video_has_no_poster(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $data['course']->update(['image' => 'courses/'.$this->company->id.'/cover.jpg']);
+        $team = $this->enroll($this->student, $data['course'], $this->company->id);
+
+        $video = Video::factory()->create([
+            'company_id' => $this->company->id,
+            'time' => 1250,
+            'image' => null,
+        ]);
+
+        $second = Lesson::factory()->create([
+            'company_id' => $this->company->id,
+            'topic_id' => $data['topic']->id,
+            'sort_order' => 1,
+            'video_id' => $video->id,
+        ]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->postJson('/api/v1/me/progress/complete', [
+                'lesson_id' => $data['lesson']->id,
+                'course_id' => $data['course']->id,
+                'team_id' => $team->id,
+                'module_id' => $data['module']->id,
+            ])
+            ->assertOk();
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/continue-watching')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.lesson_id', $second->id)
+            ->assertJsonPath('data.0.image', Storage::disk('public')->url('courses/'.$this->company->id.'/cover.jpg'));
     }
 
     public function test_continue_watching_prefers_the_lesson_with_saved_video_progress(): void

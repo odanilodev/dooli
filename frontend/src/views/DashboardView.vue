@@ -6,8 +6,8 @@
 
     <!-- TURMAS -->
     <section v-for="team in homeTeams" :key="team.id" class="section">
-      <div class="section-head">
-        <h2 class="section-title">{{ multiTeam ? team.name : 'Meus cursos' }}</h2>
+      <div v-if="multiTeam" class="section-head">
+        <h2 class="section-title">{{ team.name }}</h2>
         <button type="button" class="section-link link-btn" @click="openTeam(team.id)">Ver todos →</button>
       </div>
 
@@ -29,7 +29,11 @@
         </div>
       </div>
 
-      <h3 v-if="multiTeam" class="section-subtitle">Cursos</h3>
+      <div v-if="!multiTeam" class="section-head">
+        <h2 class="section-title">Meus cursos</h2>
+        <button type="button" class="section-link link-btn" @click="openTeam(team.id)">Ver todos →</button>
+      </div>
+      <h3 v-else class="section-subtitle">Cursos</h3>
       <div class="card-grid">
         <CourseCard
           v-for="course in team.courses"

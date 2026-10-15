@@ -206,7 +206,7 @@ Lista os cursos **em andamento** com a próxima aula a assistir (1ª aula public
   ]
 }
 ```
-> `duration` (segundos, do vídeo da aula) pode ser `null`. `resume_from` é a posição salva (segundos) para retomar; `image` é o poster do vídeo da aula (usado no card) e pode ser `null`. Cursos com 0% ou 100% não aparecem.
+> `duration` (segundos, do vídeo da aula) pode ser `null`. `resume_from` é a posição salva (segundos) para retomar; `image` é o poster do vídeo da aula (usado no card) e, quando o vídeo não tem poster, cai para a capa do curso (`image_url`), podendo ser `null`. Cursos com 0% ou 100% não aparecem.
 
 ### GET /api/v1/me/courses/{course}/documents/{document}
 Baixa (stream) um documento da aula. Exige matrícula no curso (403). 404 se o documento não pertence ao curso ou o arquivo não existe no disco. Se o documento for um **link** (`url`), responde com `302` redirecionando para a URL externa.
