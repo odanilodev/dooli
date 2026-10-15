@@ -86,10 +86,13 @@
           <FilePicker
             accept="image/png,image/jpeg,image/webp"
             title="Escolher imagem"
-            hint="ou arraste e solte · 2560×800 (16:5) · PNG/JPG/WebP · até 4 MB"
+            hint="ou arraste e solte · PNG/JPG/WebP · até 4 MB"
             :file-name="form.imageFile?.name"
             @change="onImagePicked"
           />
+          <span class="banner-size-hint">
+            Medida recomendada: <strong>2560 × 800 px</strong> (16:5)
+          </span>
         </div>
       </div>
 
@@ -384,4 +387,9 @@ onMounted(load);
   width:88px;height:50px;object-fit:cover;border-radius:8px;border:1px solid var(--border);
   background:#0a1e2a;display:block;
 }
+.banner-size-hint{
+  display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);
+  background:var(--accent-soft);border:1px solid var(--border);border-radius:8px;padding:7px 10px;
+}
+.banner-size-hint strong{color:var(--accent);font-weight:800;}
 </style>
