@@ -8,6 +8,7 @@
     @dragstart.prevent
   >
     <div
+      ref="trackEl"
       class="hero-track"
       :class="{ 'no-transition': noTransition, 'is-dragging': dragging }"
       :style="trackStyle"
@@ -74,6 +75,7 @@ const loopSlides = computed(() => {
   return [slides.value[count.value - 1], ...slides.value, slides.value[0]];
 });
 
+const trackEl = ref(null);
 const position = ref(0);
 const noTransition = ref(true);
 
@@ -221,6 +223,10 @@ function jumpTo(target) {
   noTransition.value = true;
   position.value = target;
   nextTick(() => {
+    // Force the browser to commit the "no transition" state together with the
+    // repositioned track before re-enabling the transition; otherwise the
+    // wrap-around is animated and the carousel visibly rewinds to the start.
+    void trackEl.value?.offsetWidth;
     noTransition.value = false;
   });
 }
