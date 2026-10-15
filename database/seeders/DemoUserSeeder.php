@@ -32,6 +32,22 @@ class DemoUserSeeder extends Seeder
             ],
         );
 
+        // Platform super admin: keeps the admin user type (full admin powers)
+        // plus the extra, non-mass-assignable is_super_admin flag.
+        $superAdmin = User::query()->updateOrCreate(
+            ['email' => 'super@cursos.test'],
+            [
+                'name' => 'Super Administrador',
+                'username' => 'super',
+                'password' => Hash::make('password'),
+                'status' => GeneralStatus::Active->value,
+                'company_id' => $company->id,
+                'user_type_id' => $adminType->id,
+            ],
+        );
+
+        $superAdmin->forceFill(['is_super_admin' => true])->save();
+
         User::query()->updateOrCreate(
             ['email' => 'instrutor@cursos.test'],
             [

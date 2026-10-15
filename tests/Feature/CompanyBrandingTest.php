@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Company;
 use App\Models\CompanySetting;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -14,22 +15,25 @@ class CompanyBrandingTest extends TestCase
 {
     use BuildsTenant, RefreshDatabase;
 
+    private User $superAdmin;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->buildTenant();
+        $this->superAdmin = $this->makeSuperAdmin();
         Storage::fake('public');
     }
 
     private function adminToken(): string
     {
-        return $this->apiLogin($this->admin);
+        return $this->apiLogin($this->superAdmin);
     }
 
     public function test_admin_can_view_branding_settings(): void
     {
         $this->withToken($this->adminToken())
-            ->getJson('/api/v1/admin/company/settings')
+            ->getJson("/api/v1/admin/companies/{$this->company->id}/settings")
             ->assertOk()
             ->assertJsonPath('data.primary_color', null)
             ->assertJsonPath('data.logo', null)
@@ -39,7 +43,7 @@ class CompanyBrandingTest extends TestCase
     public function test_admin_can_update_the_primary_color(): void
     {
         $this->withToken($this->adminToken())
-            ->putJson('/api/v1/admin/company/settings', ['primary_color' => '#ff8800'])
+            ->putJson("/api/v1/admin/companies/{$this->company->id}/settings", ['primary_color' => '#ff8800'])
             ->assertOk()
             ->assertJsonPath('data.primary_color', '#ff8800');
 
@@ -53,7 +57,7 @@ class CompanyBrandingTest extends TestCase
     public function test_admin_can_upload_a_logo_and_replace_it(): void
     {
         $response = $this->withToken($this->adminToken())
-            ->post('/api/v1/admin/company/settings', [
+            ->post("/api/v1/admin/companies/{$this->company->id}/settings", [
                 '_method' => 'PUT',
                 'logo' => UploadedFile::fake()->image('logo.png', 240, 80),
             ])
@@ -69,7 +73,7 @@ class CompanyBrandingTest extends TestCase
         $this->assertSame(Storage::disk('public')->url($first), $response->json('data.logo_url'));
 
         $this->withToken($this->adminToken())
-            ->post('/api/v1/admin/company/settings', [
+            ->post("/api/v1/admin/companies/{$this->company->id}/settings", [
                 '_method' => 'PUT',
                 'logo' => UploadedFile::fake()->image('logo2.png', 240, 80),
             ])
@@ -94,7 +98,7 @@ class CompanyBrandingTest extends TestCase
         ]);
 
         $this->withToken($this->adminToken())
-            ->putJson('/api/v1/admin/company/settings', ['primary_color' => null])
+            ->putJson("/api/v1/admin/companies/{$this->company->id}/settings", ['primary_color' => null])
             ->assertOk()
             ->assertJsonPath('data.primary_color', null);
 
@@ -119,7 +123,7 @@ class CompanyBrandingTest extends TestCase
         ]);
 
         $this->withToken($this->adminToken())
-            ->putJson('/api/v1/admin/company/settings', ['primary_color' => null])
+            ->putJson("/api/v1/admin/companies/{$this->company->id}/settings", ['primary_color' => null])
             ->assertOk()
             ->assertJsonPath('data.primary_color', null)
             ->assertJsonPath('data.logo', 'branding/1/logo.png')
@@ -129,7 +133,7 @@ class CompanyBrandingTest extends TestCase
     public function test_primary_color_must_be_a_valid_hex(): void
     {
         $this->withToken($this->adminToken())
-            ->putJson('/api/v1/admin/company/settings', ['primary_color' => 'verde'])
+            ->putJson("/api/v1/admin/companies/{$this->company->id}/settings", ['primary_color' => 'verde'])
             ->assertStatus(422)
             ->assertJsonValidationErrors('primary_color');
     }
@@ -137,7 +141,7 @@ class CompanyBrandingTest extends TestCase
     public function test_logo_must_be_a_valid_image(): void
     {
         $this->withToken($this->adminToken())
-            ->post('/api/v1/admin/company/settings', [
+            ->post("/api/v1/admin/companies/{$this->company->id}/settings", [
                 '_method' => 'PUT',
                 'logo' => UploadedFile::fake()->create('arquivo.txt', 1, 'text/plain'),
             ])
@@ -148,8 +152,35 @@ class CompanyBrandingTest extends TestCase
     public function test_students_cannot_manage_company_settings(): void
     {
         $this->withToken($this->apiLogin($this->student))
-            ->getJson('/api/v1/admin/company/settings')
+            ->getJson("/api/v1/admin/companies/{$this->company->id}/settings")
             ->assertForbidden();
+    }
+
+    public function test_super_admin_can_manage_another_company_branding(): void
+    {
+        $other = Company::factory()->create();
+
+        CompanySetting::query()->create([
+            'company_id' => $other->id,
+            'name' => 'primary_color',
+            'value' => '#111111',
+        ]);
+
+        $this->withToken($this->adminToken())
+            ->putJson("/api/v1/admin/companies/{$other->id}/settings", ['primary_color' => '#abcdef'])
+            ->assertOk()
+            ->assertJsonPath('data.primary_color', '#abcdef');
+
+        $this->assertDatabaseHas('company_settings', [
+            'company_id' => $other->id,
+            'name' => 'primary_color',
+            'value' => '#abcdef',
+        ]);
+
+        $this->assertDatabaseMissing('company_settings', [
+            'company_id' => $this->company->id,
+            'name' => 'primary_color',
+        ]);
     }
 
     public function test_public_branding_endpoint_returns_the_tenant_settings(): void

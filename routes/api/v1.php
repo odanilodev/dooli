@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Admin\AttachmentController as AdminAttachmentCon
 use App\Http\Controllers\Api\V1\Admin\BannerController as AdminBannerController;
 use App\Http\Controllers\Api\V1\Admin\CertificateController as AdminCertificateController;
 use App\Http\Controllers\Api\V1\Admin\CommentController as AdminCommentController;
+use App\Http\Controllers\Api\V1\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Api\V1\Admin\CompanySettingController as AdminCompanySettingController;
 use App\Http\Controllers\Api\V1\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Api\V1\Admin\CourseController as AdminCourseController;
@@ -155,8 +156,12 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::get('reports/activity', [AdminReportController::class, 'activity']);
         Route::get('reports/export', [AdminReportController::class, 'export']);
 
-        Route::get('company/settings', [AdminCompanySettingController::class, 'show']);
-        Route::put('company/settings', [AdminCompanySettingController::class, 'update']);
+        Route::middleware('super.admin')->group(function () {
+            Route::get('companies/{company}/settings', [AdminCompanySettingController::class, 'show']);
+            Route::put('companies/{company}/settings', [AdminCompanySettingController::class, 'update']);
+
+            Route::apiResource('companies', AdminCompanyController::class)->only(['index', 'store', 'show', 'update']);
+        });
 
         Route::apiResource('courses', AdminCourseController::class);
         Route::post('courses/{course}/publish', [AdminCourseController::class, 'publish']);
@@ -195,7 +200,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::apiResource('users', AdminUserController::class);
         Route::post('users/bulk', [AdminUserController::class, 'bulk']);
         Route::apiResource('user-types', AdminUserTypeController::class);
-        Route::apiResource('menus', AdminMenuController::class);
+        Route::apiResource('menus', AdminMenuController::class)->middleware('super.admin');
 
         Route::apiResource('coupons', AdminCouponController::class);
         Route::apiResource('store-products', AdminStoreProductController::class);

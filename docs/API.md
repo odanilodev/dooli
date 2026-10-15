@@ -284,6 +284,7 @@ Lista notificações do aluno. `POST /api/v1/me/notifications/{notification}/rea
 ## Área administrativa (`role:admin`)
 
 Prefixo: `/api/v1/admin`. Todas exigem Bearer + role `admin` + rate limit `admin`.
+Alguns recursos são restritos a **super admin** (ver seção *Super admin* abaixo).
 
 ### Cursos (`courses`)
 `GET/POST /courses`, `GET/PUT/PATCH/DELETE /courses/{course}`.
@@ -380,6 +381,25 @@ CRUD dos templates por curso (`name`, `title`, `course_id`, `grade`, `version`, 
 
 ### Notificações (`notifications`)
 `GET /notifications`, `GET /notifications/{notification}`.
+
+---
+
+## Super admin
+
+O super admin é o usuário com a flag `users.is_super_admin = true` (mantém `user_type = admin`, então herda todo o acesso administrativo normal). A flag **não** é mass-assignable: só é concedida por seeder ou pelo bootstrap de empresa. Ela é exposta em leitura (`/auth/me`, resources de usuário).
+
+> **UI do super admin:** para reduzir ruído, o menu lateral do super admin mostra apenas **Empresas**, **Menus** e **Conta** (Meu perfil, Configurações) — a identidade visual por empresa fica dentro de Empresas. As páginas de empresa (`/admin/cursos`, `/admin/turmas`, `/admin/videos`, `/admin/usuarios` etc.) são bloqueadas por rota no frontend e redirecionam para Empresas. Isso é uma limitação de **interface**: no backend o super admin continua sendo admin.
+
+Recursos restritos a super admin (middleware `super.admin` + policies; um admin comum recebe **403**):
+
+- **Menus**: `GET/POST /admin/menus`, `GET/PUT/DELETE /admin/menus/{menu}` — config global de menus da plataforma.
+- **Tema (identidade visual, por empresa)**: `GET/PUT /admin/companies/{company}/settings` — cor primária e logo **de uma empresa específica** (editáveis na página Empresas). Cada empresa tem sua própria cor/logo.
+- **Empresas**:
+  - `GET /admin/companies` — lista/pagina empresas (busca por `name`, filtro `status`).
+  - `POST /admin/companies` — cria a empresa e faz o bootstrap: tipos de usuário padrão (`admin`, `instructor`, `student`) + o primeiro admin. Campos: `name`, `status?`, `admin_name`, `admin_username`, `admin_email`, `admin_password`.
+  - `GET /admin/companies/{company}`, `PUT /admin/companies/{company}` (`name`, `status`).
+
+> Um admin comum continua gerenciando o resto (cursos, módulos, aulas, turmas, usuários, tipos de usuário, vídeos, documentos, banners, relatórios...).
 
 ---
 

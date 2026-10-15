@@ -27,6 +27,7 @@ import AdminReportsView from '../views/AdminReportsView.vue';
 import AdminUsersView from '../views/AdminUsersView.vue';
 import AdminUserTypesView from '../views/AdminUserTypesView.vue';
 import AdminMenusView from '../views/AdminMenusView.vue';
+import AdminCompaniesView from '../views/AdminCompaniesView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
 import ForgotPasswordView from '../views/ForgotPasswordView.vue';
@@ -62,7 +63,8 @@ const routes = [
       { path: 'admin/banners', name: 'admin-banners', component: AdminBannersView, meta: { title: 'Banners (admin)', requiresAdminMenu: true } },
       { path: 'admin/usuarios', name: 'admin-usuarios', component: AdminUsersView, meta: { title: 'Usuários (admin)', requiresAdmin: true } },
       { path: 'admin/tipos-de-usuario', name: 'admin-tipos-de-usuario', component: AdminUserTypesView, meta: { title: 'Tipos de usuário (admin)', requiresAdmin: true } },
-      { path: 'admin/menus', name: 'admin-menus', component: AdminMenusView, meta: { title: 'Menus (admin)', requiresAdmin: true } },
+      { path: 'admin/menus', name: 'admin-menus', component: AdminMenusView, meta: { title: 'Menus (admin)', requiresSuperAdmin: true } },
+      { path: 'admin/empresas', name: 'admin-empresas', component: AdminCompaniesView, meta: { title: 'Empresas (admin)', requiresSuperAdmin: true } },
       { path: ':pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { title: 'Página não encontrada' } },
     ],
   },
@@ -141,11 +143,26 @@ router.beforeEach(async (to) => {
     return { name: 'dashboard' };
   }
 
+  // A platform super admin only manages companies and the global menu config.
+  const SUPER_ADMIN_ROUTES = new Set(['admin-empresas', 'admin-menus']);
+
+  if (
+    auth.isSuperAdmin &&
+    typeof to.name === 'string' &&
+    ((to.name.startsWith('admin-') && !SUPER_ADMIN_ROUTES.has(to.name)) || to.name === 'dashboard')
+  ) {
+    return { name: 'admin-empresas' };
+  }
+
   if (to.meta?.requiresAdmin && !auth.isAdmin) {
     return { name: 'dashboard' };
   }
 
   if (to.meta?.requiresAdminMenu && !auth.canAccessAdmin) {
+    return { name: 'dashboard' };
+  }
+
+  if (to.meta?.requiresSuperAdmin && !auth.isSuperAdmin) {
     return { name: 'dashboard' };
   }
 

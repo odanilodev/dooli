@@ -21,6 +21,7 @@ class CompanySettingRepository extends BaseRepository
     public function all(int $companyId): array
     {
         return $this->query()
+            ->withoutGlobalScope('company')
             ->where('company_id', $companyId)
             ->get()
             ->mapWithKeys(fn (CompanySetting $setting) => [$setting->name => $setting->value])
@@ -30,6 +31,7 @@ class CompanySettingRepository extends BaseRepository
     public function get(int $companyId, string $name, mixed $default = null): mixed
     {
         $setting = $this->query()
+            ->withoutGlobalScope('company')
             ->where('company_id', $companyId)
             ->where('name', $name)
             ->first();
@@ -39,9 +41,11 @@ class CompanySettingRepository extends BaseRepository
 
     public function put(int $companyId, string $name, ?string $value): CompanySetting
     {
-        return $this->query()->updateOrCreate(
-            ['company_id' => $companyId, 'name' => $name],
-            ['value' => $value],
-        );
+        return $this->query()
+            ->withoutGlobalScope('company')
+            ->updateOrCreate(
+                ['company_id' => $companyId, 'name' => $name],
+                ['value' => $value],
+            );
     }
 }

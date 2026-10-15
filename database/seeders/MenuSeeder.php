@@ -22,6 +22,7 @@ class MenuSeeder extends Seeder
         ['Banners', '/admin/banners', 'banners'],
         ['Plataformas de vídeo', '/admin/video-platforms', 'video-platforms'],
         ['Menus', '/admin/menus', 'menu'],
+        ['Empresas', '/admin/empresas', 'company'],
         ['Usuários', '/admin/usuarios', 'users'],
         ['Tipos de usuário', '/admin/tipos-de-usuario', 'user-types'],
     ];

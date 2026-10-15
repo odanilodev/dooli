@@ -81,6 +81,7 @@ const FALLBACK_MENU = [
       { id: 'fb-banners', name: 'Banners', type: 'link', depth: 1, link: '/admin/banners', icon: 'banners' },
       { id: 'fb-video-platforms', name: 'Plataformas de vídeo', type: 'link', depth: 1, link: '/admin/video-platforms', icon: 'video-platforms' },
       { id: 'fb-menus', name: 'Menus', type: 'link', depth: 1, link: '/admin/menus', icon: 'menu' },
+      { id: 'fb-companies', name: 'Empresas', type: 'link', depth: 1, link: '/admin/empresas', icon: 'company' },
       { id: 'fb-users', name: 'Usuários', type: 'link', depth: 1, link: '/admin/usuarios', icon: 'users' },
       { id: 'fb-user-types', name: 'Tipos de usuário', type: 'link', depth: 1, link: '/admin/tipos-de-usuario', icon: 'user-types' },
     ],
@@ -102,17 +103,35 @@ const FALLBACK_MENU = [
 const menuTree = computed(() => {
   const base = menus.tree.length ? menus.tree : FALLBACK_MENU;
 
-  return auth.isAdmin ? base : filterAdminOnly(base);
+  if (auth.isSuperAdmin) {
+    return filterOnlyLinks(base, SUPER_ADMIN_ALLOWED_LINKS);
+  }
+
+  return filterLinks(base, auth.isAdmin ? SUPER_ADMIN_ONLY_LINKS : ADMIN_ONLY_LINKS);
 });
 
-const ADMIN_ONLY_LINKS = ['/admin/menus', '/admin/usuarios', '/admin/tipos-de-usuario'];
+const SUPER_ADMIN_ONLY_LINKS = ['/admin/menus', '/admin/empresas'];
+const ADMIN_ONLY_LINKS = [...SUPER_ADMIN_ONLY_LINKS, '/admin/usuarios', '/admin/tipos-de-usuario'];
 
-function filterAdminOnly(nodes) {
+// A platform super admin only manages companies and the global menu config.
+const SUPER_ADMIN_ALLOWED_LINKS = ['/admin/empresas', '/admin/menus', '/perfil', '/configuracoes'];
+
+function filterOnlyLinks(nodes, allowed) {
   return nodes
-    .filter((node) => !ADMIN_ONLY_LINKS.includes(node.link))
+    .filter((node) => (node.link ? allowed.includes(node.link) : true))
     .map((node) => ({
       ...node,
-      children: node.children ? filterAdminOnly(node.children) : [],
+      children: node.children ? filterOnlyLinks(node.children, allowed) : [],
+    }))
+    .filter((node) => node.link || (node.children && node.children.length));
+}
+
+function filterLinks(nodes, blocked) {
+  return nodes
+    .filter((node) => !blocked.includes(node.link))
+    .map((node) => ({
+      ...node,
+      children: node.children ? filterLinks(node.children, blocked) : [],
     }))
     .filter((node) => !['section', 'dropdown'].includes(node.type) || (node.children && node.children.length));
 }

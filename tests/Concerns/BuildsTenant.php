@@ -129,4 +129,19 @@ trait BuildsTenant
     {
         return $user->createToken('test')->plainTextToken;
     }
+
+    /**
+     * Creates a platform super admin (admin user type + is_super_admin flag).
+     */
+    protected function makeSuperAdmin(): User
+    {
+        $user = User::factory()->create([
+            'company_id' => $this->company->id,
+            'user_type_id' => $this->admin->user_type_id,
+        ]);
+
+        $user->forceFill(['is_super_admin' => true])->save();
+
+        return $user;
+    }
 }

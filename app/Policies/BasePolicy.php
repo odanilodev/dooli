@@ -12,6 +12,11 @@ abstract class BasePolicy
         return $user->hasRole(UserTypeCode::Admin->value);
     }
 
+    protected function isSuperAdmin(User $user): bool
+    {
+        return $user->isSuperAdmin();
+    }
+
     protected function isStaff(User $user): bool
     {
         return $user->hasRole(UserTypeCode::Admin->value, UserTypeCode::Instructor->value);

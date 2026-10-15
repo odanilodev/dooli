@@ -47,6 +47,13 @@ class UserRepository extends BaseRepository
             $query->whereDoesntHave('teams', fn (Builder $q) => $q->whereKey((int) $excludeTeamId));
         }
 
+        $excludeSuperAdmins = $filters['exclude_super_admins'] ?? null;
+        unset($filters['exclude_super_admins']);
+
+        if ($excludeSuperAdmins) {
+            $query->where('is_super_admin', false);
+        }
+
         parent::applyFilters($query, $filters);
     }
 }

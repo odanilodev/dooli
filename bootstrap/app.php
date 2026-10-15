@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureCompanyContext;
+use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\SetCompanyContext;
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'company.required' => EnsureCompanyContext::class,
             'role' => EnsureUserHasRole::class,
             'admin.access' => EnsureAdminAccess::class,
+            'super.admin' => EnsureSuperAdmin::class,
             'active' => EnsureUserIsActive::class,
         ]);
 

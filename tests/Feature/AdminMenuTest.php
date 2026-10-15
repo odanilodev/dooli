@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Menu;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
@@ -11,10 +12,13 @@ class AdminMenuTest extends TestCase
 {
     use BuildsTenant, RefreshDatabase;
 
+    private User $superAdmin;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->buildTenant();
+        $this->superAdmin = $this->makeSuperAdmin();
     }
 
     private function makeMenu(array $attributes = []): Menu
@@ -33,7 +37,7 @@ class AdminMenuTest extends TestCase
         $this->makeMenu(['name' => 'Dashboard', 'sort_order' => 1]);
         $this->makeMenu(['name' => 'Turmas', 'sort_order' => 2]);
 
-        $this->withToken($this->apiLogin($this->admin))
+        $this->withToken($this->apiLogin($this->superAdmin))
             ->getJson('/api/v1/admin/menus')
             ->assertOk()
             ->assertJsonPath('success', true)
@@ -43,7 +47,7 @@ class AdminMenuTest extends TestCase
 
     public function test_admin_can_create_a_menu(): void
     {
-        $this->withToken($this->apiLogin($this->admin))
+        $this->withToken($this->apiLogin($this->superAdmin))
             ->postJson('/api/v1/admin/menus', [
                 'name' => 'Relatórios',
                 'link' => '/admin/relatorios',
@@ -58,7 +62,7 @@ class AdminMenuTest extends TestCase
 
     public function test_admin_can_create_a_dropdown_item(): void
     {
-        $this->withToken($this->apiLogin($this->admin))
+        $this->withToken($this->apiLogin($this->superAdmin))
             ->postJson('/api/v1/admin/menus', [
                 'name' => 'Financeiro',
                 'type' => 'dropdown',
@@ -71,7 +75,7 @@ class AdminMenuTest extends TestCase
 
     public function test_menu_type_must_be_valid(): void
     {
-        $this->withToken($this->apiLogin($this->admin))
+        $this->withToken($this->apiLogin($this->superAdmin))
             ->postJson('/api/v1/admin/menus', ['name' => 'Estranho', 'type' => 'invalido'])
             ->assertStatus(422)
             ->assertJsonValidationErrors('type');
@@ -81,7 +85,7 @@ class AdminMenuTest extends TestCase
     {
         $parent = $this->makeMenu(['name' => 'Administração', 'link' => null]);
 
-        $this->withToken($this->apiLogin($this->admin))
+        $this->withToken($this->apiLogin($this->superAdmin))
             ->postJson('/api/v1/admin/menus', [
                 'name' => 'Cursos',
                 'sub' => $parent->id,
@@ -95,7 +99,7 @@ class AdminMenuTest extends TestCase
     {
         $menu = $this->makeMenu();
 
-        $this->withToken($this->apiLogin($this->admin))
+        $this->withToken($this->apiLogin($this->superAdmin))
             ->putJson("/api/v1/admin/menus/{$menu->id}", ['name' => 'Renomeado'])
             ->assertOk()
             ->assertJsonPath('data.name', 'Renomeado');
@@ -108,7 +112,7 @@ class AdminMenuTest extends TestCase
         $parent = $this->makeMenu(['name' => 'Administração', 'link' => null]);
         $child = $this->makeMenu(['name' => 'Cursos', 'sub' => (string) $parent->id]);
 
-        $this->withToken($this->apiLogin($this->admin))
+        $this->withToken($this->apiLogin($this->superAdmin))
             ->deleteJson("/api/v1/admin/menus/{$parent->id}")
             ->assertNoContent();
 
@@ -118,7 +122,7 @@ class AdminMenuTest extends TestCase
 
     public function test_menu_requires_a_name(): void
     {
-        $this->withToken($this->apiLogin($this->admin))
+        $this->withToken($this->apiLogin($this->superAdmin))
             ->postJson('/api/v1/admin/menus', ['link' => '/x'])
             ->assertStatus(422)
             ->assertJsonValidationErrors('name');
@@ -126,7 +130,7 @@ class AdminMenuTest extends TestCase
 
     public function test_menu_parent_must_exist(): void
     {
-        $this->withToken($this->apiLogin($this->admin))
+        $this->withToken($this->apiLogin($this->superAdmin))
             ->postJson('/api/v1/admin/menus', ['name' => 'Órfão', 'sub' => 99999])
             ->assertStatus(422)
             ->assertJsonValidationErrors('sub');
@@ -138,7 +142,7 @@ class AdminMenuTest extends TestCase
         $child = $this->makeMenu(['name' => 'B', 'sub' => (string) $parent->id]);
         $grandchild = $this->makeMenu(['name' => 'C', 'sub' => (string) $child->id]);
 
-        $this->withToken($this->apiLogin($this->admin))
+        $this->withToken($this->apiLogin($this->superAdmin))
             ->putJson("/api/v1/admin/menus/{$parent->id}", ['sub' => $grandchild->id])
             ->assertStatus(422)
             ->assertJsonValidationErrors('sub');

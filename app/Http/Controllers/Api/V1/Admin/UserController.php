@@ -31,9 +31,14 @@ class UserController extends ApiController
     {
         $this->authorize('viewAny', User::class);
 
+        $filters = $request->only(['search', 'status', 'user_type_id', 'exclude_team_id', 'sort', 'direction']);
+
+        // Super admins are platform-level and must stay invisible to everyone else.
+        $filters['exclude_super_admins'] = ! $request->user()->isSuperAdmin();
+
         $paginator = $this->users->paginate(
             perPage: $this->perPage($request),
-            filters: $request->only(['search', 'status', 'user_type_id', 'exclude_team_id', 'sort', 'direction']),
+            filters: $filters,
             with: ['userType'],
         );
 
@@ -69,6 +74,10 @@ class UserController extends ApiController
 
         $validated = $request->validated();
 
+        if (! $request->user()->isSuperAdmin()) {
+            $validated['user_ids'] = $this->withoutSuperAdmins($validated['user_ids']);
+        }
+
         $summary = match ($validated['action']) {
             'add-to-teams' => $this->teamService->bulkEnroll($validated['team_ids'], $validated['user_ids'], $validated['expired_at'] ?? null),
             'activate' => $this->userService->bulkSetStatus($validated['user_ids'], GeneralStatus::Active->value),
@@ -101,5 +110,27 @@ class UserController extends ApiController
         $this->users->delete($user);
 
         return ApiResponse::noContent();
+    }
+
+    /**
+     * Removes super admin ids from a bulk payload so non-super-admins can never
+     * act on platform accounts.
+     *
+     * @param  array<int, int>  $ids
+     * @return array<int, int>
+     */
+    private function withoutSuperAdmins(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $superAdminIds = User::query()
+            ->where('is_super_admin', true)
+            ->whereIn('id', $ids)
+            ->pluck('id')
+            ->all();
+
+        return array_values(array_diff($ids, $superAdminIds));
     }
 }

@@ -84,7 +84,8 @@ class AppServiceProvider extends ServiceProvider
             $this->app->bind($repository, $repository);
         }
 
-        Gate::define('viewReports', fn (User $user) => $user->isAdmin());
+        Gate::define('viewReports', fn (User $user) => $user->isAdmin() || $user->isSuperAdmin());
+        Gate::define('manageCompanyBranding', fn (User $user) => $user->isSuperAdmin());
 
         $this->configurePasswordResetUrl();
         $this->configureRateLimiting();

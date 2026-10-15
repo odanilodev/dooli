@@ -32,6 +32,7 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'is_super_admin' => 'boolean',
         ];
     }
 
@@ -107,6 +108,16 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->userType?->code === UserTypeCode::Admin->value;
+    }
+
+    /**
+     * Platform-level administrator. Kept out of the fillable list on purpose so
+     * the flag can only be granted by hardened flows (seeder / company bootstrap),
+     * never through the regular user CRUD mass-assignment.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return (bool) $this->is_super_admin;
     }
 
     public function hasRole(string ...$roles): bool
