@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'code', 'company_id', 'user_id', 'team_id', 'lessons_count',
+    'code', 'company_id', 'user_id', 'team_id', 'lessons_count', 'modules',
     'certificate_id', 'invalidated_at', 'invalidation_reason',
 ])]
 class CertificateUser extends Model
@@ -22,6 +22,7 @@ class CertificateUser extends Model
     {
         return [
             'lessons_count' => 'integer',
+            'modules' => 'array',
             'created_at' => 'datetime',
             'invalidated_at' => 'datetime',
         ];

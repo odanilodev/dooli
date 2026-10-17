@@ -2,6 +2,8 @@
 
 namespace App\Repositories;
 
+use App\Enums\GeneralStatus;
+use App\Models\Lesson;
 use App\Models\Module;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,6 +30,45 @@ class ModuleRepository extends BaseRepository
                 'looseLessons.video', 'looseLessons.document', 'looseLessons.attachments',
             ])
             ->findOrFail($id);
+    }
+
+    /**
+     * Immutable snapshot of the course modules for a certificate.
+     *
+     * When lesson ids are provided, only modules that had completed lessons are
+     * included. This keeps modules added after the student finished the course
+     * out of the certificate, including retroactive issuance.
+     *
+     * @param  array<int, int>  $lessonIds
+     * @return array<int, array{id: int, name: string}>
+     */
+    public function snapshotForCourse(int $courseId, array $lessonIds = []): array
+    {
+        $query = $this->query()
+            ->select(['modules.id', 'modules.name'])
+            ->join('course_modules', 'course_modules.module_id', '=', 'modules.id')
+            ->where('course_modules.course_id', $courseId)
+            ->where('course_modules.status', GeneralStatus::Active->value)
+            ->orderBy('course_modules.sort_order')
+            ->orderBy('modules.name');
+
+        if ($lessonIds !== []) {
+            $moduleIds = Lesson::query()
+                ->whereIn('id', $lessonIds)
+                ->whereNotNull('module_id')
+                ->distinct()
+                ->pluck('module_id')
+                ->all();
+
+            $query->whereIn('modules.id', $moduleIds);
+        }
+
+        return $query->get()
+            ->map(fn (Module $module) => [
+                'id' => (int) $module->id,
+                'name' => (string) $module->name,
+            ])
+            ->all();
     }
 
     /**

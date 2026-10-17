@@ -35,6 +35,13 @@ export const LAYOUT_FIELDS = [
     defaults: { x: 50, y: 52, width: 80, size: 15, align: 'center', bold: false, italic: false, color: null, font: DEFAULT_FONT },
   },
   {
+    key: 'modules',
+    label: 'Módulos do curso',
+    type: 'modules',
+    widthRange: [20, 90],
+    defaults: { x: 50, y: 60, width: 80, size: 9, align: 'center', bold: false, italic: false, color: null, font: DEFAULT_FONT },
+  },
+  {
     key: 'signature',
     label: 'Imagem da assinatura',
     type: 'image',

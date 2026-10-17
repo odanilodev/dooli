@@ -15,6 +15,7 @@ class CertificateUserResource extends JsonResource
             'user_id' => $this->user_id,
             'team_id' => $this->team_id,
             'lessons_count' => $this->lessons_count,
+            'modules' => $this->modules ?? [],
             'certificate' => new CertificateResource($this->whenLoaded('certificate')),
             'user' => new UserResource($this->whenLoaded('user')),
             'team' => new TeamResource($this->whenLoaded('team')),

@@ -342,13 +342,14 @@ CRUD. Campos: `course_id`, `title`, `slug`, `price`, `sale`, `status`, `release_
 - `GET /orders/{order}` — detalhe do pedido (itens, pagamentos, cupom, cliente)
 
 ### Certificados emitidos (`certificate-users`)
-- `GET /certificate-users` — lista os certificados **emitidos** (filtros: `user_id`, `team_id`, `certificate_id`, `course_id`)
+- `GET /certificate-users` — lista os certificados **emitidos** (filtros: `user_id`, `team_id`, `certificate_id`, `course_id`); cada item inclui `modules` com a grade congelada do certificado
 - `POST /certificate-users/{certificateUser}/revoke` — invalida um certificado emitido (`{ "reason": "..." }`)
 > Um certificado emitido é **histórico e permanente**: adicionar/editar/excluir aulas **não** o revoga. A emissão é única por `user+curso+time` (sem reemissão automática) e a **conclusão do aluno vive em `course_completions`** — revogar o certificado **não** desfaz a conclusão.
 > Criar/atualizar um template dispara emissão retroativa (`issuePendingForCourse`) apenas para alunos concluídos que **nunca** receberam certificado; revogados (manual ou automático) nunca são reemitidos.
 > Após revogar, `GET /certificates/{code}/verify` passa a retornar `404`.
 > Comando `php artisan certificates:restore-recalculated [--dry-run]` revalida certificados que foram revogados automaticamente pelo antigo recálculo (motivo `"Novas aulas adicionadas ao curso após a conclusão."`); ignorados os que já tenham certificado válido mais recente e as revogações manuais.
 > Comando `php artisan completions:backfill [--dry-run] [--report-manual]` cria `course_completions` a partir de certificados **válidos** e **invalidados automaticamente**; revogações manuais são apenas listadas para revisão.
+> Comando `php artisan certificates:backfill-modules [--dry-run]` preenche `certificate_users.modules` nos certificados antigos usando as aulas concluídas da conclusão/timeline; módulos criados depois da conclusão não entram.
 
 ### Moderação
 - `GET /comments`, `DELETE /comments/{comment}` — moderação de comentários
@@ -388,8 +389,9 @@ CRUD dos templates por curso (`name`, `title`, `course_id`, `grade`, `version`, 
 - **Visual:** `body` (texto com variáveis `{aluno}`, `{curso}`, `{data}`, `{carga_horaria}`, `{codigo}`), `signatory_name`, `signatory_title` e os uploads `background` (fundo) e `signature` (assinatura).
 - **Uploads:** envie como `multipart/form-data` (`jpg/jpeg/png/webp`, máx. 4 MB). Os arquivos são salvos no disco `public` em `certificates/{company_id}/…` e a resposta expõe `background`/`signature` (caminho) e `background_url`/`signature_url` (URL pública). Ao substituir/excluir, o arquivo antigo é removido.
 - **Versões:** cada linha é uma versão do certificado do curso (a mais recente é a **atual**). Para criar uma nova versão clonando a atual, envie `copy_from` (id do template de origem): as imagens são copiadas para novos arquivos (não compartilhados), e uploads enviados no mesmo request têm precedência.
-- **Layout visual (`layout`):** objeto JSON por campo (`eyebrow`, `title`, `body`, `signature`, `signature_line`, `signatory_name`, `signatory_title`, `code`) com `x`/`y` (0–100, % da arte), `width` (5–100, % da arte; usado em `title`/`body` com padrão 80 e em `signature_line` com padrão 18), `color` (`#rrggbb` ou `null` para o padrão), `font`, `size` (px na largura de referência de 1000px), `align` (`left|center|right`), `bold` e `italic`. No `multipart/form-data`, envie `layout` como string JSON. Campos ausentes usam o layout padrão.
-- A emissão usa o template **mais recente** do curso; a resposta do aluno (`me/certificates`) já inclui os campos visuais e o `layout`.
+- **Layout visual (`layout`):** objeto JSON por campo (`eyebrow`, `title`, `body`, `modules`, `signature`, `signature_line`, `signatory_name`, `signatory_title`, `code`) com `x`/`y` (0–100, % da arte), `width` (5–100, % da arte; usado em `title`/`body`/`modules` com padrão 80 e em `signature_line` com padrão 18), `color` (`#rrggbb` ou `null` para o padrão), `font`, `size` (px na largura de referência de 1000px), `align` (`left|center|right`), `bold` e `italic`. No `multipart/form-data`, envie `layout` como string JSON. Campos ausentes usam o layout padrão. O campo `modules` é a grade do curso: lista numerada em duas colunas, exibida somente quando o certificado emitido possui módulos.
+- A emissão usa o template **mais recente** do curso; a resposta do aluno (`me/certificates`) já inclui os campos visuais, o `layout` e `modules` (fotografia da grade no momento da emissão).
+- A grade `modules` é um array `[{ "id": 1, "name": "Módulo" }]`. Ela é congelada no certificado emitido: módulos criados depois da conclusão/emissão **não** entram. Para certificados antigos, rode `php artisan certificates:backfill-modules [--dry-run]`; o comando usa as aulas concluídas para recuperar a grade histórica.
 
 ### Notificações (`notifications`)
 `GET /notifications`, `GET /notifications/{notification}`.

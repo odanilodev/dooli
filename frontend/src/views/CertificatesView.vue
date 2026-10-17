@@ -39,7 +39,7 @@
           <button class="admin-modal-close" @click="active = null">×</button>
         </div>
 
-        <CertificateCanvas :certificate="active.certificate || {}" :values="valuesFor(active)" :layout="active.certificate?.layout" />
+        <CertificateCanvas :certificate="active.certificate || {}" :values="valuesFor(active)" :modules="active.modules || []" :layout="active.certificate?.layout" />
 
         <div class="admin-modal-actions no-print">
           <button class="btn btn-outline" @click="active = null">Fechar</button>

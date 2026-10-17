@@ -20,7 +20,7 @@
     </div>
 
     <div v-else class="certificate-print-sheet">
-      <CertificateCanvas :certificate="certificate.certificate" :values="values" :layout="certificate.certificate?.layout" />
+      <CertificateCanvas :certificate="certificate.certificate" :values="values" :modules="certificate.modules || []" :layout="certificate.certificate?.layout" />
     </div>
 
   </main>

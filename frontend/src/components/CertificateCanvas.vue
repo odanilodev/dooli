@@ -38,6 +38,15 @@
       <template v-else-if="field.type === 'line'">
         <span class="certificate-signature-line"></span>
       </template>
+      <template v-else-if="field.type === 'modules'">
+        <ol v-if="moduleList.length" class="certificate-modules">
+          <li v-for="(module, index) in moduleList" :key="module.id">
+            <span class="certificate-module-index">{{ index + 1 }}.</span>
+            <span class="certificate-module-name">{{ module.name }}</span>
+          </li>
+        </ol>
+        <span v-else-if="editable" class="certificate-modules-placeholder">Módulos do curso</span>
+      </template>
       <template v-else>
         {{ textFor(field.key) }}
       </template>
@@ -64,6 +73,7 @@ const DEFAULT_BODY = 'Certificamos que {aluno} concluiu com êxito o curso {curs
 const props = defineProps({
   certificate: { type: Object, default: () => ({}) },
   values: { type: Object, default: () => ({}) },
+  modules: { type: Array, default: () => [] },
   layout: { type: Object, default: null },
   editable: { type: Boolean, default: false },
   selected: { type: String, default: null },
@@ -73,7 +83,7 @@ const emit = defineEmits(['select', 'update:layout']);
 
 const fields = LAYOUT_FIELDS;
 const SIZE_HANDLES = ['nw', 'ne', 'sw', 'se'];
-const WRAP_FIELDS = ['title', 'body'];
+const WRAP_FIELDS = ['title', 'body', 'modules'];
 const canvasRef = ref(null);
 const canvasWidth = ref(1000);
 
@@ -82,6 +92,17 @@ let observer = null;
 const layout = computed(() => normalizeLayout(props.layout));
 const scale = computed(() => canvasWidth.value / 1000);
 const hasBackground = computed(() => Boolean(props.certificate?.background_url));
+
+const moduleList = computed(() => {
+  const source = Array.isArray(props.modules) ? props.modules : [];
+
+  return source
+    .map((module, index) => ({
+      id: module?.id ?? `module-${index}`,
+      name: typeof module?.name === 'string' ? module.name.trim() : '',
+    }))
+    .filter((module) => module.name !== '');
+});
 
 const canvasStyle = computed(() => ({
   '--certificate-scale': scale.value,
@@ -135,6 +156,8 @@ function isVisible(field) {
   }
 
   switch (field.key) {
+    case 'modules':
+      return moduleList.value.length > 0;
     case 'signature':
       return Boolean(props.certificate?.signature_url);
     case 'signature_line':
@@ -152,6 +175,8 @@ function isVisible(field) {
 
 function isPlaceholder(key) {
   switch (key) {
+    case 'modules':
+      return moduleList.value.length === 0;
     case 'signature':
       return !props.certificate?.signature_url;
     case 'signatory_name':
@@ -194,11 +219,17 @@ function fieldStyle(field) {
     style.width = `${item.width}%`;
   }
 
-  if (field.type === 'text') {
+  if (field.type === 'text' || field.type === 'modules') {
     style.fontFamily = item.font;
     style.fontSize = `${(item.size * scale.value).toFixed(2)}px`;
     style.fontWeight = item.bold ? 800 : 500;
     style.fontStyle = item.italic ? 'italic' : 'normal';
+  }
+
+  if (field.type === 'modules') {
+    style['--module-justify'] = item.align === 'center'
+      ? 'center'
+      : (item.align === 'right' ? 'flex-end' : 'flex-start');
   }
 
   if (field.type === 'image') {
@@ -494,6 +525,25 @@ onBeforeUnmount(() => {
 .certificate-signature-line{
   display:block;width:100%;
   border-top:1px solid currentColor;opacity:.5;
+}
+
+.certificate-modules{
+  margin:0;padding:0;list-style:none;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:calc(2px * var(--certificate-scale)) calc(18px * var(--certificate-scale));
+  text-align:inherit;
+}
+.certificate-modules li{
+  display:flex;min-width:0;gap:calc(4px * var(--certificate-scale));
+  justify-content:var(--module-justify,flex-start);
+  line-height:1.35;break-inside:avoid;
+}
+.certificate-module-index{opacity:.6;font-variant-numeric:tabular-nums;}
+.certificate-module-name{min-width:0;overflow-wrap:anywhere;}
+.certificate-modules-placeholder{
+  display:inline-block;border:1px dashed currentColor;border-radius:8px;
+  padding:calc(6px * var(--certificate-scale)) calc(10px * var(--certificate-scale));
+  font-size:inherit;letter-spacing:.08em;text-transform:uppercase;
 }
 
 .certificate-resize-handle{

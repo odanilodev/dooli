@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Enums\GeneralStatus;
 use App\Models\Certificate;
+use App\Models\CertificateUser;
 use App\Models\Company;
 use App\Models\Course;
 use App\Models\Lesson;
@@ -67,6 +69,132 @@ class AdminCertificateTest extends TestCase
             ->assertOk();
 
         return $team;
+    }
+
+    private function completeLessonInCourse(Course $course, Team $team, Lesson $lesson): void
+    {
+        $this->withToken($this->apiLogin($this->student))
+            ->postJson('/api/v1/me/progress/complete', [
+                'lesson_id' => $lesson->id,
+                'course_id' => $course->id,
+                'team_id' => $team->id,
+                'module_id' => $lesson->module_id,
+            ])
+            ->assertOk();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function studentCertificates(): array
+    {
+        return $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/certificates')
+            ->assertOk()
+            ->json('data');
+    }
+
+    public function test_issued_certificate_snapshots_course_modules(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $secondModule = Module::factory()->create([
+            'company_id' => $this->company->id,
+            'status' => GeneralStatus::Active->value,
+        ]);
+        $secondLesson = $this->buildModuleLesson($this->company->id, $secondModule);
+        $course['course']->modules()->attach($secondModule->id, [
+            'company_id' => $this->company->id,
+            'status' => GeneralStatus::Active->value,
+            'sort_order' => 1,
+        ]);
+
+        $team = $this->enroll($this->student, $course['course'], $this->company->id);
+        $this->completeLessonInCourse($course['course'], $team, $course['lesson']);
+        $this->completeLessonInCourse($course['course'], $team, $secondLesson);
+
+        $modules = $this->studentCertificates()[0]['modules'];
+
+        $this->assertSame([$course['module']->name, $secondModule->name], array_column($modules, 'name'));
+
+        $newModule = Module::factory()->create([
+            'company_id' => $this->company->id,
+            'status' => GeneralStatus::Active->value,
+        ]);
+        $this->buildModuleLesson($this->company->id, $newModule);
+        $course['course']->modules()->attach($newModule->id, [
+            'company_id' => $this->company->id,
+            'status' => GeneralStatus::Active->value,
+            'sort_order' => 2,
+        ]);
+
+        $this->assertSame($modules, $this->studentCertificates()[0]['modules']);
+    }
+
+    public function test_retroactive_certificate_uses_modules_completed_before_the_new_module(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        Certificate::query()->where('course_id', $course['course']->id)->delete();
+
+        $team = $this->enroll($this->student, $course['course'], $this->company->id);
+        $this->completeLessonInCourse($course['course'], $team, $course['lesson']);
+
+        $newModule = Module::factory()->create([
+            'company_id' => $this->company->id,
+            'status' => GeneralStatus::Active->value,
+        ]);
+        $this->buildModuleLesson($this->company->id, $newModule);
+        $course['course']->modules()->attach($newModule->id, [
+            'company_id' => $this->company->id,
+            'status' => GeneralStatus::Active->value,
+            'sort_order' => 1,
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course['course']->id,
+            ])
+            ->assertCreated();
+
+        $issued = $this->withToken($this->apiLogin($this->admin))
+            ->getJson('/api/v1/admin/certificate-users')
+            ->assertOk()
+            ->json('data.0');
+
+        $this->assertSame([$course['module']->name], array_column($issued['modules'], 'name'));
+    }
+
+    public function test_backfill_fills_module_snapshot_without_new_modules(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $team = $this->enroll($this->student, $course['course'], $this->company->id);
+
+        $this->completeLessonInCourse($course['course'], $team, $course['lesson']);
+
+        $issued = CertificateUser::query()->firstOrFail();
+        $issued->forceFill(['modules' => null])->save();
+
+        $newModule = Module::factory()->create([
+            'company_id' => $this->company->id,
+            'status' => GeneralStatus::Active->value,
+        ]);
+        $this->buildModuleLesson($this->company->id, $newModule);
+        $course['course']->modules()->attach($newModule->id, [
+            'company_id' => $this->company->id,
+            'status' => GeneralStatus::Active->value,
+            'sort_order' => 1,
+        ]);
+
+        $this->artisan('certificates:backfill-modules', ['--dry-run' => true])->assertSuccessful();
+        $this->assertNull($issued->fresh()->modules);
+
+        $this->artisan('certificates:backfill-modules')->assertSuccessful();
+
+        $this->assertSame(
+            [$course['module']->name],
+            array_column($issued->fresh()->modules, 'name'),
+        );
     }
 
     public function test_admin_can_list_issued_certificates(): void
@@ -297,6 +425,11 @@ class AdminCertificateTest extends TestCase
                         'bold' => true,
                         'italic' => false,
                     ],
+                    'modules' => [
+                        'x' => 50,
+                        'y' => 60,
+                        'width' => 70,
+                    ],
                     'signature_line' => [
                         'x' => 50,
                         'y' => 74,
@@ -317,6 +450,7 @@ class AdminCertificateTest extends TestCase
         $this->assertEquals(65.0, $certificate->layout['title']['width']);
         $this->assertSame('#112233', $certificate->layout['title']['color']);
         $this->assertSame('Lora', $certificate->layout['title']['font']);
+        $this->assertEquals(70.0, $certificate->layout['modules']['width']);
         $this->assertEquals(40.0, $certificate->layout['signature_line']['width']);
         $this->assertSame('right', $certificate->layout['code']['align']);
         $this->assertEquals(96.0, $certificate->layout['code']['x']);

@@ -127,6 +127,7 @@
           <CertificateCanvas
             :certificate="previewCertificate"
             :values="previewValues"
+            :modules="previewModules"
             :layout="layout"
             editable
             :selected="selectedField"
@@ -153,14 +154,14 @@
               </div>
 
               <div class="certificate-layout-grid">
-                <div v-if="selectedFieldMeta.type === 'text'" class="form-group">
+                <div v-if="['text', 'modules'].includes(selectedFieldMeta.type)" class="form-group">
                   <label>Fonte</label>
                   <select class="form-control" :value="currentField.font" @change="updateField('font', $event.target.value)">
                     <option v-for="font in fontOptions" :key="font.value" :value="font.value">{{ font.label }}</option>
                   </select>
                 </div>
 
-                <div v-if="selectedFieldMeta.type === 'text'" class="form-group">
+                <div v-if="['text', 'modules'].includes(selectedFieldMeta.type)" class="form-group">
                   <label>Tamanho (px)</label>
                   <input
                     type="number"
@@ -221,7 +222,7 @@
                   </select>
                 </div>
 
-                <div v-if="selectedFieldMeta.type === 'text'" class="form-group">
+                <div v-if="['text', 'modules'].includes(selectedFieldMeta.type)" class="form-group">
                   <label>Estilo</label>
                   <div class="certificate-style-toggles">
                     <button
@@ -443,6 +444,8 @@ const selectedField = ref(null);
 const fontOptions = FONT_OPTIONS;
 const selectedFieldMeta = computed(() => (selectedField.value ? layoutField(selectedField.value) : null));
 const currentField = computed(() => (selectedField.value ? layout.value[selectedField.value] : null));
+const previewModules = ref([]);
+let previewModulesRequest = 0;
 
 const cropFile = ref(null);
 const cropTarget = ref(null);
@@ -522,6 +525,8 @@ function resetForm() {
   copyFromId.value = null;
   layout.value = normalizeLayout(null);
   selectedField.value = null;
+  previewModulesRequest++;
+  previewModules.value = [];
   closeCrop();
 }
 
@@ -606,6 +611,43 @@ async function loadCourses(term = '') {
     courseOptions.value = [];
   } finally {
     loadingCourses.value = false;
+  }
+}
+
+async function loadPreviewModules(courseId) {
+  const id = Number(courseId);
+  const requestId = ++previewModulesRequest;
+
+  if (!id) {
+    previewModules.value = [];
+
+    return;
+  }
+
+  if (scopedCourse.value?.id === id && Array.isArray(scopedCourse.value.modules)) {
+    previewModules.value = scopedCourse.value.modules.map((module) => ({
+      id: module.id,
+      name: module.name,
+    }));
+
+    return;
+  }
+
+  try {
+    const { data } = await api.get(`/admin/courses/${id}`);
+
+    if (requestId !== previewModulesRequest) {
+      return;
+    }
+
+    previewModules.value = (data.data?.modules ?? []).map((module) => ({
+      id: module.id,
+      name: module.name,
+    }));
+  } catch (e) {
+    if (requestId === previewModulesRequest) {
+      previewModules.value = [];
+    }
   }
 }
 
@@ -942,6 +984,10 @@ async function confirmRevoke() {
     revoking.value = false;
   }
 }
+
+watch(() => form.course_id, (courseId) => {
+  loadPreviewModules(courseId);
+});
 
 onMounted(async () => {
   if (isScoped.value) {

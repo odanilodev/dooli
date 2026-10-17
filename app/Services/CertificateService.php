@@ -14,6 +14,7 @@ use App\Repositories\CertificateRepository;
 use App\Repositories\CertificateUserRepository;
 use App\Repositories\CourseCompletionRepository;
 use App\Repositories\LessonRepository;
+use App\Repositories\ModuleRepository;
 use App\Repositories\TimelineRepository;
 use App\Support\CompanyContext;
 use App\Support\ImageStorage;
@@ -27,7 +28,7 @@ class CertificateService
      * @var list<string>
      */
     private const LAYOUT_FIELDS = [
-        'eyebrow', 'title', 'body', 'signature', 'signature_line',
+        'eyebrow', 'title', 'body', 'modules', 'signature', 'signature_line',
         'signatory_name', 'signatory_title', 'code',
     ];
 
@@ -40,6 +41,7 @@ class CertificateService
         private readonly CertificateRepository $certificates,
         private readonly CertificateUserRepository $certificateUsers,
         private readonly LessonRepository $lessons,
+        private readonly ModuleRepository $modules,
         private readonly TimelineRepository $timeline,
         private readonly ActionRepository $actions,
         private readonly CourseCompletionRepository $completions,
@@ -185,6 +187,10 @@ class CertificateService
                 'team_id' => $teamId,
                 'certificate_id' => $certificate->id,
                 'lessons_count' => (int) $completion->required_lessons,
+                'modules' => $this->modules->snapshotForCourse(
+                    $courseId,
+                    (array) ($completion->lesson_ids ?? []),
+                ),
             ]);
 
             $issued++;
@@ -228,6 +234,10 @@ class CertificateService
             'team_id' => $teamId,
             'certificate_id' => $certificate->id,
             'lessons_count' => $total,
+            'modules' => $this->modules->snapshotForCourse(
+                $courseId,
+                (array) ($completion?->lesson_ids ?? []),
+            ),
         ]);
 
         $this->audit->log('certificate', 'issue', 'certificate_user', "Certificado emitido para user {$user->id}", $user->id);
@@ -327,7 +337,7 @@ class CertificateService
             $width = is_numeric($entry['width'] ?? null) ? (float) $entry['width'] : null;
             $size = is_numeric($entry['size'] ?? null) ? round((float) $entry['size'], 1) : 12.0;
 
-            if (in_array($field, ['title', 'body'], true)) {
+            if (in_array($field, ['title', 'body', 'modules'], true)) {
                 $width = $width === null ? 80.0 : max(20, min(90, $width));
             } elseif ($field === 'signature_line') {
                 $width = $width === null ? 18.0 : max(5, min(90, $width));
