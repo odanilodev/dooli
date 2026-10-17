@@ -17,6 +17,13 @@ class CertificateResource extends JsonResource
             'version' => $this->version,
             'time' => $this->time,
             'course_id' => $this->course_id,
+            'background' => $this->background,
+            'background_url' => $this->backgroundUrl(),
+            'signature' => $this->signature,
+            'signature_url' => $this->signatureUrl(),
+            'body' => $this->body,
+            'signatory_name' => $this->signatory_name,
+            'signatory_title' => $this->signatory_title,
             'course' => new CourseResource($this->whenLoaded('course')),
         ];
     }

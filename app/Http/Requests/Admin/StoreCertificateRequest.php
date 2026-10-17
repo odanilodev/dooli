@@ -22,7 +22,13 @@ class StoreCertificateRequest extends FormRequest
             'course_id' => ['required', 'integer', $this->companyExists('courses')],
             'grade' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'version' => ['nullable', 'string', 'max:50'],
+            'copy_from' => ['nullable', 'integer', $this->companyExists('certificates')],
             'time' => ['sometimes', 'integer', 'min:0'],
+            'background' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'signature' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'body' => ['nullable', 'string', 'max:5000'],
+            'signatory_name' => ['nullable', 'string', 'max:255'],
+            'signatory_title' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

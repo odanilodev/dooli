@@ -1,0 +1,32 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('certificates', function (Blueprint $table) {
+            $table->string('background')->nullable()->after('time');
+            $table->string('signature')->nullable()->after('background');
+            $table->text('body')->nullable()->after('signature');
+            $table->string('signatory_name')->nullable()->after('body');
+            $table->string('signatory_title')->nullable()->after('signatory_name');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('certificates', function (Blueprint $table) {
+            $table->dropColumn([
+                'background',
+                'signature',
+                'body',
+                'signatory_name',
+                'signatory_title',
+            ]);
+        });
+    }
+};

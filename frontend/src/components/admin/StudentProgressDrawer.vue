@@ -21,11 +21,13 @@
           </div>
 
           <div class="report-kpis-inline">
+            <span v-if="item.is_course_completed" class="status-pill active">Concluído</span>
             <span><b>{{ item.completed }}</b> concluídas</span>
             <span><b>{{ item.in_progress }}</b> em andamento</span>
             <span><b>{{ item.pending }}</b> pendentes</span>
             <span><b>{{ item.blocked }}</b> bloqueadas</span>
             <span><b>{{ item.percentage }}%</b></span>
+            <span v-if="item.new_lessons_since_completion > 0"><b>+{{ item.new_lessons_since_completion }}</b> novas</span>
           </div>
 
           <table class="admin-table report-drawer-table">

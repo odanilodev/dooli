@@ -9,6 +9,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Models\VideoProgress;
 use App\Repositories\ActionRepository;
+use App\Repositories\CourseCompletionRepository;
 use App\Repositories\LessonRepository;
 use App\Repositories\TimelineRepository;
 use App\Repositories\VideoProgressRepository;
@@ -22,6 +23,7 @@ class StudentHomeService
         private readonly TimelineRepository $timeline,
         private readonly VideoProgressRepository $videoProgress,
         private readonly ActionRepository $actions,
+        private readonly CourseCompletionRepository $completions,
     ) {}
 
     /**
@@ -49,6 +51,8 @@ class StudentHomeService
             ? $this->timeline->completedLessonIdsGrouped($user->id, $courseIds, $teamIds, $completedAction->id)
             : [];
 
+        $completedKeys = $this->completions->completionInfoForUser($user->id);
+
         $resumes = $this->videoProgress->latestForCourses($user->id, $courseIds, $teamIds);
         $lessonsByCourse = $this->lessons->publishedLessonsByCourse($courseIds);
 
@@ -60,19 +64,26 @@ class StudentHomeService
             }
         }
 
-        return $teams->map(function (Team $team) use ($coursesByTeam, $totals, $completed, $resumes, $lessonsByCourse, $completedAction) {
+        return $teams->map(function (Team $team) use ($coursesByTeam, $totals, $completed, $completedKeys, $resumes, $lessonsByCourse, $completedAction) {
             $teamCourses = collect($coursesByTeam[$team->id] ?? []);
 
-            $homeCourses = $teamCourses->map(function (Course $course) use ($team, $totals, $completed) {
+            $homeCourses = $teamCourses->map(function (Course $course) use ($team, $totals, $completed, $completedKeys) {
                 $total = (int) ($totals[$course->id] ?? 0);
                 $completedIds = $completed[$course->id.':'.$team->id] ?? [];
                 $done = count($completedIds);
+
+                $info = $completedKeys[$course->id.':'.$team->id] ?? null;
+                $requiredLessons = (int) ($info['required_lessons'] ?? 0);
 
                 $clone = clone $course;
                 $clone->setAttribute('progress', [
                     'total_lessons' => $total,
                     'completed_lessons' => $done,
                     'percentage' => $total > 0 ? round(($done / $total) * 100, 2) : 0.0,
+                    'completed' => $info !== null,
+                    'completed_at' => $info['completed_at'] ?? null,
+                    'required_lessons' => $requiredLessons,
+                    'new_lessons_since_completion' => $info !== null ? max(0, $total - $requiredLessons) : 0,
                 ]);
 
                 return $clone;
@@ -82,7 +93,7 @@ class StudentHomeService
             $team->setAttribute(
                 'continue_watching',
                 $completedAction
-                    ? $this->continueWatchingForTeam($team, $teamCourses, $totals, $completed, $resumes, $lessonsByCourse)
+                    ? $this->continueWatchingForTeam($team, $teamCourses, $totals, $completed, $completedKeys, $resumes, $lessonsByCourse)
                     : [],
             );
 
@@ -94,6 +105,7 @@ class StudentHomeService
      * @param  iterable<int, Course>  $teamCourses
      * @param  array<int, int>  $totals
      * @param  array<string, array<int, int>>  $completed
+     * @param  array<string, array{required_lessons: int, completed_at: ?string}>  $completedKeys
      * @return array<int, array<string, mixed>>
      */
     private function continueWatchingForTeam(
@@ -101,6 +113,7 @@ class StudentHomeService
         iterable $teamCourses,
         array $totals,
         array $completed,
+        array $completedKeys,
         Collection $resumes,
         Collection $lessonsByCourse,
     ): array {
@@ -110,6 +123,10 @@ class StudentHomeService
             $total = (int) ($totals[$course->id] ?? 0);
 
             if ($total === 0) {
+                continue;
+            }
+
+            if (isset($completedKeys[$course->id.':'.$team->id])) {
                 continue;
             }
 

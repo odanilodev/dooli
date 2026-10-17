@@ -27,6 +27,7 @@
           <div v-if="menuOpen" class="acard-dropdown" role="menu" @keydown.esc="menuOpen = false">
             <button type="button" role="menuitem" :disabled="busy" @click="run('open')">Abrir curso</button>
             <button type="button" role="menuitem" :disabled="busy" @click="run('edit')">Editar</button>
+            <button type="button" role="menuitem" :disabled="busy" @click="run('certificates')">Certificados</button>
             <button type="button" role="menuitem" :disabled="busy" @click="run(published ? 'unpublish' : 'publish')">
               {{ published ? 'Despublicar' : 'Publicar' }}
             </button>
@@ -47,7 +48,7 @@ const props = defineProps({
   course: { type: Object, required: true },
   busy: { type: Boolean, default: false },
 });
-const emit = defineEmits(['open', 'edit', 'publish', 'unpublish', 'delete']);
+const emit = defineEmits(['open', 'edit', 'certificates', 'publish', 'unpublish', 'delete']);
 
 const menuOpen = ref(false);
 

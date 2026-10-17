@@ -33,7 +33,7 @@ Migrations originais já indexam `status` e chaves estrangeiras (InnoDB). A migr
 
 - **N+1**: mitigado por `with()`; relações acessadas nos Resources são sempre carregadas (`whenLoaded`).
 - **SELECT \***: mitigado no nível de resposta (Resources explícitos). Para volumes maiores, recomenda-se adicionar `select()` específico nos Repositories de listagem.
-- **Consultas em loop**: `CourseCompletionService` percorre certificados afetados em uma transação única; `EnrollmentService` itera itens do pedido dentro de transação.
+- **Consultas em loop**: a conclusão de curso é resolvida em **uma única consulta** por usuário (`CertificateUserRepository::validCourseKeysForUser`) usada por `ProgressService` e `StudentHomeService`; `EnrollmentService` itera itens do pedido dentro de transação.
 - **Agregações**: contagem de aulas concluídas usa `pluck('lesson_id')->unique()` no Repository.
 
 ## Recomendações futuras

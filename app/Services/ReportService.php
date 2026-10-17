@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\GeneralStatus;
 use App\Enums\LessonProgressStatus;
 use App\Models\Schedule;
+use App\Repositories\CourseCompletionRepository;
 use App\Repositories\ReportRepository;
 use App\Support\CompanyContext;
 use Illuminate\Support\Carbon;
@@ -17,6 +18,7 @@ class ReportService
         private readonly ReportRepository $reports,
         private readonly ScheduleService $schedules,
         private readonly CompanyContext $context,
+        private readonly CourseCompletionRepository $completions,
     ) {}
 
     /**
@@ -139,6 +141,7 @@ class ReportService
 
         $teamsByUser = $this->reports->teamsByUser($companyId, [$userId], $teamIds);
         $teamIdsOfUser = $teamsByUser[$userId] ?? [];
+        $completionInfo = $this->completions->completionInfoForUser($userId, $teamIdsOfUser);
         $coursesByTeam = $this->reports->coursesByTeam($companyId, $teamIdsOfUser, $courseIds);
 
         $relevantCourseIds = [];
@@ -204,6 +207,8 @@ class ReportService
 
                 $blocked = isset($locked[$teamId][$courseId]) ? count($locked[$teamId][$courseId]) : 0;
 
+                $info = $completionInfo[$courseId.':'.$teamId] ?? null;
+
                 $items[] = [
                     'team_id' => $teamId,
                     'team_name' => $teamNames[$teamId] ?? null,
@@ -215,6 +220,10 @@ class ReportService
                     'blocked' => $blocked,
                     'pending' => max(0, $total - $completed - $inProgress - $blocked),
                     'percentage' => $total > 0 ? round($completed / $total * 100, 2) : 0.0,
+                    'is_course_completed' => $info !== null,
+                    'completed_at' => $info['completed_at'] ?? null,
+                    'required_lessons' => (int) ($info['required_lessons'] ?? 0),
+                    'new_lessons_since_completion' => $info !== null ? max(0, $total - (int) $info['required_lessons']) : 0,
                     'watched_seconds' => $watched,
                     'last_activity_at' => $lastActivity,
                     'lessons' => $lessonRows,

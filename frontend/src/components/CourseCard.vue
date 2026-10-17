@@ -9,7 +9,9 @@
     </div>
     <div class="card-body">
       <span class="card-title">{{ title }}</span>
-      <span class="card-sub">{{ count }} aulas</span>
+      <span class="card-sub">
+        {{ count }} aulas<template v-if="newLessons > 0"> · +{{ newLessons }} novas</template>
+      </span>
       <span class="progress-bar"><span :style="{ width: pct + '%' }"></span></span>
     </div>
   </router-link>
@@ -21,6 +23,7 @@ defineProps({
   count: { type: Number, default: 0 },
   pct: { type: Number, default: 0 },
   badge: { type: String, default: '' },
+  newLessons: { type: Number, default: 0 },
   icon: { type: String, required: true },
   grad: { type: String, required: true },
   image: { type: String, default: '' },

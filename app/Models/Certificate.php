@@ -8,8 +8,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['company_id', 'name', 'grade', 'title', 'course_id', 'version', 'time'])]
+#[Fillable([
+    'company_id', 'name', 'grade', 'title', 'course_id', 'version', 'time',
+    'background', 'signature', 'body', 'signatory_name', 'signatory_title',
+])]
 class Certificate extends Model
 {
     use BelongsToCompany, HasFactory;
@@ -30,5 +34,36 @@ class Certificate extends Model
     public function certificateUsers(): HasMany
     {
         return $this->hasMany(CertificateUser::class);
+    }
+
+    /**
+     * Public URL for the uploaded background image, or the raw path/link when
+     * the certificate references an external image.
+     */
+    public function backgroundUrl(): ?string
+    {
+        return $this->publicUrl($this->background);
+    }
+
+    /**
+     * Public URL for the uploaded signature image, or the raw path/link when
+     * the certificate references an external image.
+     */
+    public function signatureUrl(): ?string
+    {
+        return $this->publicUrl($this->signature);
+    }
+
+    private function publicUrl(?string $path): ?string
+    {
+        if (empty($path)) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        return Storage::disk('public')->url($path);
     }
 }

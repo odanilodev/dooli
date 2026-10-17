@@ -12,6 +12,7 @@ use App\Models\Team;
 use App\Models\Timeline;
 use App\Models\User;
 use App\Repositories\ActionRepository;
+use App\Repositories\CourseCompletionRepository;
 use App\Repositories\LessonRepository;
 use App\Repositories\StudentLessonProgressRepository;
 use App\Repositories\TimelineRepository;
@@ -36,6 +37,7 @@ class ProgressService
         private readonly DatalogService $audit,
         private readonly VideoProgressRepository $videoProgress,
         private readonly StudentLessonProgressRepository $snapshot,
+        private readonly CourseCompletionRepository $completions,
     ) {}
 
     /**
@@ -93,17 +95,50 @@ class ProgressService
                     $team->id,
                     $module->id,
                 );
+
+                $this->recordCompletionIfFinished($user, $dto->courseId, $team->id, $action->id);
             });
 
             $this->audit->log('progress', 'complete_lesson', 'lesson', "Aula concluída: {$lesson->name}", $user->id);
-
-            $this->certificates->issueIfEligible($user, $dto->courseId, $team->id);
         }
+
+        // Issuance runs outside the transaction (and even for already completed
+        // lessons) so a failure here never loses the completion and is retried
+        // on the next interaction.
+        $this->certificates->issueIfEligible($user, $dto->courseId, $team->id);
 
         return [
             'already_completed' => $alreadyCompleted,
             'progress' => $this->progressFor($user, $dto->courseId, $team->id),
         ];
+    }
+
+    /**
+     * Persists the historical course completion the first time the student
+     * reaches the total number of required lessons.
+     */
+    private function recordCompletionIfFinished(User $user, int $courseId, int $teamId, int $actionId): void
+    {
+        $total = $this->lessons->countPublishedByCourse($courseId);
+
+        if ($total === 0) {
+            return;
+        }
+
+        $completedIds = $this->timeline->completedLessonIds($user->id, $courseId, $teamId, $actionId);
+
+        if (count($completedIds) < $total) {
+            return;
+        }
+
+        $this->completions->markCompleted(
+            (int) $user->id,
+            $teamId,
+            $courseId,
+            (int) $user->company_id,
+            $total,
+            array_map('intval', $completedIds),
+        );
     }
 
     /**
@@ -240,12 +275,19 @@ class ProgressService
 
         $completedCount = count($completedIds);
 
+        $completion = $this->completions->findForUserCourseTeam($user->id, $courseId, $teamId);
+        $requiredLessons = (int) ($completion?->required_lessons ?? 0);
+
         return [
             'course_id' => $courseId,
             'team_id' => $teamId,
             'total_lessons' => $totalLessons,
             'completed_lessons' => $completedCount,
             'percentage' => $totalLessons > 0 ? round(($completedCount / $totalLessons) * 100, 2) : 0.0,
+            'completed' => $completion !== null,
+            'completed_at' => $completion?->completed_at?->toIso8601String(),
+            'required_lessons' => $requiredLessons,
+            'new_lessons_since_completion' => $completion ? max(0, $totalLessons - $requiredLessons) : 0,
             'completed_lesson_ids' => $completedIds,
             'started_lesson_ids' => $startedIds,
         ];
@@ -263,11 +305,13 @@ class ProgressService
     }
 
     /**
-     * @return array<int, array{total_lessons: int, completed_lessons: int, percentage: float}>
+     * @return array<int, array{total_lessons: int, completed_lessons: int, percentage: float, completed: bool, completed_at: ?string, required_lessons: int, new_lessons_since_completion: int}>
      */
     public function progressSummaryFor(User $user, Collection $courses, ?int $teamId = null): array
     {
         $completedAction = $this->actions->findByCode(ActionCode::Completed->value);
+
+        $completionInfo = $this->completions->completionInfoForUser($user->id);
 
         $summary = [];
 
@@ -279,6 +323,10 @@ class ProgressService
                     'total_lessons' => 0,
                     'completed_lessons' => 0,
                     'percentage' => 0.0,
+                    'completed' => false,
+                    'completed_at' => null,
+                    'required_lessons' => 0,
+                    'new_lessons_since_completion' => 0,
                 ];
 
                 continue;
@@ -290,10 +338,17 @@ class ProgressService
                 ? count($this->timeline->completedLessonIds($user->id, $course->id, $team->id, $completedAction->id))
                 : 0;
 
+            $info = $completionInfo[$course->id.':'.$team->id] ?? null;
+            $requiredLessons = (int) ($info['required_lessons'] ?? 0);
+
             $summary[$course->id] = [
                 'total_lessons' => $totalLessons,
                 'completed_lessons' => $completedCount,
                 'percentage' => $totalLessons > 0 ? round(($completedCount / $totalLessons) * 100, 2) : 0.0,
+                'completed' => $info !== null,
+                'completed_at' => $info['completed_at'] ?? null,
+                'required_lessons' => $requiredLessons,
+                'new_lessons_since_completion' => $info !== null ? max(0, $totalLessons - $requiredLessons) : 0,
             ];
         }
 
@@ -317,10 +372,16 @@ class ProgressService
 
         $shelf = [];
 
+        $completionInfo = $this->completions->completionInfoForUser($user->id);
+
         foreach ($this->studentCourses->enrolledCourses($user, $teamId) as $course) {
             $team = $this->resolveTeam($user, $course->id, $teamId);
 
             if (! $team) {
+                continue;
+            }
+
+            if (isset($completionInfo[$course->id.':'.$team->id])) {
                 continue;
             }
 

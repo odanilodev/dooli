@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\CertificateUser;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class CertificateUserRepository extends BaseRepository
@@ -12,6 +13,20 @@ class CertificateUserRepository extends BaseRepository
     public function __construct()
     {
         parent::__construct(new CertificateUser);
+    }
+
+    protected function applyFilters(Builder $query, array $filters): void
+    {
+        if (! empty($filters['course_id'])) {
+            $query->whereHas(
+                'certificate',
+                fn (Builder $q) => $q->where('course_id', (int) $filters['course_id']),
+            );
+
+            unset($filters['course_id']);
+        }
+
+        parent::applyFilters($query, $filters);
     }
 
     /**
@@ -35,6 +50,10 @@ class CertificateUserRepository extends BaseRepository
             ->first();
     }
 
+    /**
+     * Most recent certificate of the user for a course+team, regardless of
+     * validity. Used to decide between "never issued" and "already revoked".
+     */
     public function findForUserCourseTeam(int $userId, int $courseId, int $teamId): ?CertificateUser
     {
         return $this->query()
@@ -43,19 +62,5 @@ class CertificateUserRepository extends BaseRepository
             ->whereHas('certificate', fn ($q) => $q->where('course_id', $courseId))
             ->latest('id')
             ->first();
-    }
-
-    /**
-     * Completed certificates that may be affected by new lessons.
-     *
-     * @return Collection<int, CertificateUser>
-     */
-    public function completedForCourse(int $courseId): Collection
-    {
-        return $this->query()
-            ->with(['user', 'team', 'certificate'])
-            ->whereHas('certificate', fn ($q) => $q->where('course_id', $courseId))
-            ->whereNull('invalidated_at')
-            ->get();
     }
 }

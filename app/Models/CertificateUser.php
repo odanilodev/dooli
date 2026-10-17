@@ -27,6 +27,15 @@ class CertificateUser extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $model) {
+            // Keep the partial unique guarantee: only valid certificates carry
+            // active_flag = 1, so invalidated history is never blocked.
+            $model->active_flag = $model->invalidated_at === null ? 1 : null;
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

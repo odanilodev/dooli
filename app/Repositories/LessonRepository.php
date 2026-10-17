@@ -30,10 +30,15 @@ class LessonRepository extends BaseRepository
 
     public function countPublishedByCourse(int $courseId): int
     {
-        return $this->query()
-            ->whereHas('module.courses', fn ($q) => $q->where('courses.id', $courseId))
+        return (int) $this->query()
+            ->join('course_modules', 'course_modules.module_id', '=', 'lessons.module_id')
+            ->leftJoin('topics', 'topics.id', '=', 'lessons.topic_id')
+            ->where('course_modules.course_id', $courseId)
+            ->where('course_modules.status', GeneralStatus::Active->value)
             ->where('lessons.status', GeneralStatus::Active->value)
-            ->count();
+            ->where(fn ($q) => $q->whereNull('lessons.topic_id')->orWhere('topics.status', GeneralStatus::Active->value))
+            ->distinct()
+            ->count('lessons.id');
     }
 
     /**
@@ -50,7 +55,10 @@ class LessonRepository extends BaseRepository
 
         return $this->query()
             ->join('course_modules', 'course_modules.module_id', '=', 'lessons.module_id')
+            ->leftJoin('topics', 'topics.id', '=', 'lessons.topic_id')
             ->where('lessons.status', GeneralStatus::Active->value)
+            ->where('course_modules.status', GeneralStatus::Active->value)
+            ->where(fn ($q) => $q->whereNull('lessons.topic_id')->orWhere('topics.status', GeneralStatus::Active->value))
             ->whereIn('course_modules.course_id', $courseIds)
             ->selectRaw('course_modules.course_id as pivot_course_id, count(distinct lessons.id) as aggregate')
             ->groupBy('course_modules.course_id')

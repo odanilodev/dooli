@@ -7,6 +7,8 @@ import AuthLayout from '../layouts/AuthLayout.vue';
 
 import HomeView from '../views/HomeView.vue';
 import CoursesView from '../views/CoursesView.vue';
+import CertificatesView from '../views/CertificatesView.vue';
+import CertificatePrintView from '../views/CertificatePrintView.vue';
 import LiveClassesView from '../views/LiveClassesView.vue';
 import LessonView from '../views/LessonView.vue';
 import StoreView from '../views/StoreView.vue';
@@ -22,6 +24,7 @@ import AdminVideosView from '../views/AdminVideosView.vue';
 import AdminDocumentsView from '../views/AdminDocumentsView.vue';
 import AdminAttachmentsView from '../views/AdminAttachmentsView.vue';
 import AdminBannersView from '../views/AdminBannersView.vue';
+import AdminCertificatesView from '../views/AdminCertificatesView.vue';
 import AdminLiveClassesView from '../views/AdminLiveClassesView.vue';
 import AdminReportsView from '../views/AdminReportsView.vue';
 import AdminUsersView from '../views/AdminUsersView.vue';
@@ -45,6 +48,8 @@ const routes = [
       { path: 'cursos/:courseId', name: 'curso', component: LessonView, meta: { title: 'Curso', searchPlaceholder: 'Buscar no curso...' } },
       { path: 'cursos/:courseId/aula/:lessonId', name: 'aula', component: LessonView, meta: { title: 'Aula', searchPlaceholder: 'Buscar no curso...' } },
       { path: 'aulas-ao-vivo', name: 'aulas-ao-vivo', component: LiveClassesView, meta: { title: 'Aulas ao vivo' } },
+      { path: 'certificados', name: 'certs', component: CertificatesView, meta: { title: 'Meus certificados' } },
+      { path: 'certificados/:id', name: 'certificado', component: CertificatePrintView, meta: { title: 'Certificado' } },
       { path: 'loja', name: 'loja', component: StoreView, meta: { title: 'Loja', searchPlaceholder: 'Buscar na loja...' } },
       { path: 'loja/:slug', name: 'loja-produto', component: StoreProductView, meta: { title: 'Produto', searchPlaceholder: 'Buscar na loja...' } },
       { path: 'perfil', name: 'perfil', component: ProfileView, meta: { title: 'Meu perfil' } },
@@ -61,6 +66,7 @@ const routes = [
       { path: 'admin/documentos', name: 'admin-documentos', component: AdminDocumentsView, meta: { title: 'Documentos (admin)', requiresAdminMenu: true } },
       { path: 'admin/anexos', name: 'admin-anexos', component: AdminAttachmentsView, meta: { title: 'Anexos (admin)', requiresAdminMenu: true } },
       { path: 'admin/banners', name: 'admin-banners', component: AdminBannersView, meta: { title: 'Banners (admin)', requiresAdminMenu: true } },
+      { path: 'admin/certificados', name: 'admin-certificados', component: AdminCertificatesView, meta: { title: 'Certificados (admin)', requiresAdminMenu: true } },
       { path: 'admin/usuarios', name: 'admin-usuarios', component: AdminUsersView, meta: { title: 'Usuários (admin)', requiresAdmin: true } },
       { path: 'admin/tipos-de-usuario', name: 'admin-tipos-de-usuario', component: AdminUserTypesView, meta: { title: 'Tipos de usuário (admin)', requiresAdmin: true } },
       { path: 'admin/menus', name: 'admin-menus', component: AdminMenusView, meta: { title: 'Menus (admin)', requiresSuperAdmin: true } },

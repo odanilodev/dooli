@@ -38,6 +38,7 @@
         :busy="busyId === c.id"
         @open="openCourse"
         @edit="editing = $event"
+        @certificates="openCertificates"
         @publish="toggleStatus($event, true)"
         @unpublish="toggleStatus($event, false)"
         @delete="removeCourse"
@@ -122,6 +123,10 @@ async function createCourse() {
 
 function openCourse(course) {
   router.push({ name: 'admin-curso', params: { courseId: course.id } });
+}
+
+function openCertificates(course) {
+  router.push({ name: 'admin-certificados', query: { course_id: course.id } });
 }
 
 async function toggleStatus(course, publish) {

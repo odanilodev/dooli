@@ -188,10 +188,13 @@ Query opcional: `team_id`.
   "data": {
     "course_id": 1, "team_id": 1,
     "total_lessons": 10, "completed_lessons": 4,
-    "percentage": 40.0, "completed_lesson_ids": [1,2,3,4]
+    "percentage": 40.0, "completed": false, "completed_at": null,
+    "required_lessons": 0, "new_lessons_since_completion": 0,
+    "completed_lesson_ids": [1,2,3,4]
   }
 }
 ```
+> `completed`/`completed_at`/`required_lessons` vêm de `course_completions` (**histórico e persistente**): `completed` fica `true` mesmo que novas aulas sejam adicionadas depois. `percentage` segue refletindo o total atual de aulas (ex.: 20/25 = 80%) e `new_lessons_since_completion` indica quantas aulas novas existem desde a conclusão. Os mesmos campos aparecem em `/me/courses` e `/me/home`.
 
 ### GET /api/v1/me/courses/{course}/timeline
 Histórico de ações do aluno no curso. Query: `team_id`.
@@ -206,7 +209,7 @@ Lista os cursos **em andamento** com a próxima aula a assistir (1ª aula public
   ]
 }
 ```
-> `duration` (segundos, do vídeo da aula) pode ser `null`. `resume_from` é a posição salva (segundos) para retomar; `image` é o poster do vídeo da aula (usado no card) e, quando o vídeo não tem poster, cai para a capa do curso (`image_url`), podendo ser `null`. Cursos com 0% ou 100% não aparecem.
+> `duration` (segundos, do vídeo da aula) pode ser `null`. `resume_from` é a posição salva (segundos) para retomar; `image` é o poster do vídeo da aula (usado no card) e, quando o vídeo não tem poster, cai para a capa do curso (`image_url`), podendo ser `null`. Cursos com 0% ou 100% não aparecem. Cursos com **conclusão histórica** (certificado válido) também não aparecem, mesmo que ganhem novas aulas depois.
 
 ### GET /api/v1/me/courses/{course}/documents/{document}
 Baixa (stream) um documento da aula. Exige matrícula no curso (403). 404 se o documento não pertence ao curso ou o arquivo não existe no disco. Se o documento for um **link** (`url`), responde com `302` redirecionando para a URL externa.
@@ -304,7 +307,7 @@ CRUD + `POST /lessons/{lesson}/publish`, `POST /lessons/{lesson}/unpublish`, `at
 > **Pré-requisito (trava):** `required_lesson_id` (nullable) aponta para outra aula do **mesmo curso** que precisa ser concluída antes. Só são aceitas aulas **anteriores** na ordem do curso (validação 422 `business_rule`). Ao criar, a aula entra no fim do tópico ou, sem tópico, no fim das aulas do módulo. O bloqueio do aluno é validado no backend em `me/courses/{course}/lessons/{lesson}/video` e `me/progress/complete` (422).
 > **Assistir até o final:** `require_full_watch` (bool, nullable/padrão `false`). Com `true` e um `video_id` vinculado (`content_type = video`), o aluno só conclui a aula depois de assistir o vídeo até o fim (ver `me/progress/complete`). Em aulas de documento/ao vivo o serviço zera a flag.
 > **Aula ao vivo:** `webinar_link` (URL de embed, ex.: `https://player.vdocipher.com/live-v2?liveId=...`) + `webinar_starts_at` (data/hora agendada, nullable). A aula com `webinar_link` é renderizada como live no player do aluno (iframe), sem passar pelo fluxo de OTP/`videos`. Antes de `webinar_starts_at` o frontend mostra um card "EM BREVE"; depois (ou sem data) mostra o iframe com selo "AO VIVO".
-> Ao publicar/criar aulas em um curso com alunos concluídos, o backend dispara a regra de recálculo de certificados (ver `docs/ARCHITECTURE.md`).
+> Publicar/criar/editar/excluir aulas **não** revoga certificados já emitidos. As novas aulas contam apenas para alunos que ainda não receberam o certificado (ver `docs/ARCHITECTURE.md`).
 > **Reordenação** (`modules/reorder`, `topics/reorder`, `lessons/reorder`, `modules/{module}/lessons/reorder`): se a nova ordem deixar o pré-requisito de alguma aula depois dela, o backend responde **409** `prerequisite_conflict` com `errors.conflicts[]` (`lesson_id`, `lesson_name`, `required_lesson_id`, `required_lesson_name`) e **não** aplica nada. Reenviar com `force: true` aplica a ordem e **remove essas travas**, devolvendo `data.cleared` (ids das aulas destravadas).
 > `topics/{topic}/lessons/reorder` e `modules/{module}/lessons/reorder` também **movem** as aulas listadas para o tópico/módulo indicado (só ids do mesmo módulo são aceitos; ids de outros módulos são ignorados). É assim que o builder move uma aula entre tópicos do mesmo módulo ou entre tópico e módulo.
 
@@ -339,9 +342,13 @@ CRUD. Campos: `course_id`, `title`, `slug`, `price`, `sale`, `status`, `release_
 - `GET /orders/{order}` — detalhe do pedido (itens, pagamentos, cupom, cliente)
 
 ### Certificados emitidos (`certificate-users`)
-- `GET /certificate-users` — lista os certificados **emitidos** (filtros: `user_id`, `team_id`, `certificate_id`)
+- `GET /certificate-users` — lista os certificados **emitidos** (filtros: `user_id`, `team_id`, `certificate_id`, `course_id`)
 - `POST /certificate-users/{certificateUser}/revoke` — invalida um certificado emitido (`{ "reason": "..." }`)
+> Um certificado emitido é **histórico e permanente**: adicionar/editar/excluir aulas **não** o revoga. A emissão é única por `user+curso+time` (sem reemissão automática) e a **conclusão do aluno vive em `course_completions`** — revogar o certificado **não** desfaz a conclusão.
+> Criar/atualizar um template dispara emissão retroativa (`issuePendingForCourse`) apenas para alunos concluídos que **nunca** receberam certificado; revogados (manual ou automático) nunca são reemitidos.
 > Após revogar, `GET /certificates/{code}/verify` passa a retornar `404`.
+> Comando `php artisan certificates:restore-recalculated [--dry-run]` revalida certificados que foram revogados automaticamente pelo antigo recálculo (motivo `"Novas aulas adicionadas ao curso após a conclusão."`); ignorados os que já tenham certificado válido mais recente e as revogações manuais.
+> Comando `php artisan completions:backfill [--dry-run] [--report-manual]` cria `course_completions` a partir de certificados **válidos** e **invalidados automaticamente**; revogações manuais são apenas listadas para revisão.
 
 ### Moderação
 - `GET /comments`, `DELETE /comments/{comment}` — moderação de comentários
@@ -378,6 +385,10 @@ CRUD. Controlam o **hero da home**: `name`, `link`, `sort_order`, `status` e o c
 
 ### Certificados (modelos) (`certificates`)
 CRUD dos templates por curso (`name`, `title`, `course_id`, `grade`, `version`, `time`).
+- **Visual:** `body` (texto com variáveis `{aluno}`, `{curso}`, `{data}`, `{carga_horaria}`, `{codigo}`), `signatory_name`, `signatory_title` e os uploads `background` (fundo) e `signature` (assinatura).
+- **Uploads:** envie como `multipart/form-data` (`jpg/jpeg/png/webp`, máx. 4 MB). Os arquivos são salvos no disco `public` em `certificates/{company_id}/…` e a resposta expõe `background`/`signature` (caminho) e `background_url`/`signature_url` (URL pública). Ao substituir/excluir, o arquivo antigo é removido.
+- **Versões:** cada linha é uma versão do certificado do curso (a mais recente é a **atual**). Para criar uma nova versão clonando a atual, envie `copy_from` (id do template de origem): as imagens são copiadas para novos arquivos (não compartilhados), e uploads enviados no mesmo request têm precedência.
+- A emissão usa o template **mais recente** do curso; a resposta do aluno (`me/certificates`) já inclui os campos visuais.
 
 ### Notificações (`notifications`)
 `GET /notifications`, `GET /notifications/{notification}`.

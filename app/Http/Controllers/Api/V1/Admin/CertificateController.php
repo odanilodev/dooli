@@ -39,7 +39,18 @@ class CertificateController extends ApiController
     {
         $this->authorize('create', Certificate::class);
 
-        return ApiResponse::success(new CertificateResource($this->certificates->create($request->validated())), 201);
+        $data = $request->validated();
+        unset($data['background'], $data['signature']);
+
+        $certificate = $this->service->createTemplate(
+            $data,
+            $request->file('background'),
+            $request->file('signature'),
+        );
+
+        $this->service->issuePendingForCourse((int) $certificate->course_id, (int) $certificate->company_id);
+
+        return ApiResponse::success(new CertificateResource($certificate->load('course')), 201);
     }
 
     public function show(Certificate $certificate): JsonResponse
@@ -53,14 +64,26 @@ class CertificateController extends ApiController
     {
         $this->authorize('update', $certificate);
 
-        return ApiResponse::success(new CertificateResource($this->certificates->update($certificate, $request->validated())));
+        $data = $request->validated();
+        unset($data['background'], $data['signature']);
+
+        $certificate = $this->service->updateTemplate(
+            $certificate,
+            $data,
+            $request->file('background'),
+            $request->file('signature'),
+        );
+
+        $this->service->issuePendingForCourse((int) $certificate->course_id, (int) $certificate->company_id);
+
+        return ApiResponse::success(new CertificateResource($certificate->load('course')));
     }
 
     public function destroy(Certificate $certificate): JsonResponse
     {
         $this->authorize('delete', $certificate);
 
-        $this->certificates->delete($certificate);
+        $this->service->deleteTemplate($certificate);
 
         return ApiResponse::noContent();
     }
@@ -74,7 +97,7 @@ class CertificateController extends ApiController
 
         $paginator = $this->issued->paginate(
             perPage: $this->perPage($request),
-            filters: $request->only(['user_id', 'team_id', 'certificate_id']),
+            filters: $request->only(['user_id', 'team_id', 'certificate_id', 'course_id']),
             with: ['certificate.course', 'user', 'team'],
         );
 

@@ -22,6 +22,10 @@
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2.5"/><path d="m16 10 6-3v10l-6-3z"/><circle cx="7" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
           <span>Aulas ao vivo</span>
         </router-link>
+        <router-link to="/certificados" class="nav-link" :class="{ active: ['certs', 'certificado'].includes($route.name) }" @click="close">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.5 7 21l5-2.5L17 21l-1.5-7.5"/></svg>
+          <span>Meus certificados</span>
+        </router-link>
         <router-link to="/perfil" class="nav-link" :class="{ active: $route.name === 'perfil' }" @click="close">
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
           <span>Meu perfil</span>
@@ -79,6 +83,7 @@ const FALLBACK_MENU = [
       { id: 'fb-documents', name: 'Documentos', type: 'link', depth: 1, link: '/admin/documentos', icon: 'documents' },
       { id: 'fb-attachments', name: 'Anexos', type: 'link', depth: 1, link: '/admin/anexos', icon: 'attachments' },
       { id: 'fb-banners', name: 'Banners', type: 'link', depth: 1, link: '/admin/banners', icon: 'banners' },
+      { id: 'fb-certificates', name: 'Certificados', type: 'link', depth: 1, link: '/admin/certificados', icon: 'certificate' },
       { id: 'fb-video-platforms', name: 'Plataformas de vídeo', type: 'link', depth: 1, link: '/admin/video-platforms', icon: 'video-platforms' },
       { id: 'fb-menus', name: 'Menus', type: 'link', depth: 1, link: '/admin/menus', icon: 'menu' },
       { id: 'fb-companies', name: 'Empresas', type: 'link', depth: 1, link: '/admin/empresas', icon: 'company' },

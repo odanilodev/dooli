@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Enums\GeneralStatus;
 use App\Enums\LessonContentType;
-use App\Events\CourseContentChanged;
 use App\Exceptions\PrerequisiteConflictException;
 use App\Models\Lesson;
 use App\Models\Module;
@@ -50,8 +49,6 @@ class LessonService
 
             $this->audit->log('lesson', 'create', 'lesson', "Aula criada: {$lesson->name}");
 
-            $this->dispatchContentChange($lesson);
-
             return $lesson;
         });
     }
@@ -59,17 +56,11 @@ class LessonService
     public function update(Lesson $lesson, array $data): Lesson
     {
         return DB::transaction(function () use ($lesson, $data) {
-            $wasPublished = $lesson->status === GeneralStatus::Active->value;
-
             $lesson = $this->lessons->update($lesson, $this->normalizeContent($lesson, $this->normalizePlacement($lesson, $data)));
 
             $this->orders->assertValidPrerequisite($lesson, $lesson->required_lesson_id);
 
             $this->audit->log('lesson', 'update', 'lesson', "Aula atualizada: {$lesson->name}");
-
-            if (! $wasPublished && $lesson->status === GeneralStatus::Active->value) {
-                $this->dispatchContentChange($lesson);
-            }
 
             return $lesson;
         });
@@ -77,14 +68,10 @@ class LessonService
 
     public function publish(Lesson $lesson): Lesson
     {
-        $lesson = $this->lessons->update($lesson, [
+        return $this->lessons->update($lesson, [
             'status' => GeneralStatus::Active->value,
             'published_at' => $lesson->published_at ?? now(),
         ]);
-
-        $this->dispatchContentChange($lesson);
-
-        return $lesson;
     }
 
     public function unpublish(Lesson $lesson): Lesson
@@ -293,16 +280,5 @@ class LessonService
         }
 
         return (int) $query->max('sort_order') + 1;
-    }
-
-    private function dispatchContentChange(Lesson $lesson): void
-    {
-        $lesson->loadMissing('module.courses');
-
-        $courseIds = $lesson->module?->courses?->pluck('id')->all() ?? [];
-
-        if (! empty($courseIds)) {
-            CourseContentChanged::dispatch($courseIds, 'lesson_created');
-        }
     }
 }
