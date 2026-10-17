@@ -388,7 +388,8 @@ CRUD dos templates por curso (`name`, `title`, `course_id`, `grade`, `version`, 
 - **Visual:** `body` (texto com variáveis `{aluno}`, `{curso}`, `{data}`, `{carga_horaria}`, `{codigo}`), `signatory_name`, `signatory_title` e os uploads `background` (fundo) e `signature` (assinatura).
 - **Uploads:** envie como `multipart/form-data` (`jpg/jpeg/png/webp`, máx. 4 MB). Os arquivos são salvos no disco `public` em `certificates/{company_id}/…` e a resposta expõe `background`/`signature` (caminho) e `background_url`/`signature_url` (URL pública). Ao substituir/excluir, o arquivo antigo é removido.
 - **Versões:** cada linha é uma versão do certificado do curso (a mais recente é a **atual**). Para criar uma nova versão clonando a atual, envie `copy_from` (id do template de origem): as imagens são copiadas para novos arquivos (não compartilhados), e uploads enviados no mesmo request têm precedência.
-- A emissão usa o template **mais recente** do curso; a resposta do aluno (`me/certificates`) já inclui os campos visuais.
+- **Layout visual (`layout`):** objeto JSON por campo (`eyebrow`, `title`, `body`, `signature`, `signature_line`, `signatory_name`, `signatory_title`, `code`) com `x`/`y` (0–100, % da arte), `width` (5–100, % da arte; usado em `title`/`body` com padrão 80 e em `signature_line` com padrão 18), `color` (`#rrggbb` ou `null` para o padrão), `font`, `size` (px na largura de referência de 1000px), `align` (`left|center|right`), `bold` e `italic`. No `multipart/form-data`, envie `layout` como string JSON. Campos ausentes usam o layout padrão.
+- A emissão usa o template **mais recente** do curso; a resposta do aluno (`me/certificates`) já inclui os campos visuais e o `layout`.
 
 ### Notificações (`notifications`)
 `GET /notifications`, `GET /notifications/{notification}`.

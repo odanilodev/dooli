@@ -43,6 +43,7 @@ function pick(file) {
 
 function onChange(event) {
   pick(event.target.files?.[0] ?? null);
+  event.target.value = '';
 }
 
 function onDrop(event) {

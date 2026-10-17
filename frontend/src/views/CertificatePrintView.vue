@@ -20,7 +20,7 @@
     </div>
 
     <div v-else class="certificate-print-sheet">
-      <CertificateCanvas :certificate="certificate.certificate" :values="values" />
+      <CertificateCanvas :certificate="certificate.certificate" :values="values" :layout="certificate.certificate?.layout" />
     </div>
 
   </main>
@@ -84,6 +84,8 @@ onMounted(async () => {
 <style scoped>
 .certificate-print-actions{display:flex;gap:10px;}
 .certificate-print-sheet{width:100%;max-width:1000px;margin:0 auto;}
+
+@page{size:A4 landscape;margin:0;}
 
 @media print {
   :global(.sidebar),

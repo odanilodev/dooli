@@ -96,7 +96,7 @@
               <FilePicker
                 accept="image/png,image/jpeg,image/webp"
                 title="Escolher fundo"
-                hint="PNG/JPG/WebP · até 4 MB"
+                hint="PNG/JPG/WebP · até 4 MB · você poderá recortar"
                 :file-name="form.backgroundFile?.name"
                 @change="onBackgroundPicked"
               />
@@ -106,7 +106,7 @@
               <FilePicker
                 accept="image/png,image/jpeg,image/webp"
                 title="Escolher assinatura"
-                hint="PNG/JPG/WebP · até 4 MB"
+                hint="PNG/JPG/WebP · até 4 MB · você poderá recortar"
                 :file-name="form.signatureFile?.name"
                 @change="onSignaturePicked"
               />
@@ -119,8 +119,128 @@
         </div>
 
         <div class="certificate-form-preview">
-          <span class="certificate-preview-label">Pré-visualização</span>
-          <CertificateCanvas :certificate="previewCertificate" :values="previewValues" />
+          <div class="certificate-preview-head">
+            <span class="certificate-preview-label">Pré-visualização</span>
+            <span class="certificate-drag-hint">Arraste os campos; use as alças para redimensionar</span>
+          </div>
+
+          <CertificateCanvas
+            :certificate="previewCertificate"
+            :values="previewValues"
+            :layout="layout"
+            editable
+            :selected="selectedField"
+            @select="selectedField = $event"
+            @update:layout="layout = $event"
+          />
+
+          <div class="certificate-layout-panel">
+            <div class="certificate-layout-head">
+              <span class="certificate-preview-label">Layout</span>
+              <button type="button" class="btn btn-outline btn-sm" @click="resetLayout">Redefinir layout</button>
+            </div>
+
+            <p v-if="!selectedFieldMeta" class="form-hint">
+              Clique em um campo na prévia para ajustar posição, fonte e cor.
+            </p>
+
+            <div v-else-if="currentField" class="certificate-layout-body">
+              <div class="certificate-layout-title">
+                <strong>{{ selectedFieldMeta.label }}</strong>
+                <button type="button" class="btn btn-outline btn-sm" @click="resetFieldPosition(selectedField)">
+                  Restaurar posição
+                </button>
+              </div>
+
+              <div class="certificate-layout-grid">
+                <div v-if="selectedFieldMeta.type === 'text'" class="form-group">
+                  <label>Fonte</label>
+                  <select class="form-control" :value="currentField.font" @change="updateField('font', $event.target.value)">
+                    <option v-for="font in fontOptions" :key="font.value" :value="font.value">{{ font.label }}</option>
+                  </select>
+                </div>
+
+                <div v-if="selectedFieldMeta.type === 'text'" class="form-group">
+                  <label>Tamanho (px)</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    min="4"
+                    max="160"
+                    step="0.5"
+                    :value="currentField.size"
+                    @input="updateSize($event.target.value)"
+                  >
+                </div>
+
+                <div v-if="selectedFieldMeta.type === 'image'" class="form-group">
+                  <label>Altura (px)</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    min="10"
+                    max="160"
+                    step="1"
+                    :value="currentField.size"
+                    @input="updateSize($event.target.value)"
+                  >
+                </div>
+
+                <div v-if="selectedFieldMeta.widthRange" class="form-group">
+                  <label>{{ selectedFieldMeta.type === 'line' ? 'Comprimento (%)' : 'Largura (%)' }}</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    :min="selectedFieldMeta.widthRange[0]"
+                    :max="selectedFieldMeta.widthRange[1]"
+                    step="0.5"
+                    :value="currentField.width"
+                    @input="updateWidth($event.target.value)"
+                  >
+                </div>
+
+                <div v-if="selectedFieldMeta.type !== 'image'" class="form-group">
+                  <label>Cor</label>
+                  <div class="certificate-color-row">
+                    <input
+                      type="color"
+                      class="certificate-color-input"
+                      :value="currentField.color || '#0a1e2a'"
+                      @input="updateField('color', $event.target.value)"
+                    >
+                    <button type="button" class="btn btn-outline btn-sm" @click="updateField('color', null)">Padrão</button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label>Alinhamento</label>
+                  <select class="form-control" :value="currentField.align" @change="updateField('align', $event.target.value)">
+                    <option value="left">Esquerda</option>
+                    <option value="center">Centro</option>
+                    <option value="right">Direita</option>
+                  </select>
+                </div>
+
+                <div v-if="selectedFieldMeta.type === 'text'" class="form-group">
+                  <label>Estilo</label>
+                  <div class="certificate-style-toggles">
+                    <button
+                      type="button"
+                      class="btn btn-outline btn-sm"
+                      :class="{ active: currentField.bold }"
+                      @click="updateField('bold', !currentField.bold)"
+                    ><strong>B</strong></button>
+                    <button
+                      type="button"
+                      class="btn btn-outline btn-sm"
+                      :class="{ active: currentField.italic }"
+                      @click="updateField('italic', !currentField.italic)"
+                    ><em>I</em></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </form>
@@ -255,6 +375,22 @@
       </div>
     </ConfirmModal>
 
+    <ImageCropper
+      v-if="cropFile"
+      :file="cropFile"
+      :title="cropTitle"
+      :aspect="cropAspect"
+      :output-width="cropOutputWidth"
+      :output-height="cropOutputHeight"
+      :format="cropFormat"
+      :fill-color="cropFillColor"
+      :checkerboard="cropCheckerboard"
+      allow-original
+      @confirm="onCropConfirm"
+      @original="onCropOriginal"
+      @cancel="onCropCancel"
+    />
+
   </main>
 </template>
 
@@ -268,7 +404,9 @@ import { formatDateTime } from '../utils/format';
 import FilePicker from '../components/admin/FilePicker.vue';
 import SearchSelect from '../components/admin/SearchSelect.vue';
 import ConfirmModal from '../components/admin/ConfirmModal.vue';
+import ImageCropper from '../components/admin/ImageCropper.vue';
 import CertificateCanvas from '../components/CertificateCanvas.vue';
+import { FONT_OPTIONS, layoutField, normalizeLayout } from '../utils/certificateLayout';
 
 const store = useCertificatesStore();
 const toast = useToast();
@@ -300,6 +438,21 @@ const busyId = ref(null);
 const showForm = ref(false);
 const editingId = ref(null);
 const copyFromId = ref(null);
+const layout = ref(normalizeLayout(null));
+const selectedField = ref(null);
+const fontOptions = FONT_OPTIONS;
+const selectedFieldMeta = computed(() => (selectedField.value ? layoutField(selectedField.value) : null));
+const currentField = computed(() => (selectedField.value ? layout.value[selectedField.value] : null));
+
+const cropFile = ref(null);
+const cropTarget = ref(null);
+const cropTitle = computed(() => (cropTarget.value === 'signature' ? 'Recortar assinatura' : 'Recortar fundo'));
+const cropAspect = computed(() => (cropTarget.value === 'background' ? 297 / 210 : null));
+const cropOutputWidth = computed(() => (cropTarget.value === 'background' ? 2400 : 1200));
+const cropOutputHeight = computed(() => (cropTarget.value === 'background' ? 1697 : 600));
+const cropFormat = computed(() => (cropTarget.value === 'background' ? 'jpeg' : 'png'));
+const cropFillColor = computed(() => (cropTarget.value === 'background' ? '#ffffff' : null));
+const cropCheckerboard = computed(() => cropTarget.value === 'signature');
 
 const courseOptions = ref([]);
 const loadingCourses = ref(false);
@@ -367,6 +520,80 @@ function resetForm() {
   form.signaturePreview = '';
   courseOptions.value = [];
   copyFromId.value = null;
+  layout.value = normalizeLayout(null);
+  selectedField.value = null;
+  closeCrop();
+}
+
+function updateField(key, value) {
+  if (!selectedField.value) {
+    return;
+  }
+
+  layout.value = {
+    ...layout.value,
+    [selectedField.value]: {
+      ...layout.value[selectedField.value],
+      [key]: value,
+    },
+  };
+}
+
+function updateSize(value) {
+  if (value === '' || value === null) {
+    return;
+  }
+
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    return;
+  }
+
+  const min = selectedFieldMeta.value?.type === 'image' ? 10 : 4;
+
+  updateField('size', Math.min(160, Math.max(min, number)));
+}
+
+function updateWidth(value) {
+  if (value === '' || value === null) {
+    return;
+  }
+
+  const number = Number(value);
+  const range = selectedFieldMeta.value?.widthRange;
+
+  if (!range || !Number.isFinite(number)) {
+    return;
+  }
+
+  updateField('width', Math.round(Math.min(range[1], Math.max(range[0], number)) * 10) / 10);
+}
+
+function resetFieldPosition(key) {
+  const meta = layoutField(key);
+
+  if (!meta) {
+    return;
+  }
+
+  layout.value = {
+    ...layout.value,
+    [key]: {
+      ...layout.value[key],
+      x: meta.defaults.x,
+      y: meta.defaults.y,
+    },
+  };
+}
+
+function resetLayout() {
+  if (!window.confirm('Redefinir o layout e voltar as posições padrão?')) {
+    return;
+  }
+
+  layout.value = normalizeLayout(null);
+  selectedField.value = null;
 }
 
 async function loadCourses(term = '') {
@@ -504,6 +731,7 @@ function goIssuedPage(page) {
 function switchTab(value) {
   tab.value = value;
   showForm.value = false;
+  closeCrop();
 
   if (value === 'issued') {
     loadIssued();
@@ -515,6 +743,7 @@ function switchTab(value) {
 async function openCreate() {
   if (showForm.value) {
     showForm.value = false;
+    closeCrop();
     return;
   }
 
@@ -531,6 +760,7 @@ async function openCreate() {
 
     if (currentTemplate.value) {
       cloneTemplate(currentTemplate.value);
+      layout.value = normalizeLayout(currentTemplate.value.layout);
     } else {
       form.version = '1.0';
     }
@@ -545,6 +775,7 @@ async function openCreate() {
 }
 
 function openEdit(certificate) {
+  closeCrop();
   editingId.value = certificate.id;
   copyFromId.value = null;
   form.name = certificate.name ?? '';
@@ -565,19 +796,59 @@ function openEdit(certificate) {
   courseOptions.value = certificate.course
     ? [{ value: certificate.course_id, label: certificate.course.name }]
     : [];
+  layout.value = normalizeLayout(certificate.layout);
+  selectedField.value = null;
   showForm.value = true;
 }
 
+function openCrop(file, target) {
+  if (!file) {
+    return;
+  }
+
+  cropTarget.value = target;
+  cropFile.value = file;
+}
+
+function closeCrop() {
+  cropFile.value = null;
+  cropTarget.value = null;
+}
+
+function applyImage(target, file) {
+  if (target === 'background') {
+    revokeBlob(form.backgroundPreview);
+    form.backgroundFile = file;
+    form.backgroundPreview = file ? URL.createObjectURL(file) : '';
+  }
+
+  if (target === 'signature') {
+    revokeBlob(form.signaturePreview);
+    form.signatureFile = file;
+    form.signaturePreview = file ? URL.createObjectURL(file) : '';
+  }
+}
+
+function onCropConfirm(file) {
+  applyImage(cropTarget.value, file);
+  closeCrop();
+}
+
+function onCropOriginal(file) {
+  applyImage(cropTarget.value, file);
+  closeCrop();
+}
+
+function onCropCancel() {
+  closeCrop();
+}
+
 function onBackgroundPicked(file) {
-  revokeBlob(form.backgroundPreview);
-  form.backgroundFile = file;
-  form.backgroundPreview = file ? URL.createObjectURL(file) : '';
+  openCrop(file, 'background');
 }
 
 function onSignaturePicked(file) {
-  revokeBlob(form.signaturePreview);
-  form.signatureFile = file;
-  form.signaturePreview = file ? URL.createObjectURL(file) : '';
+  openCrop(file, 'signature');
 }
 
 async function save() {
@@ -596,6 +867,7 @@ async function save() {
     body: form.body || null,
     signatory_name: form.signatory_name || null,
     signatory_title: form.signatory_title || null,
+    layout: layout.value,
   };
 
   if (!editingId.value && copyFromId.value) {
@@ -718,17 +990,42 @@ watch(scopedCourseId, async (id) => {
   padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent);
 }
 
-.certificate-form-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,480px);gap:28px;align-items:start;}
+.certificate-form-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,600px);gap:28px;align-items:start;}
 .certificate-form-fields{display:flex;flex-direction:column;gap:16px;}
-.certificate-form-preview{position:sticky;top:18px;display:flex;flex-direction:column;gap:8px;}
+.certificate-form-preview{
+  position:sticky;top:18px;display:flex;flex-direction:column;gap:8px;
+  max-height:calc(100vh - 36px);overflow:auto;padding-right:4px;
+}
+.certificate-preview-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .certificate-preview-label{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);}
+.certificate-drag-hint{font-size:11.5px;color:var(--text-muted);}
 .certificate-placeholder-hint{font-size:12px;color:var(--text-muted);margin-top:6px;}
 .certificate-placeholder-hint code{
   background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:1px 5px;font-size:11.5px;
 }
 
+.certificate-layout-panel{
+  margin-top:10px;padding:14px;display:flex;flex-direction:column;gap:12px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:14px;
+}
+.certificate-layout-head,.certificate-layout-title{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.certificate-layout-title{font-size:13px;}
+.certificate-layout-body{display:flex;flex-direction:column;gap:12px;}
+.certificate-layout-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.certificate-color-row{display:flex;align-items:center;gap:8px;}
+.certificate-color-input{
+  width:44px;height:34px;padding:2px;flex-shrink:0;cursor:pointer;
+  border:1px solid var(--border);border-radius:9px;background:var(--bg-input);
+}
+.certificate-style-toggles{display:flex;gap:8px;}
+.certificate-style-toggles .btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+
 @media (max-width:1024px){
   .certificate-form-grid{grid-template-columns:1fr;}
-  .certificate-form-preview{position:static;}
+  .certificate-form-preview{position:static;max-height:none;overflow:visible;padding-right:0;}
+}
+
+@media (max-width:560px){
+  .certificate-layout-grid{grid-template-columns:1fr;}
 }
 </style>

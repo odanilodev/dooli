@@ -13,7 +13,7 @@ function toFormData(payload, files = {}) {
 
   Object.entries(payload).forEach(([key, value]) => {
     if (value !== null && value !== undefined) {
-      formData.append(key, value);
+      formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
     }
   });
 

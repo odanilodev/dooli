@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 #[Fillable([
     'company_id', 'name', 'grade', 'title', 'course_id', 'version', 'time',
     'background', 'signature', 'body', 'signatory_name', 'signatory_title',
+    'layout',
 ])]
 class Certificate extends Model
 {
@@ -23,6 +24,7 @@ class Certificate extends Model
         return [
             'grade' => 'decimal:2',
             'time' => 'integer',
+            'layout' => 'array',
         ];
     }
 

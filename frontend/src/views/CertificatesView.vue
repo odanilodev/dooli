@@ -39,7 +39,7 @@
           <button class="admin-modal-close" @click="active = null">×</button>
         </div>
 
-        <CertificateCanvas :certificate="active.certificate || {}" :values="valuesFor(active)" />
+        <CertificateCanvas :certificate="active.certificate || {}" :values="valuesFor(active)" :layout="active.certificate?.layout" />
 
         <div class="admin-modal-actions no-print">
           <button class="btn btn-outline" @click="active = null">Fechar</button>
@@ -119,6 +119,8 @@ onMounted(load);
 
 .certificate-preview-modal{max-width:1000px;}
 .certificate-preview-modal .admin-modal-actions{margin-top:16px;}
+
+@page{size:A4 landscape;margin:0;}
 
 @media print {
   :global(.sidebar),

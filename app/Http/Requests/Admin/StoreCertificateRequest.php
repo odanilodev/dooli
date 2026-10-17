@@ -2,16 +2,22 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Http\Requests\Admin\Concerns\ValidatesCertificateLayout;
 use App\Http\Requests\Concerns\ScopedExists;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreCertificateRequest extends FormRequest
 {
-    use ScopedExists;
+    use ScopedExists, ValidatesCertificateLayout;
 
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->prepareLayoutForValidation();
     }
 
     public function rules(): array
@@ -29,6 +35,7 @@ class StoreCertificateRequest extends FormRequest
             'body' => ['nullable', 'string', 'max:5000'],
             'signatory_name' => ['nullable', 'string', 'max:255'],
             'signatory_title' => ['nullable', 'string', 'max:255'],
+            ...$this->layoutRules(),
         ];
     }
 }

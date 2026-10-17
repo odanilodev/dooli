@@ -23,6 +23,19 @@ use Illuminate\Support\Str;
 
 class CertificateService
 {
+    /**
+     * @var list<string>
+     */
+    private const LAYOUT_FIELDS = [
+        'eyebrow', 'title', 'body', 'signature', 'signature_line',
+        'signatory_name', 'signatory_title', 'code',
+    ];
+
+    /**
+     * @var list<string>
+     */
+    private const LAYOUT_ALIGNMENTS = ['left', 'center', 'right'];
+
     public function __construct(
         private readonly CertificateRepository $certificates,
         private readonly CertificateUserRepository $certificateUsers,
@@ -59,6 +72,12 @@ class CertificateService
             $data['signature'] = $this->images->copy($source->signature, 'certificates', $companyId);
         }
 
+        if (array_key_exists('layout', $data)) {
+            $data['layout'] = is_array($data['layout']) ? $this->normalizeLayout($data['layout']) : null;
+        } elseif ($source?->layout) {
+            $data['layout'] = $source->layout;
+        }
+
         $certificate = $this->certificates->create($data);
 
         $this->audit->log('certificate', 'create', 'certificate', "Certificado criado: {$certificate->name}");
@@ -79,6 +98,10 @@ class CertificateService
         if ($signature) {
             $this->images->delete($certificate->signature);
             $data['signature'] = $this->images->store($signature, 'certificates', (int) $certificate->company_id);
+        }
+
+        if (array_key_exists('layout', $data)) {
+            $data['layout'] = is_array($data['layout']) ? $this->normalizeLayout($data['layout']) : null;
         }
 
         $certificate = $this->certificates->update($certificate, $data);
@@ -280,5 +303,56 @@ class CertificateService
             : 0;
 
         return [$completed, $total];
+    }
+
+    /**
+     * Keeps only the known layout fields and clamps/sanitizes their values.
+     *
+     * @param  array<string, mixed>  $layout
+     * @return array<string, array<string, mixed>>
+     */
+    private function normalizeLayout(array $layout): array
+    {
+        $normalized = [];
+
+        foreach (self::LAYOUT_FIELDS as $field) {
+            $entry = $layout[$field] ?? null;
+
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $x = is_numeric($entry['x'] ?? null) ? (float) $entry['x'] : 50.0;
+            $y = is_numeric($entry['y'] ?? null) ? (float) $entry['y'] : 50.0;
+            $width = is_numeric($entry['width'] ?? null) ? (float) $entry['width'] : null;
+            $size = is_numeric($entry['size'] ?? null) ? round((float) $entry['size'], 1) : 12.0;
+
+            if (in_array($field, ['title', 'body'], true)) {
+                $width = $width === null ? 80.0 : max(20, min(90, $width));
+            } elseif ($field === 'signature_line') {
+                $width = $width === null ? 18.0 : max(5, min(90, $width));
+            } else {
+                $width = null;
+            }
+            $color = is_string($entry['color'] ?? null) && preg_match('/^#[0-9a-fA-F]{6}$/', $entry['color']) === 1
+                ? strtolower($entry['color'])
+                : null;
+            $font = is_string($entry['font'] ?? null) ? trim($entry['font']) : '';
+            $align = in_array($entry['align'] ?? null, self::LAYOUT_ALIGNMENTS, true) ? $entry['align'] : 'center';
+
+            $normalized[$field] = [
+                'x' => round(max(0, min(100, $x)), 2),
+                'y' => round(max(0, min(100, $y)), 2),
+                'width' => $width === null ? null : round($width, 2),
+                'color' => $color,
+                'font' => $font !== '' ? mb_substr($font, 0, 80) : null,
+                'size' => max(4, min(160, $size)),
+                'align' => $align,
+                'bold' => filter_var($entry['bold'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'italic' => filter_var($entry['italic'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            ];
+        }
+
+        return $normalized;
     }
 }

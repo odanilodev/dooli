@@ -276,6 +276,141 @@ class AdminCertificateTest extends TestCase
             ->assertJsonValidationErrors('copy_from');
     }
 
+    public function test_admin_can_create_a_certificate_with_layout(): void
+    {
+        $course = $this->buildCourse($this->company->id)['course'];
+
+        $response = $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'layout' => [
+                    'title' => [
+                        'x' => 42.5,
+                        'y' => 36,
+                        'width' => 65,
+                        'color' => '#112233',
+                        'font' => 'Lora',
+                        'size' => 30,
+                        'align' => 'left',
+                        'bold' => true,
+                        'italic' => false,
+                    ],
+                    'signature_line' => [
+                        'x' => 50,
+                        'y' => 74,
+                        'width' => 40,
+                    ],
+                    'code' => [
+                        'x' => 96,
+                        'y' => 94,
+                        'align' => 'right',
+                    ],
+                ],
+            ])
+            ->assertCreated();
+
+        $certificate = Certificate::findOrFail((int) $response->json('data.id'));
+
+        $this->assertSame(42.5, $certificate->layout['title']['x']);
+        $this->assertEquals(65.0, $certificate->layout['title']['width']);
+        $this->assertSame('#112233', $certificate->layout['title']['color']);
+        $this->assertSame('Lora', $certificate->layout['title']['font']);
+        $this->assertEquals(40.0, $certificate->layout['signature_line']['width']);
+        $this->assertSame('right', $certificate->layout['code']['align']);
+        $this->assertEquals(96.0, $certificate->layout['code']['x']);
+        $this->assertNull($certificate->layout['code']['width']);
+    }
+
+    public function test_layout_position_is_validated(): void
+    {
+        $course = $this->buildCourse($this->company->id)['course'];
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'layout' => [
+                    'title' => ['x' => 150, 'y' => 50],
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('layout.title.x');
+    }
+
+    public function test_layout_width_is_validated(): void
+    {
+        $course = $this->buildCourse($this->company->id)['course'];
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'layout' => [
+                    'title' => ['width' => 120],
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('layout.title.width');
+    }
+
+    public function test_layout_can_be_sent_as_json_on_multipart(): void
+    {
+        Storage::fake('public');
+        $course = $this->buildCourse($this->company->id)['course'];
+
+        $response = $this->withToken($this->apiLogin($this->admin))
+            ->post('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'background' => UploadedFile::fake()->image('bg.png', 1600, 900),
+                'layout' => json_encode([
+                    'title' => ['x' => 40, 'y' => 35, 'font' => 'Georgia', 'size' => 28],
+                ]),
+            ])
+            ->assertCreated();
+
+        $certificate = Certificate::findOrFail((int) $response->json('data.id'));
+
+        $this->assertEquals(40.0, $certificate->layout['title']['x']);
+        $this->assertEquals(80.0, $certificate->layout['title']['width']);
+        $this->assertSame('Georgia', $certificate->layout['title']['font']);
+    }
+
+    public function test_clone_copies_layout(): void
+    {
+        $course = $this->buildCourse($this->company->id)['course'];
+
+        $source = $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'layout' => [
+                    'title' => ['x' => 44, 'y' => 41, 'color' => '#abcdef'],
+                ],
+            ])
+            ->assertCreated()
+            ->json('data');
+
+        $clone = $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'version' => '2.0',
+                'copy_from' => $source['id'],
+            ])
+            ->assertCreated()
+            ->json('data');
+
+        $this->assertSame($source['layout'], $clone['layout']);
+    }
+
     public function test_student_cannot_manage_certificate_templates(): void
     {
         $course = $this->buildCourse($this->company->id)['course'];
