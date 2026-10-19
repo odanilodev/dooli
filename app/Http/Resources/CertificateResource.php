@@ -30,6 +30,8 @@ class CertificateResource extends JsonResource
             'modules_layout' => $this->modules_layout,
             'modules_background' => $this->modules_background,
             'modules_background_url' => $this->modulesBackgroundUrl(),
+            'issued_certificates_count' => $this->whenCounted('issued_certificates_count'),
+            'valid_certificates_count' => $this->whenCounted('valid_certificates_count'),
             'course' => new CourseResource($this->whenLoaded('course')),
         ];
     }

@@ -14,6 +14,7 @@ use App\Models\Topic;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
 
@@ -302,6 +303,33 @@ class AdminCertificateTest extends TestCase
             'id' => $certificate->id,
             'title' => 'Certificado Atualizado',
         ]);
+    }
+
+    public function test_template_with_any_issued_certificate_cannot_be_edited(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $this->completeCourse($course);
+        $certificate = Certificate::where('course_id', $course['course']->id)->firstOrFail();
+        $issued = CertificateUser::where('certificate_id', $certificate->id)->firstOrFail();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/certificates/{$certificate->id}", [
+                'title' => 'Alterado com aluno',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'business_rule');
+
+        $issued->update([
+            'invalidated_at' => now(),
+            'invalidation_reason' => 'Dados incorretos',
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/certificates/{$certificate->id}", [
+                'title' => 'Alterado com histórico',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'business_rule');
     }
 
     public function test_admin_can_delete_a_certificate_template(): void
@@ -797,6 +825,186 @@ class AdminCertificateTest extends TestCase
                 'modules_layout.list.columns',
                 'modules_layout.list.separator',
             ]);
+    }
+
+    public function test_template_list_exposes_issued_and_valid_counts(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $this->completeCourse($course);
+        $certificate = Certificate::where('course_id', $course['course']->id)->firstOrFail();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson('/api/v1/admin/certificates?course_id='.$course['course']->id)
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $certificate->id)
+            ->assertJsonPath('data.0.issued_certificates_count', 1)
+            ->assertJsonPath('data.0.valid_certificates_count', 1);
+    }
+
+    public function test_transfer_moves_valid_certificates_and_preserves_identity(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $team = $this->completeCourse($course);
+        $source = Certificate::where('course_id', $course['course']->id)->firstOrFail();
+        $issued = CertificateUser::where('certificate_id', $source->id)->firstOrFail();
+
+        $identity = [
+            'code' => $issued->code,
+            'created_at' => $issued->created_at?->toDateTimeString(),
+            'lessons_count' => $issued->lessons_count,
+            'modules' => $issued->modules,
+        ];
+
+        $targetId = (int) $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo novo',
+                'title' => 'Certificado novo',
+                'course_id' => $course['course']->id,
+                'version' => '2.0',
+            ])
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson("/api/v1/admin/certificates/{$source->id}/transfer-issued", [
+                'target_certificate_id' => $targetId,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.source_certificate_id', $source->id)
+            ->assertJsonPath('data.target_certificate_id', $targetId)
+            ->assertJsonPath('data.transferred', 1)
+            ->assertJsonPath('data.skipped', 0);
+
+        $issued->refresh();
+
+        $this->assertSame($targetId, $issued->certificate_id);
+        $this->assertSame($identity['code'], $issued->code);
+        $this->assertSame($identity['created_at'], $issued->created_at?->toDateTimeString());
+        $this->assertSame($identity['lessons_count'], $issued->lessons_count);
+        $this->assertSame($identity['modules'], $issued->modules);
+        $this->assertNull($issued->invalidated_at);
+        $this->assertSame($team->id, $issued->team_id);
+    }
+
+    public function test_transfer_does_not_change_invalidated_certificates(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $team = $this->completeCourse($course);
+        $source = Certificate::where('course_id', $course['course']->id)->firstOrFail();
+
+        $revoked = CertificateUser::query()->create([
+            'code' => (string) Str::uuid(),
+            'company_id' => $this->company->id,
+            'user_id' => $this->student->id,
+            'team_id' => $team->id,
+            'certificate_id' => $source->id,
+            'lessons_count' => 1,
+            'modules' => [],
+            'invalidated_at' => now(),
+            'invalidation_reason' => 'Dados incorretos',
+        ]);
+
+        $targetId = (int) $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo novo',
+                'title' => 'Certificado novo',
+                'course_id' => $course['course']->id,
+                'version' => '2.0',
+            ])
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson("/api/v1/admin/certificates/{$source->id}/transfer-issued", [
+                'target_certificate_id' => $targetId,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.transferred', 1)
+            ->assertJsonPath('data.skipped', 0);
+
+        $revoked->refresh();
+
+        $this->assertSame($source->id, $revoked->certificate_id);
+        $this->assertNotNull($revoked->invalidated_at);
+    }
+
+    public function test_transfer_skips_students_already_linked_to_the_target_template(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $team = $this->completeCourse($course);
+        $source = Certificate::where('course_id', $course['course']->id)->firstOrFail();
+
+        $targetId = (int) $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo novo',
+                'title' => 'Certificado novo',
+                'course_id' => $course['course']->id,
+                'version' => '2.0',
+            ])
+            ->assertCreated()
+            ->json('data.id');
+
+        CertificateUser::query()->create([
+            'code' => (string) Str::uuid(),
+            'company_id' => $this->company->id,
+            'user_id' => $this->student->id,
+            'team_id' => $team->id,
+            'certificate_id' => $targetId,
+            'lessons_count' => 1,
+            'modules' => [],
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson("/api/v1/admin/certificates/{$source->id}/transfer-issued", [
+                'target_certificate_id' => $targetId,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.transferred', 0)
+            ->assertJsonPath('data.skipped', 1);
+
+        $this->assertDatabaseHas('certificate_users', [
+            'user_id' => $this->student->id,
+            'team_id' => $team->id,
+            'certificate_id' => $source->id,
+            'invalidated_at' => null,
+        ]);
+        $this->assertDatabaseHas('certificate_users', [
+            'user_id' => $this->student->id,
+            'team_id' => $team->id,
+            'certificate_id' => $targetId,
+            'invalidated_at' => null,
+        ]);
+    }
+
+    public function test_transfer_requires_templates_from_the_same_course(): void
+    {
+        $sourceCourse = $this->buildCourse($this->company->id);
+        $source = Certificate::where('course_id', $sourceCourse['course']->id)->firstOrFail();
+        $targetCourse = $this->buildCourse($this->company->id);
+        $target = Certificate::where('course_id', $targetCourse['course']->id)->firstOrFail();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson("/api/v1/admin/certificates/{$source->id}/transfer-issued", [
+                'target_certificate_id' => $target->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'business_rule');
+    }
+
+    public function test_student_cannot_transfer_issued_certificates(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $source = Certificate::where('course_id', $course['course']->id)->firstOrFail();
+        $target = Certificate::factory()->create([
+            'company_id' => $this->company->id,
+            'course_id' => $course['course']->id,
+        ]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->postJson("/api/v1/admin/certificates/{$source->id}/transfer-issued", [
+                'target_certificate_id' => $target->id,
+            ])
+            ->assertForbidden();
     }
 
     public function test_student_cannot_manage_certificate_templates(): void

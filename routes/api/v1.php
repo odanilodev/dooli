@@ -222,6 +222,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::apiResource('attachments', AdminAttachmentController::class);
         Route::apiResource('banners', AdminBannerController::class);
         Route::apiResource('certificates', AdminCertificateController::class);
+        Route::post('certificates/{certificate}/transfer-issued', [AdminCertificateController::class, 'transferIssued']);
         Route::get('certificate-users', [AdminCertificateController::class, 'issued']);
         Route::post('certificate-users/{certificateUser}/revoke', [AdminCertificateController::class, 'revoke']);
 

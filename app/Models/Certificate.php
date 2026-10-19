@@ -39,6 +39,11 @@ class Certificate extends Model
         return $this->hasMany(CertificateUser::class);
     }
 
+    public function validCertificateUsers(): HasMany
+    {
+        return $this->certificateUsers()->whereNull('invalidated_at');
+    }
+
     /**
      * Public URL for the uploaded background image, or the raw path/link when
      * the certificate references an external image.

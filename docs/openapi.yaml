@@ -429,6 +429,29 @@ paths:
         '200': { description: OK }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  /api/v1/admin/certificates/{certificate}/transfer-issued:
+    post:
+      tags: [Admin]
+      summary: Transfere certificados válidos para outro modelo do mesmo curso
+      parameters:
+        - name: certificate
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_certificate_id]
+              properties:
+                target_certificate_id: { type: integer }
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Regra de negócio }
+
   /api/v1/admin/certificate-users:
     get:
       tags: [Admin]

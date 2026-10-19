@@ -89,6 +89,57 @@ class CertificateUserRepository extends BaseRepository
     }
 
     /**
+     * Current valid certificates issued with a specific template.
+     *
+     * @return Collection<int, CertificateUser>
+     */
+    public function validForCertificate(int $certificateId, bool $lock = false): Collection
+    {
+        $query = $this->query()
+            ->where('certificate_id', $certificateId)
+            ->whereNull('invalidated_at')
+            ->orderBy('id');
+
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * Keys ("userId:teamId") that already have a valid certificate with the
+     * given template, used to avoid breaking the active unique constraint.
+     *
+     * @return array<string, true>
+     */
+    public function validUserTeamKeys(int $certificateId): array
+    {
+        return $this->query()
+            ->where('certificate_id', $certificateId)
+            ->whereNull('invalidated_at')
+            ->get(['user_id', 'team_id'])
+            ->mapWithKeys(fn (CertificateUser $certificate) => [
+                $certificate->user_id.':'.$certificate->team_id => true,
+            ])
+            ->all();
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     */
+    public function moveToCertificate(array $ids, int $certificateId): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return $this->query()
+            ->whereIn('id', $ids)
+            ->update(['certificate_id' => $certificateId]);
+    }
+
+    /**
      * Invalidates every currently valid certificate for the enrollment with the
      * automatic replacement reason. The rows remain in the history.
      */

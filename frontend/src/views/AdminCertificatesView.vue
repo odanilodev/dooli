@@ -385,7 +385,7 @@
       <div v-else class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr><th>Certificado</th><th>Curso</th><th>Versão</th><th>Carga</th><th></th></tr>
+            <tr><th>Certificado</th><th>Curso</th><th>Versão</th><th>Carga</th><th>Alunos</th><th></th></tr>
           </thead>
           <tbody>
             <tr v-for="certificate in templates" :key="certificate.id">
@@ -399,8 +399,24 @@
                 <span v-if="certificate.id === currentTemplate?.id" class="certificate-current">Atual</span>
               </td>
               <td class="admin-muted">{{ certificate.time ? `${certificate.time}h` : '—' }}</td>
+              <td class="admin-muted">
+                {{ certificate.valid_certificates_count ?? 0 }} válido(s)
+                <span v-if="certificate.issued_certificates_count > 0" class="admin-sub">
+                  {{ certificate.issued_certificates_count }} emitido(s) no total
+                </span>
+              </td>
               <td class="admin-actions">
-                <button class="btn btn-outline btn-sm" @click="openEdit(certificate)">Editar</button>
+                <button
+                  class="btn btn-outline btn-sm"
+                  :disabled="certificate.issued_certificates_count > 0"
+                  :title="certificate.issued_certificates_count > 0 ? 'Modelo com certificados emitidos. Crie uma nova versão e transfira os alunos.' : ''"
+                  @click="openEdit(certificate)"
+                >Editar</button>
+                <button
+                  v-if="certificate.valid_certificates_count > 0"
+                  class="btn btn-outline btn-sm"
+                  @click="openTransfer(certificate)"
+                >Transferir alunos</button>
                 <button class="btn btn-danger btn-sm" :disabled="busyId === certificate.id" @click="remove(certificate)">Excluir</button>
               </td>
             </tr>
@@ -476,6 +492,38 @@
         <label for="revoke-reason">Motivo (opcional)</label>
         <textarea id="revoke-reason" class="form-control" rows="3" v-model="revokeReason" placeholder="Ex.: dados incorretos"></textarea>
       </div>
+    </ConfirmModal>
+
+    <ConfirmModal
+      v-if="transferSource"
+      title="Transferir alunos"
+      :message="`Transferir os certificados válidos de '${transferSource.title || transferSource.name}' para outro modelo?`"
+      confirm-label="Transferir"
+      :busy="transferring"
+      :confirm-disabled="transferLoading || !transferTargetId || transferOptions.length === 0"
+      @cancel="closeTransfer"
+      @confirm="confirmTransfer"
+    >
+      <p v-if="transferLoading" class="page-subtitle">Carregando modelos...</p>
+
+      <template v-else>
+        <div v-if="transferOptions.length" class="form-group">
+          <label for="transfer-target">Modelo de destino</label>
+          <select id="transfer-target" class="form-control" v-model="transferTargetId" :disabled="transferring">
+            <option v-for="option in transferOptions" :key="option.id" :value="option.id">
+              #{{ option.id }} · {{ option.version ? `v${option.version}` : 'sem versão' }} · {{ option.title || option.name }} · {{ option.valid_certificates_count ?? 0 }} válido(s)
+            </option>
+          </select>
+        </div>
+
+        <p v-else class="form-hint">
+          Este curso não possui outro modelo para receber os alunos. Crie uma nova versão antes de transferir.
+        </p>
+
+        <p class="form-hint">
+          {{ transferSource.valid_certificates_count }} certificado(s) válido(s) serão transferidos. Código, data de emissão, carga e grade congelada são preservados. Revogados e substituídos não são alterados.
+        </p>
+      </template>
     </ConfirmModal>
 
     <ImageCropper
@@ -620,6 +668,12 @@ const loadingFilterCourses = ref(false);
 const revokeTarget = ref(null);
 const revokeReason = ref('');
 const revoking = ref(false);
+
+const transferSource = ref(null);
+const transferTargetId = ref('');
+const transferOptions = ref([]);
+const transferLoading = ref(false);
+const transferring = ref(false);
 
 const form = reactive({
   name: '',
@@ -1239,6 +1293,79 @@ async function confirmRevoke() {
     toast.error(e?.message || 'Não foi possível revogar o certificado.');
   } finally {
     revoking.value = false;
+  }
+}
+
+async function openTransfer(certificate) {
+  if (!certificate?.valid_certificates_count) {
+    return;
+  }
+
+  transferSource.value = certificate;
+  transferTargetId.value = '';
+  transferOptions.value = [];
+  transferLoading.value = true;
+
+  try {
+    const { data } = await api.get('/admin/certificates', {
+      params: { course_id: certificate.course_id, per_page: 100 },
+    });
+
+    transferOptions.value = (data.data ?? []).filter((item) => item.id !== certificate.id);
+    transferTargetId.value = transferOptions.value[0]?.id ?? '';
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível carregar os modelos de destino.');
+  } finally {
+    transferLoading.value = false;
+  }
+}
+
+function closeTransfer() {
+  if (transferring.value) {
+    return;
+  }
+
+  transferSource.value = null;
+  transferTargetId.value = '';
+  transferOptions.value = [];
+  transferLoading.value = false;
+}
+
+async function confirmTransfer() {
+  const source = transferSource.value;
+  const targetId = Number(transferTargetId.value);
+
+  if (!source || !targetId) {
+    toast.error('Selecione o modelo de destino.');
+    return;
+  }
+
+  transferring.value = true;
+
+  try {
+    const result = await store.transferIssued(source.id, targetId);
+    const skipped = result.skipped
+      ? ` ${result.skipped} ignorado(s) por já existirem no modelo de destino.`
+      : '';
+
+    transferring.value = false;
+    closeTransfer();
+
+    if (result.transferred > 0) {
+      toast.success(`${result.transferred} certificado(s) transferido(s).${skipped}`);
+    } else {
+      toast.warning(`Nenhum certificado foi transferido.${skipped}`);
+    }
+
+    await load();
+
+    if (isScoped.value) {
+      await loadScopedContext();
+    }
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível transferir os certificados.');
+  } finally {
+    transferring.value = false;
   }
 }
 

@@ -15,7 +15,7 @@
         <button
           class="btn"
           :class="variant === 'danger' ? 'btn-danger' : 'btn-primary'"
-          :disabled="busy"
+          :disabled="busy || confirmDisabled"
           @click="emit('confirm')"
         >{{ busy ? 'Processando...' : confirmLabel }}</button>
       </div>
@@ -32,6 +32,7 @@ defineProps({
   confirmLabel: { type: String, default: 'Confirmar' },
   variant: { type: String, default: 'danger' },
   busy: { type: Boolean, default: false },
+  confirmDisabled: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['cancel', 'confirm']);

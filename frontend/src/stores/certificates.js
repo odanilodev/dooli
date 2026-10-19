@@ -129,6 +129,14 @@ export const useCertificatesStore = defineStore('certificates', () => {
     return data.data;
   }
 
+  async function transferIssued(sourceId, targetId) {
+    const { data } = await api.post(`/admin/certificates/${sourceId}/transfer-issued`, {
+      target_certificate_id: targetId,
+    });
+
+    return data.data;
+  }
+
   return {
     templates,
     meta,
@@ -144,5 +152,6 @@ export const useCertificatesStore = defineStore('certificates', () => {
     deleteTemplate,
     fetchIssued,
     revoke,
+    transferIssued,
   };
 });

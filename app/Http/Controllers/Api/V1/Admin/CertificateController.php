@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Requests\Admin\RevokeCertificateRequest;
 use App\Http\Requests\Admin\StoreCertificateRequest;
+use App\Http\Requests\Admin\TransferIssuedCertificateRequest;
 use App\Http\Requests\Admin\UpdateCertificateRequest;
 use App\Http\Resources\CertificateResource;
 use App\Http\Resources\CertificateUserResource;
@@ -30,7 +31,15 @@ class CertificateController extends ApiController
         $this->authorize('viewAny', Certificate::class);
 
         return ApiResponse::paginated(
-            $this->certificates->paginate($this->perPage($request), $request->only(['search', 'course_id']), ['course']),
+            $this->certificates->paginate(
+                perPage: $this->perPage($request),
+                filters: $request->only(['search', 'course_id']),
+                with: ['course'],
+                withCount: [
+                    'certificateUsers as issued_certificates_count',
+                    'validCertificateUsers as valid_certificates_count',
+                ],
+            ),
             CertificateResource::class,
         );
     }
@@ -114,6 +123,21 @@ class CertificateController extends ApiController
         $this->service->deleteTemplate($certificate);
 
         return ApiResponse::noContent();
+    }
+
+    public function transferIssued(
+        TransferIssuedCertificateRequest $request,
+        Certificate $certificate,
+    ): JsonResponse {
+        $this->authorize('update', $certificate);
+
+        $target = Certificate::query()->findOrFail((int) $request->validated('target_certificate_id'));
+
+        $this->authorize('update', $target);
+
+        return ApiResponse::success(
+            $this->service->transferIssued($certificate, $target),
+        );
     }
 
     /**

@@ -158,6 +158,12 @@ class CertificateService
         bool $removeBackground = false,
         bool $removeSignature = false,
     ): Certificate {
+        if ($certificate->certificateUsers()->exists()) {
+            throw new BusinessRuleException(
+                'Modelos com certificados emitidos não podem ser editados. Crie uma nova versão e transfira os alunos.',
+            );
+        }
+
         if ($background) {
             $this->images->delete($certificate->background);
             $data['background'] = $this->images->store($background, 'certificates', (int) $certificate->company_id);
@@ -223,6 +229,63 @@ class CertificateService
         $this->certificates->delete($certificate);
 
         $this->audit->log('certificate', 'delete', 'certificate', "Certificado excluído: {$certificate->name}");
+    }
+
+    /**
+     * Moves every valid certificate from one template to another template of
+     * the same course. Code, issue date, lesson count and module snapshot are
+     * preserved; only the template reference changes. Historical rows
+     * (replaced/revoked) are intentionally left untouched.
+     *
+     * @return array{source_certificate_id: int, target_certificate_id: int, transferred: int, skipped: int}
+     */
+    public function transferIssued(Certificate $source, Certificate $target): array
+    {
+        if ($source->is($target)) {
+            throw new BusinessRuleException('Escolha um modelo de destino diferente do modelo de origem.');
+        }
+
+        if ((int) $source->course_id !== (int) $target->course_id) {
+            throw new BusinessRuleException('A transferência só é permitida entre modelos do mesmo curso.');
+        }
+
+        $result = DB::transaction(function () use ($source, $target) {
+            $targetKeys = $this->certificateUsers->validUserTeamKeys((int) $target->id);
+            $ids = [];
+            $skipped = 0;
+
+            foreach ($this->certificateUsers->validForCertificate((int) $source->id, true) as $certificate) {
+                $key = $certificate->user_id.':'.$certificate->team_id;
+
+                if (isset($targetKeys[$key])) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $ids[] = (int) $certificate->id;
+            }
+
+            return [
+                'transferred' => $this->certificateUsers->moveToCertificate($ids, (int) $target->id),
+                'skipped' => $skipped,
+            ];
+        });
+
+        $this->audit->log(
+            'certificate',
+            'transfer_issued',
+            'certificate',
+            "Certificados transferidos: modelo {$source->id} -> {$target->id} "
+                ."({$result['transferred']} transferidos, {$result['skipped']} ignorados).",
+        );
+
+        return [
+            'source_certificate_id' => (int) $source->id,
+            'target_certificate_id' => (int) $target->id,
+            'transferred' => $result['transferred'],
+            'skipped' => $result['skipped'],
+        ];
     }
 
     /**
