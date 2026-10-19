@@ -15,7 +15,7 @@ class CertificatePublicResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'code' => $this->code,
+            'code' => $this->public_code ?: $this->code,
             'valid' => true,
             'holder_name' => $this->user?->name,
             'course' => $this->certificate?->course?->name,
@@ -38,7 +38,7 @@ class CertificatePublicResource extends JsonResource
                 'qr_enabled' => (bool) $this->certificate?->qr_enabled,
                 'qr_placement' => $this->certificate?->qr_placement ?: 'front',
             ],
-            'share_url' => CertificateShare::url((string) $this->code),
+            'share_url' => CertificateShare::url((string) ($this->public_code ?: $this->code)),
         ];
     }
 }

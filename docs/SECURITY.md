@@ -32,7 +32,8 @@
 - `User` oculta `password`/`remember_token`.
 - Listagens de comentários/avaliações usam `UserSummaryResource` (sem e-mail/telefone/endereço).
 - Verificação pública de certificado usa `CertificateVerifyResource` (sem dados de contato); a página pública usa `CertificatePublicResource` (sem contato, usuário, time ou IDs internos).
-- A página pública do certificado (`verificar.html`) é servida com `meta robots=noindex,nofollow,noarchive,nosnippet` e a API responde `X-Robots-Tag`.
+- A página pública do certificado (`/v/{codigo}`) é servida com `meta robots=noindex,nofollow,noarchive,nosnippet` e a API responde `X-Robots-Tag`.
+- O código público do certificado é aleatório e único, e a consulta pública usa `throttle:public`.
 - `Gateway` oculta `credentials`/`settings`; resposta expõe apenas `has_credentials`.
 - `PaymentEventResource` não expõe `metadata` (pode conter payload sensível do gateway).
 - Vídeo: reprodução via adapter; credenciais de plataforma nunca são retornadas.

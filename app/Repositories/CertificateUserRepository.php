@@ -41,11 +41,23 @@ class CertificateUserRepository extends BaseRepository
             ->get();
     }
 
+    public function findByCode(string $code): ?CertificateUser
+    {
+        return $this->query()
+            ->with(['certificate.course', 'user', 'team'])
+            ->where(function (Builder $query) use ($code) {
+                $query->where('code', $code)->orWhere('public_code', $code);
+            })
+            ->first();
+    }
+
     public function findValidByCode(string $code): ?CertificateUser
     {
         return $this->query()
             ->with(['certificate.course', 'user', 'team'])
-            ->where('code', $code)
+            ->where(function (Builder $query) use ($code) {
+                $query->where('code', $code)->orWhere('public_code', $code);
+            })
             ->whereNull('invalidated_at')
             ->first();
     }

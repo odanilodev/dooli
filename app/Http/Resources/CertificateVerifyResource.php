@@ -14,7 +14,7 @@ class CertificateVerifyResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'code' => $this->code,
+            'code' => $this->public_code ?: $this->code,
             'valid' => $this->invalidated_at === null,
             'holder_name' => $this->whenLoaded('user', fn () => $this->user->name),
             'course' => $this->whenLoaded('certificate', fn () => $this->certificate->course?->name),

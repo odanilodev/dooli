@@ -119,7 +119,7 @@ docker compose exec app php -r "echo (new Redis)->connect('redis', 6379) ? 'ok' 
 
 | Variável | Descrição |
 | --- | --- |
-| `FRONTEND_URL` | base do link de redefinição de senha (default `http://localhost:3000`) |
+| `FRONTEND_URL` | base do link de redefinição de senha e dos certificados públicos (default `http://localhost:3000`) |
 | `SANCTUM_EXPIRATION` | validade do token em minutos (vazio = nunca expira) |
 | `MERCADOPAGO_WEBHOOK_SECRET` | segredo HMAC do webhook do MercadoPago (**obrigatório em produção**) |
 | `MANUAL_WEBHOOK_SECRET` | segredo do header `X-Webhook-Secret` do gateway manual (**obrigatório em produção**) |

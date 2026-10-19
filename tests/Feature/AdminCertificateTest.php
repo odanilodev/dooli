@@ -850,6 +850,7 @@ class AdminCertificateTest extends TestCase
 
         $identity = [
             'code' => $issued->code,
+            'public_code' => $issued->public_code,
             'created_at' => $issued->created_at?->toDateTimeString(),
             'lessons_count' => $issued->lessons_count,
             'modules' => $issued->modules,
@@ -879,6 +880,7 @@ class AdminCertificateTest extends TestCase
 
         $this->assertSame($targetId, $issued->certificate_id);
         $this->assertSame($identity['code'], $issued->code);
+        $this->assertSame($identity['public_code'], $issued->public_code);
         $this->assertSame($identity['created_at'], $issued->created_at?->toDateTimeString());
         $this->assertSame($identity['lessons_count'], $issued->lessons_count);
         $this->assertSame($identity['modules'], $issued->modules);
@@ -1026,13 +1028,15 @@ class AdminCertificateTest extends TestCase
 
         [, $code] = $this->issueCertificate();
 
+        $this->assertMatchesRegularExpression('/^[A-HJ-NP-Z2-9]{8}$/', $code);
+
         $response = $this->getJson("/api/v1/public/certificates/{$code}")
             ->assertOk()
             ->assertHeader('X-Robots-Tag', 'noindex, nofollow')
             ->assertJsonPath('data.code', $code)
             ->assertJsonPath('data.valid', true)
             ->assertJsonPath('data.holder_name', $this->student->name)
-            ->assertJsonPath('data.share_url', "https://app.test/verificar.html?code={$code}")
+            ->assertJsonPath('data.share_url', "https://app.test/v/{$code}")
             ->assertJsonPath('data.certificate.qr_enabled', false)
             ->assertJsonPath('data.certificate.qr_placement', 'front')
             ->assertJsonStructure([
@@ -1050,11 +1054,22 @@ class AdminCertificateTest extends TestCase
         $this->assertArrayNotHasKey('team_id', $payload);
     }
 
+    public function test_public_share_page_accepts_legacy_uuid_code(): void
+    {
+        [$id] = $this->issueCertificate();
+
+        $issued = CertificateUser::query()->findOrFail($id);
+
+        $this->getJson("/api/v1/public/certificates/{$issued->code}")
+            ->assertOk()
+            ->assertJsonPath('data.code', $issued->public_code);
+    }
+
     public function test_public_share_page_returns_not_found_for_revoked_certificate(): void
     {
-        [, $code] = $this->issueCertificate();
+        [$id, $code] = $this->issueCertificate();
 
-        $issued = CertificateUser::query()->where('code', $code)->firstOrFail();
+        $issued = CertificateUser::query()->findOrFail($id);
         $issued->forceFill([
             'invalidated_at' => now(),
             'invalidation_reason' => 'Revogado manualmente.',

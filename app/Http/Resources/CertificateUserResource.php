@@ -12,8 +12,8 @@ class CertificateUserResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'code' => $this->code,
-            'share_url' => CertificateShare::url((string) $this->code),
+            'code' => $this->public_code ?: $this->code,
+            'share_url' => CertificateShare::url((string) ($this->public_code ?: $this->code)),
             'user_id' => $this->user_id,
             'team_id' => $this->team_id,
             'lessons_count' => $this->lessons_count,

@@ -10,9 +10,6 @@
       </div>
 
       <div class="public-cert-actions">
-        <button v-if="item" type="button" class="btn btn-outline btn-sm" @click="copyLink">
-          {{ copied ? 'Link copiado' : 'Copiar link' }}
-        </button>
         <button type="button" class="btn btn-primary" :disabled="!item" @click="print">
           Baixar PDF
         </button>
@@ -52,15 +49,6 @@
         </div>
       </div>
 
-      <section v-if="item.share_url" class="public-cert-share no-print">
-        <QrCodeImage :value="item.share_url" alt="QR code do certificado" class="public-cert-qr" />
-        <div class="public-cert-share-info">
-          <strong>QR code de verificação</strong>
-          <a :href="item.share_url" target="_blank" rel="noopener noreferrer">{{ item.share_url }}</a>
-          <span>Compartilhe este link para validar o certificado.</span>
-        </div>
-      </section>
-
       <p class="public-cert-hint no-print">
         O botão "Baixar PDF" abre a janela de impressão. Escolha "Salvar como PDF" para gerar o arquivo.
       </p>
@@ -73,12 +61,20 @@ import { computed, onMounted, ref } from 'vue';
 import { api } from '../api/http';
 import { formatDate } from '../utils/format';
 import CertificateCanvas from '../components/CertificateCanvas.vue';
-import QrCodeImage from '../components/QrCodeImage.vue';
 
-const code = new URLSearchParams(window.location.search).get('code') || '';
+function readCode() {
+  const match = window.location.pathname.match(/\/v\/([^/?#]+)\/?$/);
+
+  if (match) {
+    return decodeURIComponent(match[1]);
+  }
+
+  return new URLSearchParams(window.location.search).get('code') || '';
+}
+
+const code = readCode();
 const item = ref(null);
 const loading = ref(true);
-const copied = ref(false);
 const errorMessage = ref('O link pode ter expirado ou o certificado foi revogado.');
 
 const title = computed(() => item.value?.certificate?.title || 'Certificado de Conclusão');
@@ -108,28 +104,26 @@ function print() {
   window.print();
 }
 
-async function copyLink() {
-  if (!item.value?.share_url) {
-    return;
-  }
-
-  try {
-    await navigator.clipboard.writeText(item.value.share_url);
-    copied.value = true;
-  } catch (e) {
-    /* clipboard unavailable */
-  }
-}
-
 async function load() {
   if (!code) {
     loading.value = false;
     return;
   }
 
+  let redirecting = false;
+
   try {
     const { data } = await api.get(`/public/certificates/${encodeURIComponent(code)}`);
-    item.value = data.data || null;
+    const payload = data.data || null;
+
+    if (payload?.redirect_url) {
+      redirecting = true;
+      window.location.replace(payload.redirect_url);
+
+      return;
+    }
+
+    item.value = payload;
   } catch (e) {
     item.value = null;
 
@@ -137,7 +131,9 @@ async function load() {
       errorMessage.value = 'Não foi possível carregar o certificado. Tente novamente em instantes.';
     }
   } finally {
-    loading.value = false;
+    if (!redirecting) {
+      loading.value = false;
+    }
   }
 }
 
@@ -176,17 +172,6 @@ onMounted(load);
 }
 .public-cert-stack{display:flex;flex-direction:column;gap:22px;}
 .public-cert-sheet{width:100%;}
-.public-cert-share{
-  display:flex;align-items:center;gap:18px;padding:16px;border:1px solid var(--border);border-radius:16px;
-  background:var(--bg-card);
-}
-.public-cert-qr{width:112px;flex-shrink:0;}
-.public-cert-share-info{display:flex;flex-direction:column;gap:5px;min-width:0;}
-.public-cert-share-info strong{font-size:13px;color:var(--text-primary);}
-.public-cert-share-info a{
-  font-size:12px;font-weight:700;color:var(--accent);overflow-wrap:anywhere;
-}
-.public-cert-share-info span{font-size:12px;color:var(--text-muted);}
 .public-cert-hint{font-size:12px;color:var(--text-muted);text-align:center;}
 
 @page{size:A4 landscape;margin:0;}
@@ -196,8 +181,6 @@ onMounted(load);
   .public-cert-header{flex-direction:column;}
   .public-cert-actions{width:100%;}
   .public-cert-actions .btn{flex:1;}
-  .public-cert-share{align-items:flex-start;}
-  .public-cert-qr{width:92px;}
 }
 
 @media print {

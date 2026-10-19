@@ -581,6 +581,30 @@ class CertificateService
         return $certificate;
     }
 
+    public function findPublicCertificate(string $code): ?CertificateUser
+    {
+        return $this->certificateUsers->findByCode($code);
+    }
+
+    /**
+     * Current valid certificate for the same enrollment, used to redirect
+     * links/QR codes printed on automatically replaced certificates.
+     */
+    public function findCurrentReplacement(CertificateUser $certificate): ?CertificateUser
+    {
+        $courseId = (int) ($certificate->certificate?->course_id ?? 0);
+
+        if (! $courseId) {
+            return null;
+        }
+
+        return $this->certificateUsers->findValidForUserCourseTeam(
+            (int) $certificate->user_id,
+            $courseId,
+            (int) $certificate->team_id,
+        );
+    }
+
     /**
      * @return array{0: int, 1: int} [completed, total]
      */

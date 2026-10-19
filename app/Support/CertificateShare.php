@@ -10,6 +10,6 @@ class CertificateShare
     public static function url(string $code): string
     {
         return rtrim((string) config('app.frontend_url'), '/')
-            .'/verificar.html?code='.rawurlencode($code);
+            .'/v/'.rawurlencode($code);
     }
 }

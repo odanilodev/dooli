@@ -58,7 +58,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 Route::get('public/certificates/{code}', [CertificateVerifyController::class, 'show'])
-    ->whereUuid('code')
+    ->where('code', '[A-Za-z0-9-]+')
     ->middleware('throttle:public');
 
 /*

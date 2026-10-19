@@ -220,13 +220,13 @@ paths:
     get:
       tags: [Store]
       summary: Payload da página pública do certificado
-      description: Não exige X-Company nem autenticação; o UUID resolve o certificado.
+      description: Não exige X-Company nem autenticação; o código público curto resolve o certificado. UUIDs antigos também são aceitos. Certificados substituídos automaticamente retornam redirect_url para o válido atual.
       security: []
       parameters:
         - name: code
           in: path
           required: true
-          schema: { type: string, format: uuid }
+          schema: { type: string, pattern: '^[A-Za-z0-9-]+$' }
       responses:
         '200':
           description: OK
@@ -242,7 +242,8 @@ paths:
                   data:
                     type: object
                     properties:
-                      code: { type: string, format: uuid }
+                      code: { type: string, example: A7K2M9QX }
+                      redirect_url: { type: string, format: uri, description: Presente quando o certificado foi substituído; aponta para o certificado válido atual. }
                       valid: { type: boolean, example: true }
                       holder_name: { type: string }
                       course: { type: string, nullable: true }

@@ -17,7 +17,7 @@ Abre em `http://localhost:5173`.
 npm run build
 ```
 
-Gera os arquivos finais em `dist/` — é só subir essa pasta em qualquer hospedagem estática (ou servir via um backend, como uma rota "catch-all" de um framework PHP/Node). Como o roteamento usa modo **hash** (`#/cursos`, `#/aula`, etc.), não é preciso configurar rewrite no servidor.
+Gera os arquivos finais em `dist/` — é só subir essa pasta em qualquer hospedagem estática (ou servir via um backend, como uma rota "catch-all" de um framework PHP/Node). Como o roteamento usa modo **hash** (`#/cursos`, `#/aula`, etc.), não é preciso configurar rewrite para as telas do app. A exceção é o link público do certificado: `/v/{codigo}` precisa ser reescrito para `verificar.html` no host de produção.
 
 ```bash
 npm run preview

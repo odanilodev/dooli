@@ -759,7 +759,7 @@ const previewValues = reactive({
   data: '00/00/0000',
   carga_horaria: 0,
   codigo: '0000-0000-0000',
-  share_url: `${window.location.origin}/verificar.html?code=preview`,
+  share_url: `${window.location.origin}/v/PREVIEW1`,
 });
 
 const previewCertificate = computed(() => ({

@@ -114,6 +114,7 @@ class CourseCompletionIntegrityTest extends TestCase
         $this->assertSame(CertificateUser::INVALIDATION_REPLACED, $old->invalidation_reason);
         $this->assertSame(CertificateUser::STATUS_VALID, $new->status());
         $this->assertNotSame($oldCode, $new->code);
+        $this->assertNotSame($old->public_code, $new->public_code);
         $this->assertSame(2, $new->lessons_count);
         $this->assertSame([$course['module']->name], array_column($old->modules, 'name'));
         $this->assertSame(
@@ -137,8 +138,19 @@ class CourseCompletionIntegrityTest extends TestCase
                 ->json('data'),
         )->pluck('status', 'code');
 
-        $this->assertSame(CertificateUser::STATUS_REPLACED, $statuses[$oldCode]);
-        $this->assertSame(CertificateUser::STATUS_VALID, $statuses[$new->code]);
+        $this->assertSame(CertificateUser::STATUS_REPLACED, $statuses[$old->public_code]);
+        $this->assertSame(CertificateUser::STATUS_VALID, $statuses[$new->public_code]);
+
+        config(['app.frontend_url' => 'https://app.test']);
+
+        $this->getJson("/api/v1/public/certificates/{$old->public_code}")
+            ->assertOk()
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow')
+            ->assertJsonPath('data.redirect_url', "https://app.test/v/{$new->public_code}");
+
+        $this->getJson("/api/v1/public/certificates/{$oldCode}")
+            ->assertOk()
+            ->assertJsonPath('data.redirect_url', "https://app.test/v/{$new->public_code}");
 
         $completion = CourseCompletion::query()->firstOrFail();
         $this->assertSame(2, $completion->required_lessons);

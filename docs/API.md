@@ -166,16 +166,17 @@ Lista os banners **ativos** da empresa (ordenados por `sort_order`), que aliment
 Verifica a autenticidade de um certificado pelo código público (UUID). Retorna 404 se inválido/invalidado.
 **Resposta (sem dados pessoais):**
 ```json
-{ "success": true, "data": { "code": "uuid", "valid": true, "holder_name": "Aluno", "course": "Curso de PHP", "lessons_count": 10, "issued_at": "2026-09-17T12:00:00+00:00" } }
+{ "success": true, "data": { "code": "A7K2M9QX", "valid": true, "holder_name": "Aluno", "course": "Curso de PHP", "lessons_count": 10, "issued_at": "2026-09-17T12:00:00+00:00" } }
 ```
 
 ### GET /api/v1/public/certificates/{code}
-Payload da **página pública de visualização** do certificado. Não exige `X-Company` nem autenticação: o UUID resolve o certificado e a empresa. Retorna 404 para certificado inexistente, revogado ou substituído.
+Payload da **página pública de visualização** do certificado. Não exige `X-Company` nem autenticação: o código público curto resolve o certificado e a empresa; UUIDs antigos continuam aceitos. Retorna 404 para certificado inexistente, revogado ou substituído.
 - Inclui dados visuais do template (`certificate`), `modules` congelados, `holder_name`, `course`, `issued_at` e `share_url`.
+- Se o certificado foi **substituído automaticamente**, retorna `{ "redirect_url": "..." }` apontando para o certificado válido atual; a página redireciona sozinha. Revogados manualmente continuam retornando 404.
 - Não expõe e-mail, telefone, usuário, time ou identificadores internos.
 - O endpoint e a página pública respondem com `X-Robots-Tag: noindex, nofollow`.
 
-**Link público:** `${FRONTEND_URL}/verificar.html?code={uuid}`. O QR code opcional do certificado usa esse endereço.
+**Link público:** `${FRONTEND_URL}/v/{codigo}`. O QR code opcional do certificado usa esse endereço. Links antigos em `verificar.html?code={uuid}` continuam funcionando.
 
 ---
 
@@ -401,7 +402,7 @@ CRUD dos templates por curso (`name`, `title`, `course_id`, `grade`, `version`, 
 - **Versões:** cada linha é uma versão do certificado do curso (a mais recente é a **atual**). Para criar uma nova versão clonando a atual, envie `copy_from` (id do template de origem): as imagens são copiadas para novos arquivos (não compartilhados), e uploads enviados no mesmo request têm precedência. Envie `remove_background=1`, `remove_signature=1` e/ou `remove_modules_background=1` para não copiar as imagens correspondentes.
 - **Bloqueio de edição:** um template que já possui **qualquer** certificado emitido (válido, substituído ou revogado) não pode ser alterado (`422 business_rule`). Crie uma nova versão, ajuste o novo modelo enquanto ele não tem alunos e use a transferência de válidos. A transferência troca apenas o `certificate_id` dos certificados válidos; snapshots e códigos permanecem intactos.
 - **Layout visual (`layout`):** objeto JSON por campo (`eyebrow`, `title`, `body`, `modules`, `signature`, `signature_line`, `signatory_name`, `signatory_title`, `code`, `qr`) com `x`/`y` (0–100, % da arte), `width` (5–100, % da arte; usado em `title`/`body`/`modules` com padrão 80 e em `signature_line` com padrão 18), `color` (`#rrggbb` ou `null` para o padrão), `font`, `size` (px na largura de referência de 1000px), `align` (`left|center|right`), `bold` e `italic`. No `multipart/form-data`, envie `layout` como string JSON. Campos ausentes usam o layout padrão. O campo `modules` é a grade do curso na frente do certificado (quando `modules_placement=front`), exibida somente quando o certificado emitido possui módulos. A lista aceita `format` (`numbered`, `bulleted`, `plain` ou `inline`), `columns` (1–4, padrão 2) e `separator` (`bullet`, `comma`, `pipe` ou `dash`, padrão `bullet`; usado apenas em `inline`).
-- **QR code:** `qr_enabled` (boolean, padrão `false`) habilita o QR; `qr_placement` (`front`, `modules` ou `both`, padrão `front`) escolhe onde ele aparece. O QR aponta para `${FRONTEND_URL}/verificar.html?code={uuid}` e é gerado no frontend a partir do `share_url`. A posição/tamanho são configurados em `layout.qr` (frente) e `modules_layout.qr` (página extra/verso).
+- **QR code:** `qr_enabled` (boolean, padrão `false`) habilita o QR; `qr_placement` (`front`, `modules` ou `both`, padrão `front`) escolhe onde ele aparece. O QR aponta para `${FRONTEND_URL}/v/{codigo}` e é gerado no frontend a partir do `share_url`. A posição/tamanho são configurados em `layout.qr` (frente) e `modules_layout.qr` (página extra/verso).
 - **Exibição da grade:** `modules_placement` (`none`, `front`, `extra` ou `back`) define onde a grade aparece. `front` usa o campo `modules` do `layout`; `extra` e `back` geram uma segunda página A4 (a diferença é só o rótulo/uso de duplex); `none` oculta a grade. O padrão é `front`.
 - **Página separada da grade:** `modules_title` é o título da página (padrão “Módulos do curso”) e `modules_layout` é um JSON com os campos `heading`, `list` e `qr`, no mesmo formato visual do `layout` (largura padrão 80 no título e 86 na lista). A `list` aceita os mesmos `format`/`columns`/`separator` da grade da frente. `modules_background` é o fundo próprio opcional; sem ele, a página fica branca. No `multipart/form-data`, envie `modules_layout` como string JSON.
 - A emissão usa o template **mais recente** do curso; a resposta do aluno (`me/certificates`) já inclui os campos visuais, o `layout`, a configuração da página da grade e `modules` (fotografia da grade no momento da emissão). Como templates com alunos emitidos ficam bloqueados, para atualizar o visual de certificados já válidos crie uma nova versão e transfira os alunos; a transferência preserva código, data, carga e grade, alterando somente o modelo exibido.

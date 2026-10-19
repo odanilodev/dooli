@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Concerns\BelongsToCompany;
+use App\Support\CertificatePublicCode;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'code', 'company_id', 'user_id', 'team_id', 'lessons_count', 'modules',
+    'code', 'public_code', 'company_id', 'user_id', 'team_id', 'lessons_count', 'modules',
     'certificate_id', 'invalidated_at', 'invalidation_reason',
 ])]
 class CertificateUser extends Model
@@ -38,6 +39,23 @@ class CertificateUser extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (self $model) {
+            if ($model->public_code) {
+                return;
+            }
+
+            do {
+                $code = CertificatePublicCode::generate();
+            } while (
+                static::query()
+                    ->withoutGlobalScope('company')
+                    ->where('public_code', $code)
+                    ->exists()
+            );
+
+            $model->public_code = $code;
+        });
+
         static::saving(function (self $model) {
             // Keep the partial unique guarantee: only valid certificates carry
             // active_flag = 1, so invalidated history is never blocked.
