@@ -19,7 +19,9 @@ use App\Repositories\TimelineRepository;
 use App\Support\CompanyContext;
 use App\Support\ImageStorage;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CertificateService
@@ -224,16 +226,17 @@ class CertificateService
     }
 
     /**
-     * Issues a certificate when the course is completed and the student has no
-     * certificate yet. Never re-issues: an existing certificate (valid or
-     * revoked) is always respected. Returns null when not eligible.
+     * Issues the first certificate when the student finishes the course, and
+     * replaces it when new lessons were added and the student finished them.
+     * A manually revoked certificate is never reissued automatically. Returns
+     * null when no certificate should be issued.
      */
     public function issueIfEligible(User $user, int $courseId, int $teamId): ?CertificateUser
     {
-        $existing = $this->certificateUsers->findForUserCourseTeam($user->id, $courseId, $teamId);
+        $latest = $this->certificateUsers->findForUserCourseTeam($user->id, $courseId, $teamId);
 
-        if ($existing) {
-            return $existing->isInvalidated() ? null : $existing;
+        if ($latest?->isInvalidated()) {
+            return null;
         }
 
         $certificate = $this->certificates->findForCourse($courseId);
@@ -242,11 +245,31 @@ class CertificateService
             return null;
         }
 
+        if ($latest !== null) {
+            $total = $this->lessons->countPublishedByCourse($courseId);
+
+            if ($total === 0 || $total <= $latest->lessons_count) {
+                return $latest;
+            }
+
+            $completedLessonIds = $this->completedLessonIds($user, $courseId, $teamId);
+
+            if (count($completedLessonIds) < $total) {
+                return $latest;
+            }
+
+            return $this->replace($user, $courseId, $teamId, $certificate, $latest, $total, $completedLessonIds);
+        }
+
         if (! $this->isCompleted($user->id, $courseId, $teamId)) {
             return null;
         }
 
-        return $this->issue($user, $courseId, $teamId, $certificate);
+        $completion = $this->completions->findForUserCourseTeam($user->id, $courseId, $teamId);
+        $total = (int) ($completion?->required_lessons ?? $this->lessons->countPublishedByCourse($courseId));
+        $lessonIds = (array) ($completion?->lesson_ids ?? $this->completedLessonIds($user, $courseId, $teamId));
+
+        return $this->issue($user, $courseId, $teamId, $certificate, $total, $lessonIds);
     }
 
     /**
@@ -316,26 +339,109 @@ class CertificateService
         return $total > 0 && $completed >= $total;
     }
 
-    private function issue(User $user, int $courseId, int $teamId, Certificate $certificate): CertificateUser
-    {
-        $completion = $this->completions->findForUserCourseTeam($user->id, $courseId, $teamId);
-        $total = (int) ($completion?->required_lessons ?? $this->lessons->countPublishedByCourse($courseId));
-
+    private function issue(
+        User $user,
+        int $courseId,
+        int $teamId,
+        Certificate $certificate,
+        int $total,
+        array $lessonIds,
+    ): CertificateUser {
         $issued = $this->certificateUsers->create([
             'code' => (string) Str::uuid(),
             'user_id' => $user->id,
             'team_id' => $teamId,
             'certificate_id' => $certificate->id,
             'lessons_count' => $total,
-            'modules' => $this->modules->snapshotForCourse(
-                $courseId,
-                (array) ($completion?->lesson_ids ?? []),
-            ),
+            'modules' => $this->modules->snapshotForCourse($courseId, $lessonIds),
         ]);
 
         $this->audit->log('certificate', 'issue', 'certificate_user', "Certificado emitido para user {$user->id}", $user->id);
 
         return $issued;
+    }
+
+    /**
+     * Replaces the current valid certificate with a new milestone. The old row
+     * stays in history as invalidated; only the new one remains valid.
+     *
+     * @param  array<int, int>  $lessonIds
+     */
+    private function replace(
+        User $user,
+        int $courseId,
+        int $teamId,
+        Certificate $certificate,
+        CertificateUser $current,
+        int $total,
+        array $lessonIds,
+    ): CertificateUser {
+        try {
+            $replacement = DB::transaction(function () use ($user, $courseId, $teamId, $certificate, $current, $total, $lessonIds) {
+                $locked = $this->certificateUsers->findValidForUserCourseTeam($user->id, $courseId, $teamId, true);
+
+                if (! $locked) {
+                    return $this->certificateUsers->findValidForUserCourseTeam($user->id, $courseId, $teamId) ?? $current;
+                }
+
+                if ($locked->lessons_count >= $total) {
+                    return $locked;
+                }
+
+                $this->certificateUsers->invalidateForReplacement($user->id, $courseId, $teamId);
+
+                $issued = $this->certificateUsers->create([
+                    'code' => (string) Str::uuid(),
+                    'user_id' => $user->id,
+                    'team_id' => $teamId,
+                    'certificate_id' => $certificate->id,
+                    'lessons_count' => $total,
+                    'modules' => $this->modules->snapshotForCourse($courseId, $lessonIds),
+                ]);
+
+                $this->completions->markCompleted(
+                    (int) $user->id,
+                    $teamId,
+                    $courseId,
+                    (int) $user->company_id,
+                    $total,
+                    $lessonIds,
+                );
+
+                return $issued;
+            });
+        } catch (QueryException) {
+            $replacement = $this->certificateUsers->findValidForUserCourseTeam($user->id, $courseId, $teamId) ?? $current;
+        }
+
+        if ($replacement->wasRecentlyCreated) {
+            $this->audit->log(
+                'certificate',
+                'replace',
+                'certificate_user',
+                "Certificado substituído: {$current->id} -> {$replacement->id}",
+                $user->id,
+            );
+        }
+
+        return $replacement;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function completedLessonIds(User $user, int $courseId, int $teamId): array
+    {
+        $completedAction = $this->actions->findByCode(ActionCode::Completed->value);
+
+        if (! $completedAction) {
+            return [];
+        }
+
+        return array_map(
+            'intval',
+            $this->timeline->completedLessonIds($user->id, $courseId, $teamId, $completedAction->id),
+        );
     }
 
     /**

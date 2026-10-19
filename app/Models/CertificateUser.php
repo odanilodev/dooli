@@ -18,6 +18,14 @@ class CertificateUser extends Model
 
     public const UPDATED_AT = null;
 
+    public const STATUS_VALID = 'valid';
+
+    public const STATUS_REPLACED = 'replaced';
+
+    public const STATUS_REVOKED = 'revoked';
+
+    public const INVALIDATION_REPLACED = 'Substituído automaticamente por uma nova conclusão do curso.';
+
     protected function casts(): array
     {
         return [
@@ -55,5 +63,19 @@ class CertificateUser extends Model
     public function isInvalidated(): bool
     {
         return $this->invalidated_at !== null;
+    }
+
+    public function isReplaced(): bool
+    {
+        return $this->invalidation_reason === self::INVALIDATION_REPLACED;
+    }
+
+    public function status(): string
+    {
+        if (! $this->isInvalidated()) {
+            return self::STATUS_VALID;
+        }
+
+        return $this->isReplaced() ? self::STATUS_REPLACED : self::STATUS_REVOKED;
     }
 }

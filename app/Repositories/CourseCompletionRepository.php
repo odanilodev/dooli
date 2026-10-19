@@ -4,7 +4,6 @@ namespace App\Repositories;
 
 use App\Models\CourseCompletion;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\QueryException;
 
 class CourseCompletionRepository extends BaseRepository
 {
@@ -16,37 +15,37 @@ class CourseCompletionRepository extends BaseRepository
     }
 
     /**
-     * Records the historical completion of a course for a user+team. Idempotent:
-     * the first completion wins and is never overwritten, even under concurrency
-     * (the unique key on user+team+course guarantees a single row).
+     * Records the latest completion milestone for a user+team. The first row is
+     * created once; when new lessons raise the requirement, the same row is
+     * advanced to the new total so progress reflects the latest completion.
      *
      * @param  array<int, int>  $lessonIds
      */
     public function markCompleted(int $userId, int $teamId, int $courseId, int $companyId, int $requiredLessons, array $lessonIds): CourseCompletion
     {
-        $completion = $this->findForUserCourseTeam($userId, $courseId, $teamId);
-
-        if ($completion) {
-            return $completion;
-        }
-
-        try {
-            return $this->create([
-                'company_id' => $companyId,
+        $completion = $this->query()->firstOrCreate(
+            [
                 'user_id' => $userId,
                 'team_id' => $teamId,
                 'course_id' => $courseId,
+            ],
+            [
+                'company_id' => $companyId,
                 'required_lessons' => $requiredLessons,
                 'lesson_ids' => $lessonIds,
                 'completed_at' => now(),
-            ]);
-        } catch (QueryException $e) {
-            return $this->query()
-                ->where('user_id', $userId)
-                ->where('course_id', $courseId)
-                ->where('team_id', $teamId)
-                ->firstOrFail();
+            ],
+        );
+
+        if ($requiredLessons > $completion->required_lessons) {
+            $completion->forceFill([
+                'required_lessons' => $requiredLessons,
+                'lesson_ids' => $lessonIds,
+                'completed_at' => now(),
+            ])->save();
         }
+
+        return $completion;
     }
 
     public function findForUserCourseTeam(int $userId, int $courseId, int $teamId): ?CourseCompletion

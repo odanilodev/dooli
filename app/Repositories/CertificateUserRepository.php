@@ -63,4 +63,46 @@ class CertificateUserRepository extends BaseRepository
             ->latest('id')
             ->first();
     }
+
+    /**
+     * Current valid certificate of the user for a course+team. Optionally locks
+     * the row so concurrent completions cannot issue two replacements.
+     */
+    public function findValidForUserCourseTeam(
+        int $userId,
+        int $courseId,
+        int $teamId,
+        bool $lock = false,
+    ): ?CertificateUser {
+        $query = $this->query()
+            ->where('user_id', $userId)
+            ->where('team_id', $teamId)
+            ->whereNull('invalidated_at')
+            ->whereHas('certificate', fn ($q) => $q->where('course_id', $courseId))
+            ->latest('id');
+
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        return $query->first();
+    }
+
+    /**
+     * Invalidates every currently valid certificate for the enrollment with the
+     * automatic replacement reason. The rows remain in the history.
+     */
+    public function invalidateForReplacement(int $userId, int $courseId, int $teamId): int
+    {
+        return $this->query()
+            ->where('user_id', $userId)
+            ->where('team_id', $teamId)
+            ->whereNull('invalidated_at')
+            ->whereHas('certificate', fn ($q) => $q->where('course_id', $courseId))
+            ->update([
+                'invalidated_at' => now(),
+                'invalidation_reason' => CertificateUser::INVALIDATION_REPLACED,
+                'active_flag' => null,
+            ]);
+    }
 }

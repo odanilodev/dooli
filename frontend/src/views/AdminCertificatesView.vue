@@ -439,8 +439,8 @@
               <td class="admin-muted">{{ item.team?.name || '—' }}</td>
               <td class="admin-muted">{{ formatDateTime(item.issued_at) }}</td>
               <td>
-                <span class="status-pill" :class="item.invalidated_at ? 'inactive' : 'active'">
-                  {{ item.invalidated_at ? 'Revogado' : 'Válido' }}
+                <span class="status-pill" :class="statusOf(item) !== 'valid' ? 'inactive' : 'active'">
+                  {{ statusLabel(item) }}
                 </span>
               </td>
               <td class="admin-actions">
@@ -542,6 +542,19 @@ const saving = computed(() => store.saving);
 const issued = computed(() => store.issued);
 const issuedMeta = computed(() => store.issuedMeta);
 const issuedLoading = computed(() => store.issuedLoading);
+
+function statusOf(item) {
+  return item.status || (item.invalidated_at ? 'revoked' : 'valid');
+}
+
+function statusLabel(item) {
+  const status = statusOf(item);
+
+  if (status === 'replaced') return 'Substituído';
+  if (status === 'revoked') return 'Revogado';
+
+  return 'Válido';
+}
 
 const tab = ref('templates');
 const search = ref('');

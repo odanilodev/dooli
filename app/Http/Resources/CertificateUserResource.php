@@ -19,6 +19,7 @@ class CertificateUserResource extends JsonResource
             'certificate' => new CertificateResource($this->whenLoaded('certificate')),
             'user' => new UserResource($this->whenLoaded('user')),
             'team' => new TeamResource($this->whenLoaded('team')),
+            'status' => $this->status(),
             'invalidated_at' => $this->invalidated_at?->toIso8601String(),
             'invalidation_reason' => $this->invalidation_reason,
             'issued_at' => $this->created_at?->toIso8601String(),

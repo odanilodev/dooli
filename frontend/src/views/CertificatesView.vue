@@ -16,7 +16,7 @@
     </div>
 
     <div v-else class="certificates-grid">
-      <article v-for="item in certificates" :key="item.id" class="certificate-card" :class="{ 'is-revoked': item.invalidated_at }">
+      <article v-for="item in certificates" :key="item.id" class="certificate-card" :class="{ 'is-revoked': statusOf(item) !== 'valid' }">
         <div class="certificate-card-body">
           <span class="certificate-card-badge">{{ item.certificate?.course?.name || 'Curso' }}</span>
           <h2 class="certificate-card-title">{{ item.certificate?.title || 'Certificado de Conclusão' }}</h2>
@@ -24,8 +24,8 @@
           <span class="certificate-card-code">Código: {{ item.code }}</span>
         </div>
         <div class="certificate-card-foot">
-          <span class="status-pill" :class="item.invalidated_at ? 'inactive' : 'active'">
-            {{ item.invalidated_at ? 'Revogado' : 'Válido' }}
+          <span class="status-pill" :class="statusOf(item) !== 'valid' ? 'inactive' : 'active'">
+            {{ statusLabel(item) }}
           </span>
           <button class="btn btn-primary btn-sm" @click="open(item)">Visualizar</button>
         </div>
@@ -85,6 +85,19 @@ const toast = useToast();
 const certificates = ref([]);
 const loading = ref(true);
 const active = ref(null);
+
+function statusOf(item) {
+  return item.status || (item.invalidated_at ? 'revoked' : 'valid');
+}
+
+function statusLabel(item) {
+  const status = statusOf(item);
+
+  if (status === 'replaced') return 'Substituído';
+  if (status === 'revoked') return 'Revogado';
+
+  return 'Válido';
+}
 
 function valuesFor(item) {
   return {

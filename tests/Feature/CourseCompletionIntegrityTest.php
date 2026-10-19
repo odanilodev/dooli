@@ -71,10 +71,121 @@ class CourseCompletionIntegrityTest extends TestCase
         $this->assertSame(1, CertificateUser::query()->count());
         $this->assertSame(1, CourseCompletion::query()->count());
 
+        $certificate = CertificateUser::query()->firstOrFail();
         $this->buildModuleLesson($this->company->id, $course['module']);
 
-        $this->assertNull(CertificateUser::query()->firstOrFail()->invalidated_at);
+        $this->assertNull($certificate->fresh()->invalidated_at);
         $this->assertSame(1, CertificateUser::query()->count());
+
+        $this->withHeaders(['X-Company' => (string) $this->company->id])
+            ->getJson("/api/v1/certificates/{$certificate->code}/verify")
+            ->assertOk();
+    }
+
+    public function test_completing_new_lessons_replaces_certificate_with_updated_grid(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $team = $this->enroll($this->student, $course['course'], $this->company->id);
+
+        $this->complete($course, $team, $course['lesson']);
+
+        $old = CertificateUser::query()->firstOrFail();
+        $oldCode = $old->code;
+
+        $newModule = Module::factory()->create([
+            'company_id' => $this->company->id,
+            'status' => GeneralStatus::Active->value,
+        ]);
+        $newLesson = $this->buildModuleLesson($this->company->id, $newModule);
+        $course['course']->modules()->attach($newModule->id, [
+            'company_id' => $this->company->id,
+            'status' => GeneralStatus::Active->value,
+            'sort_order' => 1,
+        ]);
+
+        $this->assertNull($old->fresh()->invalidated_at);
+
+        $this->complete($course, $team, $newLesson);
+
+        $old->refresh();
+        $new = CertificateUser::query()->whereKeyNot($old->id)->firstOrFail();
+
+        $this->assertSame(CertificateUser::STATUS_REPLACED, $old->status());
+        $this->assertSame(CertificateUser::INVALIDATION_REPLACED, $old->invalidation_reason);
+        $this->assertSame(CertificateUser::STATUS_VALID, $new->status());
+        $this->assertNotSame($oldCode, $new->code);
+        $this->assertSame(2, $new->lessons_count);
+        $this->assertSame([$course['module']->name], array_column($old->modules, 'name'));
+        $this->assertSame(
+            [$course['module']->name, $newModule->name],
+            array_column($new->modules, 'name'),
+        );
+        $this->assertSame(1, CertificateUser::query()->whereNull('invalidated_at')->count());
+
+        $this->withHeaders(['X-Company' => (string) $this->company->id])
+            ->getJson("/api/v1/certificates/{$oldCode}/verify")
+            ->assertStatus(404);
+
+        $this->withHeaders(['X-Company' => (string) $this->company->id])
+            ->getJson("/api/v1/certificates/{$new->code}/verify")
+            ->assertOk();
+
+        $statuses = collect(
+            $this->withToken($this->apiLogin($this->student))
+                ->getJson('/api/v1/me/certificates')
+                ->assertOk()
+                ->json('data'),
+        )->pluck('status', 'code');
+
+        $this->assertSame(CertificateUser::STATUS_REPLACED, $statuses[$oldCode]);
+        $this->assertSame(CertificateUser::STATUS_VALID, $statuses[$new->code]);
+
+        $completion = CourseCompletion::query()->firstOrFail();
+        $this->assertSame(2, $completion->required_lessons);
+        $this->assertCount(2, $completion->lesson_ids);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/courses')
+            ->assertOk()
+            ->assertJsonPath('data.0.required_lessons', 2)
+            ->assertJsonPath('data.0.new_lessons_since_completion', 0);
+    }
+
+    public function test_new_lesson_in_existing_module_reissues_the_certificate(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $team = $this->enroll($this->student, $course['course'], $this->company->id);
+
+        $this->complete($course, $team, $course['lesson']);
+
+        $old = CertificateUser::query()->firstOrFail();
+        $newLesson = $this->buildModuleLesson($this->company->id, $course['module']);
+
+        $this->complete($course, $team, $newLesson);
+
+        $new = CertificateUser::query()->whereKeyNot($old->id)->firstOrFail();
+
+        $this->assertSame(CertificateUser::STATUS_REPLACED, $old->fresh()->status());
+        $this->assertSame(2, $new->lessons_count);
+        $this->assertSame([$course['module']->name], array_column($new->modules, 'name'));
+        $this->assertSame(1, CertificateUser::query()->whereNull('invalidated_at')->count());
+    }
+
+    public function test_replacement_is_idempotent(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $team = $this->enroll($this->student, $course['course'], $this->company->id);
+
+        $this->complete($course, $team, $course['lesson']);
+
+        $newLesson = $this->buildModuleLesson($this->company->id, $course['module']);
+        $this->complete($course, $team, $newLesson);
+
+        app(CertificateService::class)->issueIfEligible($this->student, $course['course']->id, $team->id);
+        $this->complete($course, $team, $newLesson);
+
+        $this->assertSame(2, CertificateUser::query()->count());
+        $this->assertSame(1, CertificateUser::query()->whereNull('invalidated_at')->count());
     }
 
     public function test_course_remains_marked_completed_after_new_lessons(): void

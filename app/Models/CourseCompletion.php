@@ -9,9 +9,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Immutable record of a student finishing a course. Independent from the
+ * Latest completion milestone of a student in a course. Independent from the
  * certificate document: it survives template changes, lesson edits and even
- * certificate revocation.
+ * certificate revocation. When new lessons are completed, the same row is
+ * advanced to the new requirement.
  */
 #[Fillable([
     'company_id', 'user_id', 'team_id', 'course_id',

@@ -114,8 +114,9 @@ class ProgressService
     }
 
     /**
-     * Persists the historical course completion the first time the student
-     * reaches the total number of required lessons.
+     * Records a course completion milestone when the student reaches the
+     * current total of required lessons. If the course gained lessons after the
+     * previous completion, the existing milestone is advanced to the new total.
      */
     private function recordCompletionIfFinished(User $user, int $courseId, int $teamId, int $actionId): void
     {
