@@ -18,10 +18,11 @@ class StoreCommentRequest extends FormRequest
     {
         return [
             'content' => ['required', 'string', 'max:2000'],
-            'lesson_id' => ['required', 'integer', $this->companyExists('lessons')],
-            'module_id' => ['required', 'integer', $this->companyExists('modules')],
-            'course_id' => ['required', 'integer', $this->companyExists('courses')],
-            'team_id' => ['required', 'integer', $this->companyExists('teams')],
+            'parent_id' => ['nullable', 'integer', $this->companyExists('comments')],
+            'lesson_id' => ['required_without:parent_id', 'integer', $this->companyExists('lessons')],
+            'module_id' => ['required_without:parent_id', 'integer', $this->companyExists('modules')],
+            'course_id' => ['required_without:parent_id', 'integer', $this->companyExists('courses')],
+            'team_id' => ['required_without:parent_id', 'integer', $this->companyExists('teams')],
             'image' => ['nullable', 'url', 'max:255'],
         ];
     }

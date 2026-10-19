@@ -286,11 +286,13 @@ Lista notificações do aluno. `POST /api/v1/me/notifications/{notification}/rea
 - `POST /api/v1/me/orders/{order}/cancel` — cancela pedido pendente
 
 ### Comentários e avaliações
-- `GET /api/v1/comments?lesson_id=10` — apenas de cursos em que o aluno está matriculado
-- `POST /api/v1/comments` — `{ content, lesson_id, module_id, course_id, team_id, image? }`; exige matrícula ativa na turma/curso
+- `GET /api/v1/comments?lesson_id=10` — apenas de cursos em que o aluno está matriculado; retorna comentários principais com `replies[]` e ignora aulas com `comments_enabled = false`
+- `POST /api/v1/comments` — `{ content, lesson_id, module_id, course_id, team_id, image? }`; exige matrícula ativa na turma/curso e `lesson.comments_enabled = true` (403 quando a aba está desativada)
+- `POST /api/v1/comments` com `{ parent_id, content }` — cria uma resposta vinculada ao comentário principal. Exige `lesson.student_replies_enabled = true` (403 `"As respostas de alunos estão desativadas para esta aula."`), matrícula ativa e que o pai seja um comentário principal da mesma aula/empresa
+- `DELETE /api/v1/comments/{comment}` — exclui um comentário ou resposta **do próprio aluno**. Ao excluir um comentário principal, todas as respostas da thread são removidas em cascata (inclusive respostas de outros autores). Não permite excluir conteúdo de terceiros (403)
 - `GET /api/v1/ratings?lesson_id=10` — apenas de cursos em que o aluno está matriculado
 - `POST /api/v1/ratings` — `{ rating (0-10), lesson_id, module_id, course_id, team_id, image? }`; exige matrícula ativa; **uma avaliação por aluno/aula** (`409 duplicate_resource` se repetir)
-> As listagens retornam apenas `id`, `name`, `username` e `image` do autor (sem e-mail/telefone/endereço).
+> As listagens retornam apenas `id`, `name`, `username` e `image` do autor (sem e-mail/telefone/endereço). Respostas trazem `parent_id` e `is_admin` (true quando o autor é administrador).
 
 ---
 
@@ -316,6 +318,8 @@ CRUD + `POST /lessons/{lesson}/publish`, `POST /lessons/{lesson}/unpublish`, `at
 > **Tipo de conteúdo:** `content_type` (`video`, `document`, `live` ou `null`) define a **mídia principal** da aula e torna o campo correspondente obrigatório (`video`→`video_id`, `document`→`document_id`, `live`→`webinar_link`). Ao definir um tipo, o serviço limpa os campos dos outros tipos. Se `content_type` for omitido, ele é derivado de `video_id`/`document_id`/`webinar_link`. `null` = aula só com texto/HTML. O recurso retorna `content_type`.
 > **Pré-requisito (trava):** `required_lesson_id` (nullable) aponta para outra aula do **mesmo curso** que precisa ser concluída antes. Só são aceitas aulas **anteriores** na ordem do curso (validação 422 `business_rule`). Ao criar, a aula entra no fim do tópico ou, sem tópico, no fim das aulas do módulo. O bloqueio do aluno é validado no backend em `me/courses/{course}/lessons/{lesson}/video` e `me/progress/complete` (422).
 > **Assistir até o final:** `require_full_watch` (bool, nullable/padrão `false`). Com `true` e um `video_id` vinculado (`content_type = video`), o aluno só conclui a aula depois de assistir o vídeo até o fim (ver `me/progress/complete`). Em aulas de documento/ao vivo o serviço zera a flag.
+> **Comentários:** `comments_enabled` (bool, padrão `true`) define se a aba de comentários aparece para o aluno. Quando `false`, a aba é ocultada, novos comentários retornam **403** e os comentários existentes ficam ocultos (mas preservados); ao reativar, voltam a aparecer.
+> **Respostas em comentários:** `student_replies_enabled` (bool, padrão `true`) permite que alunos respondam aos comentários principais. Quando `false`, somente administradores podem responder (via `POST /admin/comments`); respostas de alunos já existentes continuam visíveis e somente leitura.
 > **Aula ao vivo:** `webinar_link` (URL de embed, ex.: `https://player.vdocipher.com/live-v2?liveId=...`) + `webinar_starts_at` (data/hora agendada, nullable). A aula com `webinar_link` é renderizada como live no player do aluno (iframe), sem passar pelo fluxo de OTP/`videos`. Antes de `webinar_starts_at` o frontend mostra um card "EM BREVE"; depois (ou sem data) mostra o iframe com selo "AO VIVO".
 > Publicar/criar/editar/excluir aulas **não** revoga o certificado atual. Enquanto o aluno não concluir as novas aulas, ele continua válido com a grade antiga; ao concluir todas, o certificado é substituído por um novo com a grade atual (ver `docs/ARCHITECTURE.md`).
 > **Reordenação** (`modules/reorder`, `topics/reorder`, `lessons/reorder`, `modules/{module}/lessons/reorder`): se a nova ordem deixar o pré-requisito de alguma aula depois dela, o backend responde **409** `prerequisite_conflict` com `errors.conflicts[]` (`lesson_id`, `lesson_name`, `required_lesson_id`, `required_lesson_name`) e **não** aplica nada. Reenviar com `force: true` aplica a ordem e **remove essas travas**, devolvendo `data.cleared` (ids das aulas destravadas).
@@ -363,7 +367,9 @@ CRUD. Campos: `course_id`, `title`, `slug`, `price`, `sale`, `status`, `release_
 > Comando `php artisan certificates:backfill-modules [--dry-run]` preenche `certificate_users.modules` nos certificados antigos usando as aulas concluídas da conclusão/timeline; módulos criados depois da conclusão não entram.
 
 ### Moderação
-- `GET /comments`, `DELETE /comments/{comment}` — moderação de comentários
+- `GET /comments` — moderação; `roots_only=1` retorna comentários principais com `replies[]`
+- `POST /comments` — `{ parent_id, content }`; resposta do administrador a um comentário principal (permitida mesmo com `student_replies_enabled = false`)
+- `DELETE /comments/{comment}` — exclui o comentário (respostas são removidas em cascata)
 - `GET /ratings`, `DELETE /ratings/{rating}` — moderação de avaliações
 
 ### Auditoria (`datalogs`)

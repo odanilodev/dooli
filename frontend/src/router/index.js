@@ -25,6 +25,7 @@ import AdminDocumentsView from '../views/AdminDocumentsView.vue';
 import AdminAttachmentsView from '../views/AdminAttachmentsView.vue';
 import AdminBannersView from '../views/AdminBannersView.vue';
 import AdminCertificatesView from '../views/AdminCertificatesView.vue';
+import AdminCommentsView from '../views/AdminCommentsView.vue';
 import AdminLiveClassesView from '../views/AdminLiveClassesView.vue';
 import AdminReportsView from '../views/AdminReportsView.vue';
 import AdminUsersView from '../views/AdminUsersView.vue';
@@ -67,6 +68,7 @@ const routes = [
       { path: 'admin/anexos', name: 'admin-anexos', component: AdminAttachmentsView, meta: { title: 'Anexos (admin)', requiresAdminMenu: true } },
       { path: 'admin/banners', name: 'admin-banners', component: AdminBannersView, meta: { title: 'Banners (admin)', requiresAdminMenu: true } },
       { path: 'admin/certificados', name: 'admin-certificados', component: AdminCertificatesView, meta: { title: 'Certificados (admin)', requiresAdminMenu: true } },
+      { path: 'admin/comentarios', name: 'admin-comentarios', component: AdminCommentsView, meta: { title: 'Comentários (admin)', requiresAdminMenu: true } },
       { path: 'admin/usuarios', name: 'admin-usuarios', component: AdminUsersView, meta: { title: 'Usuários (admin)', requiresAdmin: true } },
       { path: 'admin/tipos-de-usuario', name: 'admin-tipos-de-usuario', component: AdminUserTypesView, meta: { title: 'Tipos de usuário (admin)', requiresAdmin: true } },
       { path: 'admin/menus', name: 'admin-menus', component: AdminMenusView, meta: { title: 'Menus (admin)', requiresSuperAdmin: true } },

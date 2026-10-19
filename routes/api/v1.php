@@ -150,6 +150,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
 
     Route::get('comments', [CommentController::class, 'index']);
     Route::post('comments', [CommentController::class, 'store']);
+    Route::delete('comments/{comment}', [CommentController::class, 'destroy']);
     Route::get('ratings', [RatingController::class, 'index']);
     Route::post('ratings', [RatingController::class, 'store']);
 
@@ -235,7 +236,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::get('certificate-users', [AdminCertificateController::class, 'issued']);
         Route::post('certificate-users/{certificateUser}/revoke', [AdminCertificateController::class, 'revoke']);
 
-        Route::apiResource('comments', AdminCommentController::class)->only(['index', 'destroy']);
+        Route::apiResource('comments', AdminCommentController::class)->only(['index', 'store', 'destroy']);
         Route::apiResource('ratings', AdminRatingController::class)->only(['index', 'destroy']);
         Route::get('datalogs', [AdminDatalogController::class, 'index']);
         Route::apiResource('notifications', AdminNotificationController::class)->only(['index', 'show']);

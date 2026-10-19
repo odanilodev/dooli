@@ -7,6 +7,7 @@ export const useCommentsStore = defineStore('comments', () => {
   const meta = ref({});
   const loading = ref(false);
   const posting = ref(false);
+  const replying = ref(false);
   const error = ref(null);
   const loadedLessonId = ref(null);
 
@@ -64,12 +65,51 @@ export const useCommentsStore = defineStore('comments', () => {
     }
   }
 
+  async function reply({ parentId, content }) {
+    replying.value = true;
+
+    try {
+      const { data } = await api.post('/comments', {
+        parent_id: parentId,
+        content,
+      });
+
+      const created = data.data;
+      const root = items.value.find((item) => item.id === parentId);
+
+      if (root) {
+        root.replies = [...(root.replies ?? []), created];
+      }
+
+      return created;
+    } finally {
+      replying.value = false;
+    }
+  }
+
+  async function remove(id, parentId = null) {
+    await api.delete(`/comments/${id}`);
+
+    if (parentId) {
+      const root = items.value.find((item) => item.id === parentId);
+
+      if (root) {
+        root.replies = (root.replies ?? []).filter((reply) => reply.id !== id);
+      }
+
+      return;
+    }
+
+    items.value = items.value.filter((item) => item.id !== id);
+  }
+
   function reset() {
     items.value = [];
     meta.value = {};
     loadedLessonId.value = null;
     error.value = null;
+    replying.value = false;
   }
 
-  return { items, meta, loading, posting, error, fetch, store, reset };
+  return { items, meta, loading, posting, replying, error, fetch, store, reply, remove, reset };
 });

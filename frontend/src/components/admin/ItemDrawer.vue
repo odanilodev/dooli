@@ -68,6 +68,33 @@
             </div>
 
             <p v-if="lessonLocation" class="form-hint">Local: {{ lessonLocation }}</p>
+
+            <div class="form-group">
+              <label class="dw-option" :class="{ 'is-on': form.comments_enabled }">
+                <input type="checkbox" v-model="form.comments_enabled">
+                <span class="dw-option-text">
+                  <span class="dw-option-title">Permitir aba de comentários</span>
+                  <span class="dw-option-desc">Exibe a aba para os alunos desta aula.</span>
+                </span>
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label
+                class="dw-option"
+                :class="{ 'is-on': form.student_replies_enabled && form.comments_enabled, 'is-disabled': !form.comments_enabled }"
+              >
+                <input
+                  type="checkbox"
+                  v-model="form.student_replies_enabled"
+                  :disabled="!form.comments_enabled"
+                >
+                <span class="dw-option-text">
+                  <span class="dw-option-title">Permitir respostas entre alunos</span>
+                  <span class="dw-option-desc">Quando desligado, somente administradores podem responder aos comentários desta aula.</span>
+                </span>
+              </label>
+            </div>
           </template>
 
           <p v-if="type === 'topic'" class="form-hint">Módulo: {{ course?.modules?.find((m) => m.id === item.module_id)?.name || `#${item.module_id}` }}</p>
@@ -327,7 +354,7 @@ const backdropDown = ref(false);
 const form = reactive({
   name: '', description: '', image: '', status: 'active', sort_order: 0,
   content: '', content_type: '', video_id: '', document_id: '', required_lesson_id: '',
-  require_full_watch: false,
+  require_full_watch: false, comments_enabled: true, student_replies_enabled: true,
   webinar_link: '', webinar_starts_at: '',
 });
 const selectedAttachments = ref([]);
@@ -502,6 +529,8 @@ function sync() {
   form.document_id = data.document?.id ?? '';
   form.required_lesson_id = data.required_lesson_id ?? '';
   form.require_full_watch = !!data.require_full_watch;
+  form.comments_enabled = data.comments_enabled ?? true;
+  form.student_replies_enabled = data.student_replies_enabled ?? true;
   form.webinar_link = data.webinar_link ?? '';
   form.webinar_starts_at = toDateTimeInput(data.webinar_starts_at);
   selectedAttachments.value = (data.attachments ?? []).map((a) => a.id);
@@ -715,6 +744,8 @@ function basePayload() {
     document_id: form.document_id === '' ? null : Number(form.document_id),
     required_lesson_id: form.required_lesson_id === '' ? null : Number(form.required_lesson_id),
     require_full_watch: !!form.require_full_watch,
+    comments_enabled: !!form.comments_enabled,
+    student_replies_enabled: !!form.student_replies_enabled,
     webinar_link: form.webinar_link || null,
     webinar_starts_at: form.webinar_starts_at || null,
     attachment_ids: selectedAttachments.value,
@@ -936,6 +967,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 }
 .dw-option:hover{border-color:var(--accent);}
 .dw-option.is-on{border-color:var(--accent);background:var(--accent-soft);}
+.dw-option.is-disabled{opacity:.55;cursor:not-allowed;}
+.dw-option.is-disabled:hover{border-color:var(--border);}
 .dw-option input[type="checkbox"]{
   appearance:none;-webkit-appearance:none;margin:1px 0 0;flex-shrink:0;
   width:18px;height:18px;display:inline-grid;place-content:center;cursor:pointer;

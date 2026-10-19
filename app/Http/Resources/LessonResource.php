@@ -21,6 +21,8 @@ class LessonResource extends JsonResource
             'sort_order' => $this->sort_order,
             'required_lesson_id' => $this->required_lesson_id,
             'require_full_watch' => (bool) $this->require_full_watch,
+            'comments_enabled' => (bool) $this->comments_enabled,
+            'student_replies_enabled' => (bool) $this->student_replies_enabled,
             'published_at' => $this->published_at?->toIso8601String(),
             'webinar_link' => $this->webinar_link,
             'webinar_starts_at' => $this->webinar_starts_at?->toIso8601String(),

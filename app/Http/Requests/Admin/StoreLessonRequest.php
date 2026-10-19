@@ -44,6 +44,8 @@ class StoreLessonRequest extends FormRequest
             'document_id' => ['nullable', 'integer', $this->companyExists('documents'), Rule::requiredIf(fn () => $this->input('content_type') === LessonContentType::Document->value)],
             'required_lesson_id' => ['nullable', 'integer', $this->companyExists('lessons')],
             'require_full_watch' => ['sometimes', 'boolean'],
+            'comments_enabled' => ['sometimes', 'boolean'],
+            'student_replies_enabled' => ['sometimes', 'boolean'],
             'webinar_link' => ['nullable', 'url', 'max:255', Rule::requiredIf(fn () => $this->input('content_type') === LessonContentType::Live->value)],
             'webinar_starts_at' => ['nullable', 'date'],
             'published_at' => ['nullable', 'date'],

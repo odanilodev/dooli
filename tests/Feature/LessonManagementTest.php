@@ -144,6 +144,70 @@ class LessonManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_disable_lesson_comments(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+
+        $this->assertTrue($data['lesson']->fresh()->comments_enabled);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'comments_enabled' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.comments_enabled', false);
+
+        $this->assertDatabaseHas('lessons', [
+            'id' => $data['lesson']->id,
+            'comments_enabled' => false,
+        ]);
+    }
+
+    public function test_student_course_content_exposes_comments_enabled(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $this->enroll($this->student, $data['course'], $this->company->id);
+
+        $data['lesson']->update(['comments_enabled' => false]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson("/api/v1/me/courses/{$data['course']->id}")
+            ->assertOk()
+            ->assertJsonPath('data.modules.0.topics.0.lessons.0.comments_enabled', false);
+    }
+
+    public function test_admin_can_disable_student_replies(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+
+        $this->assertTrue($data['lesson']->fresh()->student_replies_enabled);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'student_replies_enabled' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.student_replies_enabled', false);
+
+        $this->assertDatabaseHas('lessons', [
+            'id' => $data['lesson']->id,
+            'student_replies_enabled' => false,
+        ]);
+    }
+
+    public function test_student_course_content_exposes_student_replies_enabled(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $this->enroll($this->student, $data['course'], $this->company->id);
+
+        $data['lesson']->update(['student_replies_enabled' => false]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson("/api/v1/me/courses/{$data['course']->id}")
+            ->assertOk()
+            ->assertJsonPath('data.modules.0.topics.0.lessons.0.student_replies_enabled', false);
+    }
+
     public function test_lesson_content_type_is_derived_from_media_on_create(): void
     {
         $data = $this->buildCourse($this->company->id);

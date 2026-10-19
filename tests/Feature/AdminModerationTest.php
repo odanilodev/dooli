@@ -44,6 +44,44 @@ class AdminModerationTest extends TestCase
         $this->assertDatabaseMissing('comments', ['id' => $commentId]);
     }
 
+    public function test_disabled_lesson_comments_are_hidden_and_blocked(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $team = $this->enroll($this->student, $course['course'], $this->company->id);
+        $token = $this->apiLogin($this->student);
+
+        $payload = [
+            'content' => 'Comentário da aula',
+            'lesson_id' => $course['lesson']->id,
+            'module_id' => $course['module']->id,
+            'course_id' => $course['course']->id,
+            'team_id' => $team->id,
+        ];
+
+        $this->withToken($token)->postJson('/api/v1/comments', $payload)->assertCreated();
+
+        $course['lesson']->update(['comments_enabled' => false]);
+
+        $this->withToken($token)
+            ->getJson("/api/v1/comments?lesson_id={$course['lesson']->id}")
+            ->assertOk()
+            ->assertJsonPath('meta.total', 0);
+
+        $this->withToken($token)->postJson('/api/v1/comments', $payload)->assertForbidden();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson('/api/v1/admin/comments')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1);
+
+        $course['lesson']->update(['comments_enabled' => true]);
+
+        $this->withToken($token)
+            ->getJson("/api/v1/comments?lesson_id={$course['lesson']->id}")
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1);
+    }
+
     public function test_admin_can_list_and_delete_ratings(): void
     {
         $course = $this->buildCourse($this->company->id);

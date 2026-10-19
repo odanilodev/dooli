@@ -99,7 +99,7 @@
         <div class="tabs">
           <button class="tab" :class="{ active: activeTab === 'descricao' }" @click="activeTab = 'descricao'">Descrição</button>
           <button class="tab" :class="{ active: activeTab === 'materiais' }" @click="activeTab = 'materiais'">Materiais da aula</button>
-          <button class="tab" :class="{ active: activeTab === 'comentarios' }" @click="activeTab = 'comentarios'">Comentários</button>
+          <button v-if="commentsEnabled" class="tab" :class="{ active: activeTab === 'comentarios' }" @click="activeTab = 'comentarios'">Comentários</button>
           <button class="tab" :class="{ active: activeTab === 'avaliacoes' }" @click="activeTab = 'avaliacoes'">Avaliações</button>
         </div>
 
@@ -131,7 +131,7 @@
           <template v-else>Nenhum material adicional para esta aula.</template>
         </div>
 
-        <div v-else-if="activeTab === 'comentarios'" class="tab-panel active">
+        <div v-else-if="activeTab === 'comentarios' && commentsEnabled" class="tab-panel active">
           <div class="comment-form">
             <textarea
               class="form-control"
@@ -159,9 +159,67 @@
               <div class="comment-body">
                 <div class="comment-head">
                   <span class="comment-author">{{ comment.user?.name || 'Aluno' }}</span>
+                  <span v-if="comment.is_admin" class="comment-badge">Equipe</span>
                   <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
+                  <button
+                    v-if="isOwnComment(comment)"
+                    type="button"
+                    class="comment-delete-btn"
+                    :disabled="deletingId === comment.id"
+                    @click="removeComment(comment)"
+                  >{{ deletingId === comment.id ? 'Excluindo...' : 'Excluir' }}</button>
                 </div>
                 <p class="comment-text">{{ comment.content }}</p>
+
+                <div v-if="comment.replies?.length" class="comment-replies">
+                  <div v-for="reply in comment.replies" :key="reply.id" class="comment-reply">
+                    <span class="comment-avatar comment-avatar-sm">{{ initialsOf(reply.user?.name) }}</span>
+                    <div class="comment-body">
+                      <div class="comment-head">
+                        <span class="comment-author">{{ reply.user?.name || 'Aluno' }}</span>
+                        <span v-if="reply.is_admin" class="comment-badge">Equipe</span>
+                        <span class="comment-date">{{ formatDate(reply.created_at) }}</span>
+                        <button
+                          v-if="isOwnComment(reply)"
+                          type="button"
+                          class="comment-delete-btn"
+                          :disabled="deletingId === reply.id"
+                          @click="removeComment(reply)"
+                        >{{ deletingId === reply.id ? 'Excluindo...' : 'Excluir' }}</button>
+                      </div>
+                      <p class="comment-text">{{ reply.content }}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="studentRepliesEnabled" class="comment-reply-area">
+                  <button
+                    v-if="replyingTo !== comment.id"
+                    type="button"
+                    class="comment-reply-btn"
+                    @click="startReply(comment.id)"
+                  >Responder</button>
+
+                  <div v-else class="comment-reply-form">
+                    <textarea
+                      class="form-control"
+                      rows="2"
+                      v-model="replyText"
+                      :placeholder="`Responder ${comment.user?.name || 'comentário'}...`"
+                      style="resize:vertical;"
+                      @keydown.ctrl.enter="submitReply(comment.id)"
+                    ></textarea>
+                    <div class="comment-form-actions">
+                      <button type="button" class="comment-reply-cancel" @click="cancelReply">Cancelar</button>
+                      <button
+                        type="button"
+                        class="btn btn-primary btn-sm"
+                        :disabled="comments.replying || !replyText.trim()"
+                        @click="submitReply(comment.id)"
+                      >{{ comments.replying ? 'Enviando...' : 'Responder' }}</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </template>
@@ -357,6 +415,9 @@ const activeTab = ref('descricao');
 const openModule = ref(null);
 const completing = ref(false);
 const commentText = ref('');
+const replyingTo = ref(null);
+const replyText = ref('');
+const deletingId = ref(null);
 const selectedStars = ref(0);
 const hoverStars = ref(0);
 const downloadingId = ref(null);
@@ -379,6 +440,10 @@ let documentPreviewId = null;
 const courseId = computed(() => Number(route.params.courseId));
 const lessonIdParam = computed(() => (route.params.lessonId ? Number(route.params.lessonId) : null));
 const currentLesson = computed(() => store.currentLesson);
+const commentsEnabled = computed(() => currentLesson.value?.commentsEnabled !== false);
+const studentRepliesEnabled = computed(
+  () => commentsEnabled.value && currentLesson.value?.studentRepliesEnabled !== false,
+);
 const modules = computed(() => store.course?.modules ?? []);
 const isCurrentCompleted = computed(() => (currentLesson.value ? store.isCompleted(currentLesson.value.id) : false));
 
@@ -731,6 +796,7 @@ watch(currentLesson, (lesson) => {
   comments.reset();
   ratings.reset();
   commentText.value = '';
+  cancelReply();
   selectedStars.value = 0;
   hoverStars.value = 0;
 
@@ -739,6 +805,10 @@ watch(currentLesson, (lesson) => {
   if (lesson) {
     loadVideoPlayback(lesson.id);
     openModule.value = lesson.moduleId;
+
+    if (activeTab.value === 'comentarios' && !commentsEnabled.value) {
+      activeTab.value = 'descricao';
+    }
 
     if (activeTab.value === 'comentarios') {
       comments.fetch(lesson.id);
@@ -765,7 +835,7 @@ watch(activeTab, (tab) => {
     return;
   }
 
-  if (tab === 'comentarios') {
+  if (tab === 'comentarios' && commentsEnabled.value) {
     comments.fetch(currentLesson.value.id);
   }
 
@@ -894,6 +964,73 @@ async function submitComment() {
     toast.success('Comentário enviado.');
   } catch (e) {
     toast.error(e?.message || 'Não foi possível enviar seu comentário.');
+  }
+}
+
+function startReply(commentId) {
+  replyingTo.value = commentId;
+  replyText.value = '';
+}
+
+function cancelReply() {
+  replyingTo.value = null;
+  replyText.value = '';
+}
+
+async function submitReply(commentId) {
+  const content = replyText.value.trim();
+
+  if (!content) {
+    return;
+  }
+
+  try {
+    await comments.reply({ parentId: commentId, content });
+
+    cancelReply();
+    toast.success('Resposta enviada.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível enviar sua resposta.');
+  }
+}
+
+function isOwnComment(comment) {
+  const userId = Number(auth.user?.id);
+
+  return !!userId && Number(comment.user?.id) === userId;
+}
+
+async function removeComment(comment) {
+  if (!isOwnComment(comment) || deletingId.value) {
+    return;
+  }
+
+  const isRoot = !comment.parent_id;
+  const hasReplies = isRoot && (comment.replies?.length ?? 0) > 0;
+  const message = isRoot
+    ? (hasReplies
+      ? 'Excluir seu comentário? Todas as respostas também serão excluídas.'
+      : 'Excluir seu comentário?')
+    : 'Excluir sua resposta?';
+
+  if (!window.confirm(message)) {
+    return;
+  }
+
+  deletingId.value = comment.id;
+
+  try {
+    await comments.remove(comment.id, comment.parent_id);
+
+    if (replyingTo.value === comment.id) {
+      cancelReply();
+    }
+
+    toast.success(isRoot ? 'Comentário excluído.' : 'Resposta excluída.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível excluir.');
+  } finally {
+    deletingId.value = null;
   }
 }
 
