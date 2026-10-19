@@ -46,7 +46,12 @@ export const useCompaniesStore = defineStore('companies', () => {
     return data.data;
   }
 
-  async function saveBranding(id, { primary_color, logo = null } = {}) {
+  async function saveBranding(id, {
+    primary_color,
+    logo = null,
+    logo_light = null,
+    logo_dark = null,
+  } = {}) {
     const payload = new FormData();
     payload.append('_method', 'PUT');
 
@@ -56,6 +61,14 @@ export const useCompaniesStore = defineStore('companies', () => {
 
     if (logo) {
       payload.append('logo', logo);
+    }
+
+    if (logo_light) {
+      payload.append('logo_light', logo_light);
+    }
+
+    if (logo_dark) {
+      payload.append('logo_dark', logo_dark);
     }
 
     const { data } = await api.post(`/admin/companies/${id}/settings`, payload);

@@ -24,11 +24,11 @@
 
     <!-- Modelos: formulário -->
     <form v-if="tab === 'templates' && showForm" class="panel" @submit.prevent="save">
-      <h2 class="panel-title">{{ editingId ? `Editar certificado #${editingId}` : (isScoped ? 'Nova versão do certificado' : 'Novo certificado') }}</h2>
+      <h2 class="panel-title">{{ editingId ? `Editar certificado #${editingId}` : (isScoped || copyFromId ? 'Nova versão do certificado' : 'Novo certificado') }}</h2>
       <p class="panel-desc">
         {{ isScoped ? 'A versão mais recente do curso é usada nas próximas emissões.' : 'O modelo fica vinculado a um curso e é usado ao emitir o certificado do aluno.' }}
       </p>
-      <p v-if="isScoped && !editingId && currentTemplate" class="form-hint">
+      <p v-if="!editingId && copyFromId" class="form-hint">
         A nova versão copia textos e layout, mas não herda fundo do certificado, assinatura nem fundo da grade.
       </p>
 
@@ -90,6 +90,33 @@
             <textarea id="c-body" class="form-control" rows="4" v-model="form.body" placeholder="Certificamos que {aluno} concluiu o curso {curso}..."></textarea>
             <span class="certificate-placeholder-hint">
               Variáveis: <code>{aluno}</code> <code>{curso}</code> <code>{data}</code> <code>{carga_horaria}</code> <code>{codigo}</code>
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-check" for="c-qr-enabled">
+              <input id="c-qr-enabled" type="checkbox" v-model="form.qr_enabled">
+              <span>Incluir QR code no certificado</span>
+            </label>
+            <span class="form-hint">
+              O QR aponta para a página pública de visualização do certificado. A posição pode ser ajustada no layout.
+            </span>
+          </div>
+
+          <div v-if="form.qr_enabled" class="form-group">
+            <label for="c-qr-placement">Exibir QR em</label>
+            <select
+              id="c-qr-placement"
+              class="form-control"
+              v-model="form.qr_placement"
+              :disabled="!modulesOnSeparatePage"
+            >
+              <option v-for="option in qrPlacementOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+            <span v-if="!modulesOnSeparatePage" class="form-hint">
+              Para exibir o QR também na página da grade, escolha "Folha extra" ou "Verso" na exibição da grade.
             </span>
           </div>
 
@@ -276,7 +303,7 @@
                   >
                 </div>
 
-                <div v-if="activeFieldMeta.type === 'image'" class="form-group">
+                <div v-if="['image', 'qr'].includes(activeFieldMeta.type)" class="form-group">
                   <label>Altura (px)</label>
                   <input
                     type="number"
@@ -302,7 +329,7 @@
                   >
                 </div>
 
-                <div v-if="activeFieldMeta.type !== 'image'" class="form-group">
+                <div v-if="!['image', 'qr'].includes(activeFieldMeta.type)" class="form-group">
                   <label>Cor</label>
                   <div class="certificate-color-row">
                     <input
@@ -407,11 +434,15 @@
               </td>
               <td class="admin-actions">
                 <button
+                  v-if="!certificate.issued_certificates_count"
                   class="btn btn-outline btn-sm"
-                  :disabled="certificate.issued_certificates_count > 0"
-                  :title="certificate.issued_certificates_count > 0 ? 'Modelo com certificados emitidos. Crie uma nova versão e transfira os alunos.' : ''"
                   @click="openEdit(certificate)"
                 >Editar</button>
+                <button
+                  v-else
+                  class="btn btn-outline btn-sm"
+                  @click="createVersion(certificate)"
+                >Nova versão</button>
                 <button
                   v-if="certificate.valid_certificates_count > 0"
                   class="btn btn-outline btn-sm"
@@ -460,6 +491,13 @@
                 </span>
               </td>
               <td class="admin-actions">
+                <a
+                  v-if="!item.invalidated_at && item.share_url"
+                  class="btn btn-outline btn-sm"
+                  :href="item.share_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >Abrir link</a>
                 <button
                   v-if="!item.invalidated_at"
                   class="btn btn-danger btn-sm"
@@ -623,6 +661,21 @@ const moduleColumnOptions = MODULES_COLUMN_OPTIONS;
 const moduleSeparatorOptions = MODULES_SEPARATOR_OPTIONS;
 const modulesOnSeparatePage = computed(() => ['extra', 'back'].includes(form.modules_placement));
 const modulesPageLabel = computed(() => (form.modules_placement === 'back' ? 'Verso' : 'Folha extra'));
+const effectiveQrPlacement = computed(() => (
+  modulesOnSeparatePage.value ? form.qr_placement : 'front'
+));
+const qrPlacementOptions = computed(() => {
+  const options = [{ value: 'front', label: 'Frente do certificado' }];
+
+  if (modulesOnSeparatePage.value) {
+    options.push(
+      { value: 'modules', label: `${modulesPageLabel.value} (página da grade)` },
+      { value: 'both', label: `Frente e ${modulesPageLabel.value.toLowerCase()}` },
+    );
+  }
+
+  return options;
+});
 const certificateHiddenFields = computed(() => (form.modules_placement === 'front' ? [] : ['modules']));
 const activeLayout = computed(() => (previewPage.value === 'modules' ? modulesLayout.value : layout.value));
 const activeFieldMeta = computed(() => {
@@ -687,6 +740,8 @@ const form = reactive({
   signatory_title: '',
   modules_placement: 'front',
   modules_title: '',
+  qr_enabled: false,
+  qr_placement: 'front',
   backgroundFile: null,
   signatureFile: null,
   modulesBackgroundFile: null,
@@ -704,6 +759,7 @@ const previewValues = reactive({
   data: '00/00/0000',
   carga_horaria: 0,
   codigo: '0000-0000-0000',
+  share_url: `${window.location.origin}/verificar.html?code=preview`,
 });
 
 const previewCertificate = computed(() => ({
@@ -712,6 +768,8 @@ const previewCertificate = computed(() => ({
   signatory_name: form.signatory_name,
   signatory_title: form.signatory_title,
   modules_title: form.modules_title,
+  qr_enabled: form.qr_enabled,
+  qr_placement: effectiveQrPlacement.value,
   background_url: form.backgroundPreview,
   signature_url: form.signaturePreview,
 }));
@@ -736,6 +794,8 @@ function resetForm() {
   form.signatory_title = '';
   form.modules_placement = 'front';
   form.modules_title = '';
+  form.qr_enabled = false;
+  form.qr_placement = 'front';
   form.backgroundFile = null;
   form.signatureFile = null;
   form.modulesBackgroundFile = null;
@@ -972,6 +1032,10 @@ function cloneTemplate(source) {
   form.signatory_title = source.signatory_title ?? '';
   form.modules_placement = source.modules_placement || 'front';
   form.modules_title = source.modules_title ?? '';
+  form.qr_enabled = Boolean(source.qr_enabled);
+  form.qr_placement = ['extra', 'back'].includes(form.modules_placement)
+    ? (source.qr_placement || 'front')
+    : 'front';
   form.backgroundFile = null;
   form.signatureFile = null;
   form.modulesBackgroundFile = null;
@@ -1091,6 +1155,10 @@ function openEdit(certificate) {
   form.signatory_title = certificate.signatory_title ?? '';
   form.modules_placement = certificate.modules_placement || 'front';
   form.modules_title = certificate.modules_title ?? '';
+  form.qr_enabled = Boolean(certificate.qr_enabled);
+  form.qr_placement = ['extra', 'back'].includes(form.modules_placement)
+    ? (certificate.qr_placement || 'front')
+    : 'front';
   form.backgroundFile = null;
   form.signatureFile = null;
   form.modulesBackgroundFile = null;
@@ -1110,6 +1178,18 @@ function openEdit(certificate) {
   modulesLayout.value = normalizeModulesPageLayout(certificate.modules_layout);
   previewPage.value = modulesOnSeparatePage.value ? 'modules' : 'certificate';
   selectedField.value = null;
+  showForm.value = true;
+}
+
+function createVersion(certificate) {
+  resetForm();
+  editingId.value = null;
+  cloneTemplate(certificate);
+  courseOptions.value = certificate.course
+    ? [{ value: certificate.course_id, label: certificate.course.name }]
+    : [];
+  layout.value = normalizeLayout(certificate.layout);
+  loadPreviewModules(certificate.course_id);
   showForm.value = true;
 }
 
@@ -1216,6 +1296,8 @@ async function save() {
     layout: layout.value,
     modules_placement: form.modules_placement,
     modules_title: form.modules_title || null,
+    qr_enabled: form.qr_enabled ? 1 : 0,
+    qr_placement: effectiveQrPlacement.value,
     modules_layout: modulesLayout.value,
     remove_background: form.removeBackground ? 1 : 0,
     remove_signature: form.removeSignature ? 1 : 0,
@@ -1374,6 +1456,7 @@ watch(() => form.modules_placement, (placement, previous) => {
   const wasSeparate = ['extra', 'back'].includes(previous);
 
   if (!separate) {
+    form.qr_placement = 'front';
     previewPage.value = 'certificate';
     selectedField.value = null;
 
@@ -1452,7 +1535,6 @@ watch(scopedCourseId, async (id) => {
 .certificate-placeholder-hint code{
   background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:1px 5px;font-size:11.5px;
 }
-
 .certificate-layout-panel{
   margin-top:10px;padding:14px;display:flex;flex-direction:column;gap:12px;
   background:var(--bg-card);border:1px solid var(--border);border-radius:14px;

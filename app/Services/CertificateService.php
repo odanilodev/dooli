@@ -31,7 +31,7 @@ class CertificateService
      */
     private const LAYOUT_FIELDS = [
         'eyebrow', 'title', 'body', 'modules', 'signature', 'signature_line',
-        'signatory_name', 'signatory_title', 'code',
+        'signatory_name', 'signatory_title', 'code', 'qr',
     ];
 
     /**
@@ -47,7 +47,9 @@ class CertificateService
     /**
      * @var list<string>
      */
-    private const MODULES_LAYOUT_FIELDS = ['heading', 'list'];
+    private const MODULES_LAYOUT_FIELDS = ['heading', 'list', 'qr'];
+
+    private const QR_PLACEMENTS = ['front', 'modules', 'both'];
 
     /**
      * @var list<string>
@@ -138,6 +140,16 @@ class CertificateService
             $data['modules_title'] = $source->modules_title;
         }
 
+        if (array_key_exists('qr_enabled', $data)) {
+            $data['qr_enabled'] = filter_var($data['qr_enabled'], FILTER_VALIDATE_BOOLEAN);
+        } elseif ($source) {
+            $data['qr_enabled'] = (bool) $source->qr_enabled;
+        }
+
+        $data['qr_placement'] = $this->normalizeQrPlacement(
+            $data['qr_placement'] ?? $source?->qr_placement,
+        );
+
         $certificate = $this->certificates->create($data);
 
         $this->audit->log('certificate', 'create', 'certificate', "Certificado criado: {$certificate->name}");
@@ -204,6 +216,14 @@ class CertificateService
 
         if (array_key_exists('modules_title', $data)) {
             $data['modules_title'] = $this->normalizeModulesTitle($data['modules_title']);
+        }
+
+        if (array_key_exists('qr_enabled', $data)) {
+            $data['qr_enabled'] = filter_var($data['qr_enabled'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if (array_key_exists('qr_placement', $data)) {
+            $data['qr_placement'] = $this->normalizeQrPlacement($data['qr_placement']);
         }
 
         $certificate = $this->certificates->update($certificate, $data);
@@ -585,12 +605,17 @@ class CertificateService
      */
     private function normalizeLayout(array $layout): array
     {
-        return $this->normalizeFields($layout, self::LAYOUT_FIELDS, [
-            'title' => [20, 90, 80.0],
-            'body' => [20, 90, 80.0],
-            'modules' => [20, 90, 80.0],
-            'signature_line' => [5, 90, 18.0],
-        ]);
+        return $this->normalizeFields(
+            $layout,
+            self::LAYOUT_FIELDS,
+            [
+                'title' => [20, 90, 80.0],
+                'body' => [20, 90, 80.0],
+                'modules' => [20, 90, 80.0],
+                'signature_line' => [5, 90, 18.0],
+            ],
+            ['qr' => 90.0],
+        );
     }
 
     /**
@@ -611,6 +636,7 @@ class CertificateService
             [
                 'heading' => 28.0,
                 'list' => 10.0,
+                'qr' => 90.0,
             ],
         );
     }
@@ -692,6 +718,13 @@ class CertificateService
     private function normalizeModulesPlacement(mixed $placement): string
     {
         return is_string($placement) && in_array($placement, self::MODULES_PLACEMENTS, true)
+            ? $placement
+            : 'front';
+    }
+
+    private function normalizeQrPlacement(mixed $placement): string
+    {
+        return is_string($placement) && in_array($placement, self::QR_PLACEMENTS, true)
             ? $placement
             : 'front';
     }

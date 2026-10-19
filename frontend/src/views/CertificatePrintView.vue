@@ -101,6 +101,7 @@ async function load() {
         data: formatDate(item.issued_at),
         carga_horaria: item.certificate?.time ?? 0,
         codigo: item.code,
+        share_url: item.share_url || '',
       };
     }
   } catch (e) {

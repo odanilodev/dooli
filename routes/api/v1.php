@@ -54,6 +54,15 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
+| Public certificate share page (UUID resolves the tenant)
+|--------------------------------------------------------------------------
+*/
+Route::get('public/certificates/{code}', [CertificateVerifyController::class, 'show'])
+    ->whereUuid('code')
+    ->middleware('throttle:public');
+
+/*
+|--------------------------------------------------------------------------
 | Public routes (tenant via X-Company header)
 |--------------------------------------------------------------------------
 */

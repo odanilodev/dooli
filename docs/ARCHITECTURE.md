@@ -27,7 +27,7 @@ Route → Middleware → FormRequest → Controller → Service → Repository �
 | Tenant público/webhook | Header `X-Company` (id) com middleware `company.required` |
 | Perfis | `user_types.code` (`admin`/`instructor`/`student`) via middleware `role:` e Policies |
 | Modelo de aulas | Tabela `lessons` → model **`Lesson`** (rota `/lessons`); `Class` é reservado no PHP |
-| Certificados | `certificates` = template por curso (layout + `modules_placement`/`modules_layout`/fundo próprio da grade); `certificate_users` = emissão por user+team com snapshots `lessons_count` e `modules` (unique parcial via `active_flag`: 1 válido por user+team+template; versões anteriores ficam no histórico como `replaced`). Template com certificado emitido é imutável; válidos podem ser transferidos para outra versão do mesmo curso |
+| Certificados | `certificates` = template por curso (layout + `qr_enabled`/`qr_placement` + `modules_placement`/`modules_layout`/fundo próprio da grade); `certificate_users` = emissão por user+team com snapshots `lessons_count` e `modules` (unique parcial via `active_flag`: 1 válido por user+team+template; versões anteriores ficam no histórico como `replaced`). Template com certificado emitido é imutável; válidos podem ser transferidos para outra versão do mesmo curso. A página pública usa o UUID, sem tenant/autenticação |
 | Pagamentos | `PaymentGatewayContract` + `GatewayManager` (Strategy/Factory); adapter real MercadoPago + Manual |
 | Vídeo | `VideoPlatformContract` + `VideoPlatformManager` resolvido por `videos.player`; adapters reais: Panda (playback) e VdoCipher (playback OTP + upload/import via API); stubs para os demais |
 | Webhooks | Verificação de assinatura, idempotência por `external_id`, processamento via Job |
@@ -89,6 +89,9 @@ Editar um template com qualquer certificado emitido retorna `422 business_rule`;
 
 ### Alteração de curso vs. conclusão
 Adicionar ou publicar aulas **não** revoga o certificado atual enquanto o aluno não as concluir; ele continua válido com a grade antiga. Quando o aluno conclui todas as aulas atuais, `course_completions` avança para o novo total e `CertificateService::issueIfEligible` substitui o certificado: o antigo recebe `invalidated_at`/motivo **Substituído automaticamente por uma nova conclusão do curso** e o novo passa a ser o válido. Excluir aulas não reemite nem invalida por si só. O status `completed` vem de `course_completions` (não do certificado), então uma revogação manual do documento mantém o curso como concluído e não é reemitida automaticamente. `course_completions` guarda o marco mais recente (`required_lessons`, `lesson_ids`); `certificate_users.modules` guarda a grade de cada emissão. Comandos: `completions:backfill` (recupera conclusões de certificados válidos e invalidados automaticamente), `certificates:backfill-modules` (preenche a grade de certificados antigos usando as aulas concluídas) e `certificates:restore-recalculated` (revalida certificados invalidados pelo recálculo antigo).
+
+### Página pública do certificado
+`GET /api/v1/public/certificates/{code}` não usa autenticação nem `X-Company`: o UUID localiza a emissão e o tenant. O `CertificatePublicResource` expõe somente apresentação e nome do titular. O frontend tem uma entrada Vite separada (`verificar.html`) com `noindex` no HTML, sem layout autenticado. `CertificateShare::url()` monta `${FRONTEND_URL}/verificar.html?code={uuid}`; esse valor vira o `share_url` do aluno, o QR da página e, quando `certificates.qr_enabled` está ativo, o QR impresso no certificado. `qr_placement` define frente, página da grade ou ambas; os campos `qr` de `layout` e `modules_layout` guardam posição/tamanho, e o QR é gerado no cliente com `qrcode`.
 
 ## Estrutura
 

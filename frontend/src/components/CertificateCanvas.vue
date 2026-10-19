@@ -35,6 +35,15 @@
         >
         <span v-else-if="editable" class="certificate-image-placeholder">Assinatura</span>
       </template>
+      <template v-else-if="field.type === 'qr'">
+        <QrCodeImage
+          v-if="values?.share_url"
+          :value="values.share_url"
+          alt="QR code de verificação do certificado"
+          class="certificate-qr-img"
+        />
+        <span v-else-if="editable" class="certificate-image-placeholder">QR</span>
+      </template>
       <template v-else-if="field.type === 'line'">
         <span class="certificate-signature-line"></span>
       </template>
@@ -71,6 +80,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import QrCodeImage from './QrCodeImage.vue';
 import {
   LAYOUT_FIELDS,
   MODULES_PAGE_FIELDS,
@@ -104,6 +114,15 @@ const canvasWidth = ref(1000);
 let observer = null;
 
 const isModulesPage = computed(() => props.mode === 'modules');
+
+function qrOnCurrentPage() {
+  const placement = props.certificate?.qr_placement || 'front';
+
+  return isModulesPage.value
+    ? ['modules', 'both'].includes(placement)
+    : ['front', 'both'].includes(placement);
+}
+
 const fields = computed(() => (isModulesPage.value ? MODULES_PAGE_FIELDS : LAYOUT_FIELDS));
 const layout = computed(() => (
   isModulesPage.value ? normalizeModulesPageLayout(props.layout) : normalizeLayout(props.layout)
@@ -211,7 +230,9 @@ function isVisible(field) {
   }
 
   if (props.editable) {
-    return true;
+    return field.key === 'qr'
+      ? Boolean(props.certificate?.qr_enabled) && qrOnCurrentPage()
+      : true;
   }
 
   switch (field.key) {
@@ -228,6 +249,8 @@ function isVisible(field) {
       return Boolean(props.certificate?.signatory_title);
     case 'code':
       return Boolean(props.values?.codigo);
+    case 'qr':
+      return Boolean(props.certificate?.qr_enabled && props.values?.share_url) && qrOnCurrentPage();
     default:
       return true;
   }
@@ -246,6 +269,8 @@ function isPlaceholder(key) {
       return !props.certificate?.signatory_title;
     case 'code':
       return !props.values?.codigo;
+    case 'qr':
+      return !props.values?.share_url;
     default:
       return false;
   }
@@ -294,7 +319,7 @@ function fieldStyle(field) {
     style['--module-columns'] = item.columns ?? 2;
   }
 
-  if (field.type === 'image') {
+  if (field.type === 'image' || field.type === 'qr') {
     style['--field-size'] = `${(item.size * scale.value).toFixed(2)}px`;
   }
 
@@ -395,7 +420,7 @@ function resizeHandles(field) {
     return sideHandlesFor(item.align);
   }
 
-  if (field.type === 'image') {
+  if (field.type === 'image' || field.type === 'qr') {
     return SIZE_HANDLES;
   }
 
@@ -405,7 +430,7 @@ function resizeHandles(field) {
 }
 
 function sizeLimits(field) {
-  return field.type === 'image' ? [10, 160] : [4, 160];
+  return ['image', 'qr'].includes(field.type) ? [10, 160] : [4, 160];
 }
 
 function startResize(event, field, handle) {
@@ -591,6 +616,11 @@ onBeforeUnmount(() => {
 .certificate-signature-line{
   display:block;width:100%;
   border-top:1px solid currentColor;opacity:.5;
+}
+.certificate-qr-img{
+  width:var(--field-size,calc(90px * var(--certificate-scale)));
+  max-width:100%;height:auto;padding:calc(4px * var(--certificate-scale));
+  border-radius:calc(4px * var(--certificate-scale));background:#fff;
 }
 
 .certificate-modules{

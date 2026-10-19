@@ -108,6 +108,17 @@
           </div>
         </div>
 
+        <div v-if="active.share_url && statusOf(active) === 'valid'" class="certificate-share-block no-print">
+          <QrCodeImage :value="active.share_url" alt="QR code do certificado" class="certificate-share-qr" />
+          <div class="certificate-share-info">
+            <strong>QR code do certificado</strong>
+            <a :href="active.share_url" target="_blank" rel="noopener noreferrer">{{ active.share_url }}</a>
+            <button type="button" class="btn btn-outline btn-sm" @click="copyShareLink(active.share_url)">
+              Copiar link
+            </button>
+          </div>
+        </div>
+
         <div class="admin-modal-actions no-print">
           <button class="btn btn-outline" @click="active = null">Fechar</button>
           <button class="btn btn-primary" @click="downloadPdf">Baixar PDF</button>
@@ -163,6 +174,7 @@ import { formatDate } from '../utils/format';
 import { useAuthStore } from '../stores/auth';
 import { useToast } from '../composables/useToast';
 import CertificateCanvas from '../components/CertificateCanvas.vue';
+import QrCodeImage from '../components/QrCodeImage.vue';
 
 const auth = useAuthStore();
 const toast = useToast();
@@ -310,7 +322,17 @@ function valuesFor(item) {
     data: formatDate(item.issued_at),
     carga_horaria: item.certificate?.time ?? 0,
     codigo: item.code,
+    share_url: item.share_url || '',
   };
+}
+
+async function copyShareLink(url) {
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.success('Link copiado.');
+  } catch (e) {
+    toast.error('Não foi possível copiar o link.');
+  }
 }
 
 function hiddenFields(item) {
@@ -392,6 +414,16 @@ onMounted(load);
 .certificate-preview-modal .admin-modal-actions{margin-top:16px;}
 .certificate-preview-stack{display:flex;flex-direction:column;gap:18px;}
 .certificate-page-block{display:flex;flex-direction:column;gap:8px;}
+.certificate-share-block{
+  display:flex;align-items:center;gap:16px;margin-top:18px;padding:14px;border:1px solid var(--border);border-radius:14px;
+  background:var(--bg-card-alt);
+}
+.certificate-share-qr{width:104px;flex-shrink:0;}
+.certificate-share-info{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;}
+.certificate-share-info strong{font-size:13px;}
+.certificate-share-info a{
+  max-width:100%;overflow-wrap:anywhere;font-size:12px;color:var(--accent);font-weight:600;
+}
 .certificate-page-label{
   font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);
 }

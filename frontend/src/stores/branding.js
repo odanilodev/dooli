@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { api } from '../api/http';
+import { useTheme } from '../composables/useTheme';
 import { contrastInk, darken, lighten, normalizeHex, rgba } from '../utils/color';
 
 const STORAGE_KEY = 'delta-class-branding';
@@ -30,10 +31,20 @@ function writeCache(value) {
 }
 
 export const useBrandingStore = defineStore('branding', () => {
+  const { theme } = useTheme();
   const cached = readCache();
   const primaryColor = ref(cached?.primary_color || null);
-  const logoUrl = ref(cached?.logo_url || null);
+  const logoLightUrl = ref(cached?.logo_light_url || cached?.logo_url || null);
+  const logoDarkUrl = ref(cached?.logo_dark_url || null);
   const loaded = ref(false);
+
+  const logoUrl = computed(() => {
+    if (theme.value === 'dark') {
+      return logoDarkUrl.value || logoLightUrl.value;
+    }
+
+    return logoLightUrl.value || logoDarkUrl.value;
+  });
 
   const hasLogo = computed(() => Boolean(logoUrl.value));
 
@@ -61,8 +72,13 @@ export const useBrandingStore = defineStore('branding', () => {
 
   function set(data) {
     primaryColor.value = data?.primary_color || null;
-    logoUrl.value = data?.logo_url || null;
-    writeCache({ primary_color: primaryColor.value, logo_url: logoUrl.value });
+    logoLightUrl.value = data?.logo_light_url || data?.logo_url || null;
+    logoDarkUrl.value = data?.logo_dark_url || null;
+    writeCache({
+      primary_color: primaryColor.value,
+      logo_light_url: logoLightUrl.value,
+      logo_dark_url: logoDarkUrl.value,
+    });
     apply();
   }
 
@@ -83,7 +99,8 @@ export const useBrandingStore = defineStore('branding', () => {
 
   function reset() {
     primaryColor.value = null;
-    logoUrl.value = null;
+    logoLightUrl.value = null;
+    logoDarkUrl.value = null;
     loaded.value = false;
     writeCache(null);
     apply();
@@ -91,5 +108,16 @@ export const useBrandingStore = defineStore('branding', () => {
 
   apply();
 
-  return { primaryColor, logoUrl, loaded, hasLogo, fetch, set, apply, reset };
+  return {
+    primaryColor,
+    logoLightUrl,
+    logoDarkUrl,
+    logoUrl,
+    loaded,
+    hasLogo,
+    fetch,
+    set,
+    apply,
+    reset,
+  };
 });

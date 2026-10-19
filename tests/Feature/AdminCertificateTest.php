@@ -1019,4 +1019,99 @@ class AdminCertificateTest extends TestCase
             ])
             ->assertStatus(403);
     }
+
+    public function test_public_share_page_payload_does_not_require_tenant_header(): void
+    {
+        config(['app.frontend_url' => 'https://app.test']);
+
+        [, $code] = $this->issueCertificate();
+
+        $response = $this->getJson("/api/v1/public/certificates/{$code}")
+            ->assertOk()
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow')
+            ->assertJsonPath('data.code', $code)
+            ->assertJsonPath('data.valid', true)
+            ->assertJsonPath('data.holder_name', $this->student->name)
+            ->assertJsonPath('data.share_url', "https://app.test/verificar.html?code={$code}")
+            ->assertJsonPath('data.certificate.qr_enabled', false)
+            ->assertJsonPath('data.certificate.qr_placement', 'front')
+            ->assertJsonStructure([
+                'data' => [
+                    'code', 'valid', 'holder_name', 'course', 'lessons_count',
+                    'issued_at', 'modules', 'certificate', 'share_url',
+                ],
+            ]);
+
+        $payload = $response->json('data');
+
+        $this->assertArrayNotHasKey('email', $payload);
+        $this->assertArrayNotHasKey('phone', $payload);
+        $this->assertArrayNotHasKey('user', $payload);
+        $this->assertArrayNotHasKey('team_id', $payload);
+    }
+
+    public function test_public_share_page_returns_not_found_for_revoked_certificate(): void
+    {
+        [, $code] = $this->issueCertificate();
+
+        $issued = CertificateUser::query()->where('code', $code)->firstOrFail();
+        $issued->forceFill([
+            'invalidated_at' => now(),
+            'invalidation_reason' => 'Revogado manualmente.',
+            'active_flag' => null,
+        ])->save();
+
+        $this->getJson("/api/v1/public/certificates/{$code}")->assertNotFound();
+    }
+
+    public function test_public_share_page_hides_certificates_from_inactive_companies(): void
+    {
+        [, $code] = $this->issueCertificate();
+
+        $this->company->forceFill(['status' => GeneralStatus::Inactive->value])->save();
+
+        $this->getJson("/api/v1/public/certificates/{$code}")->assertNotFound();
+    }
+
+    public function test_admin_can_enable_and_position_the_certificate_qr(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $certificate = Certificate::query()->where('course_id', $course['course']->id)->firstOrFail();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/certificates/{$certificate->id}", [
+                'qr_enabled' => true,
+                'qr_placement' => 'both',
+                'layout' => [
+                    'qr' => [
+                        'x' => 12,
+                        'y' => 88,
+                        'size' => 72,
+                        'align' => 'left',
+                    ],
+                ],
+                'modules_layout' => [
+                    'qr' => [
+                        'x' => 82,
+                        'y' => 84,
+                        'size' => 64,
+                        'align' => 'right',
+                    ],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.qr_enabled', true)
+            ->assertJsonPath('data.qr_placement', 'both')
+            ->assertJsonPath('data.layout.qr.x', 12)
+            ->assertJsonPath('data.layout.qr.y', 88)
+            ->assertJsonPath('data.layout.qr.size', 72)
+            ->assertJsonPath('data.modules_layout.qr.x', 82)
+            ->assertJsonPath('data.modules_layout.qr.size', 64);
+
+        $this->assertDatabaseHas('certificates', [
+            'id' => $certificate->id,
+            'qr_enabled' => true,
+            'qr_placement' => 'both',
+        ]);
+    }
 }

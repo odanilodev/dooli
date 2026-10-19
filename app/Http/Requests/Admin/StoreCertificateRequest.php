@@ -41,6 +41,8 @@ class StoreCertificateRequest extends FormRequest
             'modules_title' => ['nullable', 'string', 'max:255'],
             'modules_background' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'remove_modules_background' => ['sometimes', 'boolean'],
+            'qr_enabled' => ['sometimes', 'boolean'],
+            'qr_placement' => ['sometimes', 'string', 'in:front,modules,both'],
             ...$this->layoutRules(),
             ...$this->layoutRules('modules_layout'),
         ];

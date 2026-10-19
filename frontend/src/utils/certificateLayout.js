@@ -111,6 +111,12 @@ export const LAYOUT_FIELDS = [
     type: 'text',
     defaults: { x: 96, y: 94, size: 10, align: 'right', bold: false, italic: false, color: null, font: DEFAULT_FONT },
   },
+  {
+    key: 'qr',
+    label: 'QR code de verificação',
+    type: 'qr',
+    defaults: { x: 8, y: 92, size: 90, align: 'left', bold: false, italic: false, color: null, font: DEFAULT_FONT },
+  },
 ];
 
 export const MODULES_PAGE_FIELDS = [
@@ -130,6 +136,12 @@ export const MODULES_PAGE_FIELDS = [
       x: 50, y: 34, width: 86, size: 10, align: 'center', bold: false, italic: false,
       color: null, font: DEFAULT_FONT, format: 'numbered', columns: 2, separator: 'bullet',
     },
+  },
+  {
+    key: 'qr',
+    label: 'QR code de verificação',
+    type: 'qr',
+    defaults: { x: 8, y: 90, size: 90, align: 'left', bold: false, italic: false, color: null, font: DEFAULT_FONT },
   },
 ];
 

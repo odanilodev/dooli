@@ -63,14 +63,37 @@
           </div>
           <span class="form-hint">Valor hexadecimal, ex.: #17c993.</span>
         </div>
+      </div>
+
+      <div class="form-row">
         <div class="form-group">
-          <label>Logo</label>
-          <FilePicker accept="image/png,image/jpeg,image/webp" title="Escolher logo" hint="PNG, JPG ou WEBP — até 4MB" @change="onLogoPicked" />
-          <div v-if="logoPreview" class="brand-logo-preview">
-            <img :src="logoPreview" alt="Prévia do logo">
+          <label>Logo — tema claro</label>
+          <FilePicker
+            accept="image/png,image/jpeg,image/webp"
+            title="Escolher logo claro"
+            hint="PNG, JPG ou WEBP — até 4MB"
+            @change="onLogoLightPicked"
+          />
+          <div v-if="logoLightPreview" class="brand-logo-preview is-light">
+            <img :src="logoLightPreview" alt="Prévia do logo do tema claro">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Logo — tema escuro</label>
+          <FilePicker
+            accept="image/png,image/jpeg,image/webp"
+            title="Escolher logo escuro"
+            hint="PNG, JPG ou WEBP — até 4MB"
+            @change="onLogoDarkPicked"
+          />
+          <div v-if="logoDarkPreview" class="brand-logo-preview is-dark">
+            <img :src="logoDarkPreview" alt="Prévia do logo do tema escuro">
           </div>
         </div>
       </div>
+
+      <span class="form-hint">Se apenas um logo for enviado, ele será usado nos dois temas.</span>
 
       <div>
         <button class="btn btn-primary" :disabled="saving">
@@ -124,8 +147,10 @@ const companies = useCompaniesStore();
 const showForm = ref(false);
 const editingId = ref(null);
 const saving = ref(false);
-const logoPreview = ref(null);
-const logoFile = ref(null);
+const logoLightPreview = ref(null);
+const logoLightFile = ref(null);
+const logoDarkPreview = ref(null);
+const logoDarkFile = ref(null);
 
 const form = reactive({
   name: '',
@@ -137,12 +162,22 @@ const form = reactive({
   primary_color: DEFAULT_PRIMARY_COLOR,
 });
 
-function onLogoPicked(file) {
-  logoFile.value = file || null;
-
-  if (file) {
-    logoPreview.value = URL.createObjectURL(file);
+function revokePreview(value) {
+  if (value?.startsWith('blob:')) {
+    URL.revokeObjectURL(value);
   }
+}
+
+function onLogoLightPicked(file) {
+  revokePreview(logoLightPreview.value);
+  logoLightFile.value = file || null;
+  logoLightPreview.value = file ? URL.createObjectURL(file) : null;
+}
+
+function onLogoDarkPicked(file) {
+  revokePreview(logoDarkPreview.value);
+  logoDarkFile.value = file || null;
+  logoDarkPreview.value = file ? URL.createObjectURL(file) : null;
 }
 
 function statusLabel(status) {
@@ -165,8 +200,12 @@ function resetForm() {
   form.admin_email = '';
   form.admin_password = '';
   form.primary_color = DEFAULT_PRIMARY_COLOR;
-  logoFile.value = null;
-  logoPreview.value = null;
+  revokePreview(logoLightPreview.value);
+  revokePreview(logoDarkPreview.value);
+  logoLightFile.value = null;
+  logoLightPreview.value = null;
+  logoDarkFile.value = null;
+  logoDarkPreview.value = null;
 }
 
 function openCreate() {
@@ -185,14 +224,19 @@ async function openEdit(company) {
   form.name = company.name ?? '';
   form.status = company.status ?? 'active';
   form.primary_color = DEFAULT_PRIMARY_COLOR;
-  logoFile.value = null;
-  logoPreview.value = null;
+  revokePreview(logoLightPreview.value);
+  revokePreview(logoDarkPreview.value);
+  logoLightFile.value = null;
+  logoDarkFile.value = null;
+  logoLightPreview.value = null;
+  logoDarkPreview.value = null;
   showForm.value = true;
 
   try {
     const branding = await companies.fetchBranding(company.id);
     form.primary_color = branding.primary_color || DEFAULT_PRIMARY_COLOR;
-    logoPreview.value = branding.logo_url || null;
+    logoLightPreview.value = branding.logo_light_url || branding.logo_url || null;
+    logoDarkPreview.value = branding.logo_dark_url || null;
   } catch (e) {
     /* mantém os valores padrão em caso de falha */
   }
@@ -224,7 +268,8 @@ async function save() {
 
     await companies.saveBranding(companyId, {
       primary_color: form.primary_color,
-      logo: logoFile.value,
+      logo_light: logoLightFile.value,
+      logo_dark: logoDarkFile.value,
     });
 
     toast.success(editingId.value ? 'Empresa atualizada.' : 'Empresa criada.');
@@ -259,5 +304,7 @@ onMounted(() => {
   display:flex;align-items:center;justify-content:center;margin-top:10px;padding:12px;
   border:1px solid var(--border);border-radius:10px;background:var(--bg-card-alt);
 }
+.brand-logo-preview.is-light{background:#f7f9fb;}
+.brand-logo-preview.is-dark{background:#0b1420;border-color:#223247;}
 .brand-logo-preview img{max-height:48px;max-width:100%;object-fit:contain;}
 </style>

@@ -27,10 +27,16 @@ class CompanySettingController extends ApiController
         $this->authorize('manageCompanyBranding');
 
         $data = $request->validated();
-        unset($data['logo']);
+        unset($data['logo'], $data['logo_light'], $data['logo_dark']);
 
         return ApiResponse::success(
-            $this->service->update($company->id, $data, $request->file('logo')),
+            $this->service->update(
+                $company->id,
+                $data,
+                $request->file('logo_light'),
+                $request->file('logo_dark'),
+                $request->file('logo'),
+            ),
         );
     }
 }

@@ -216,6 +216,43 @@ paths:
                       issued_at: { type: string, format: date-time }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /api/v1/public/certificates/{code}:
+    get:
+      tags: [Store]
+      summary: Payload da página pública do certificado
+      description: Não exige X-Company nem autenticação; o UUID resolve o certificado.
+      security: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-Robots-Tag:
+              schema: { type: string, example: 'noindex, nofollow' }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      code: { type: string, format: uuid }
+                      valid: { type: boolean, example: true }
+                      holder_name: { type: string }
+                      course: { type: string, nullable: true }
+                      lessons_count: { type: integer }
+                      issued_at: { type: string, format: date-time }
+                      modules: { type: array, items: { type: object } }
+                      certificate: { type: object }
+                      share_url: { type: string, format: uri }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /api/v1/me/courses:
     get:
       tags: [Student]

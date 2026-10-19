@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
     'company_id', 'name', 'grade', 'title', 'course_id', 'version', 'time',
     'background', 'signature', 'body', 'signatory_name', 'signatory_title',
     'layout', 'modules_placement', 'modules_title', 'modules_layout', 'modules_background',
+    'qr_enabled', 'qr_placement',
 ])]
 class Certificate extends Model
 {
@@ -26,6 +27,7 @@ class Certificate extends Model
             'time' => 'integer',
             'layout' => 'array',
             'modules_layout' => 'array',
+            'qr_enabled' => 'boolean',
         ];
     }
 

@@ -22,6 +22,7 @@
 - Policies rejeitam registros de outra empresa (`sameCompany`).
 - Regras `Rule::exists` são restritas ao `company_id` do usuário (trait `ScopedExists`).
 - Rotas públicas/webhooks exigem `X-Company`; sem header → `400`; empresa inexistente/inativa → `404`.
+- Exceção: a página pública do certificado (`/public/certificates/{uuid}`) resolve a empresa pelo UUID e não aceita header de tenant; o código é não sequencial e só retorna certificados válidos.
 - O tenant do webhook é derivado do **pagamento resolvido**, não do header enviado.
 
 ### Mass assignment
@@ -30,7 +31,8 @@
 ### Exposição de dados
 - `User` oculta `password`/`remember_token`.
 - Listagens de comentários/avaliações usam `UserSummaryResource` (sem e-mail/telefone/endereço).
-- Verificação pública de certificado usa `CertificateVerifyResource` (sem dados de contato).
+- Verificação pública de certificado usa `CertificateVerifyResource` (sem dados de contato); a página pública usa `CertificatePublicResource` (sem contato, usuário, time ou IDs internos).
+- A página pública do certificado (`verificar.html`) é servida com `meta robots=noindex,nofollow,noarchive,nosnippet` e a API responde `X-Robots-Tag`.
 - `Gateway` oculta `credentials`/`settings`; resposta expõe apenas `has_credentials`.
 - `PaymentEventResource` não expõe `metadata` (pode conter payload sensível do gateway).
 - Vídeo: reprodução via adapter; credenciais de plataforma nunca são retornadas.
