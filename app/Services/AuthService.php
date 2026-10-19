@@ -7,9 +7,12 @@ use App\Enums\GeneralStatus;
 use App\Enums\UserTypeCode;
 use App\Exceptions\ApiException;
 use App\Models\User;
+use App\Models\UserType;
 use App\Repositories\UserRepository;
+use App\Support\CompanyContext;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 
 class AuthService
 {
@@ -54,6 +57,43 @@ class AuthService
         return ['user' => $user->load('userType'), 'token' => $token];
     }
 
+    /**
+     * Registers a new student inside the current tenant and signs them in.
+     *
+     * @param  array{name: string, email: string, password: string, device_name?: string}  $data
+     * @return array{user: User, token: string}
+     */
+    public function register(array $data): array
+    {
+        $companyId = (int) app(CompanyContext::class)->id();
+
+        $studentType = UserType::query()
+            ->where('company_id', $companyId)
+            ->where('code', UserTypeCode::Student->value)
+            ->where('status', GeneralStatus::Active->value)
+            ->first();
+
+        if (! $studentType) {
+            throw new ApiException('Cadastro indisponível para esta empresa.', 422, 'registration_unavailable');
+        }
+
+        $user = $this->users->create([
+            'company_id' => $companyId,
+            'user_type_id' => $studentType->id,
+            'name' => $data['name'],
+            'username' => $this->uniqueUsername($data['email']),
+            'email' => $data['email'],
+            'password' => $data['password'],
+            'status' => GeneralStatus::Active->value,
+        ]);
+
+        $token = $user->createToken($data['device_name'] ?? 'api', ['student'])->plainTextToken;
+
+        $this->audit->log('auth', 'register', 'user', 'Novo aluno cadastrado', $user->id);
+
+        return ['user' => $user->load('userType'), 'token' => $token];
+    }
+
     public function logout(User $user): void
     {
         $user->currentAccessToken()?->delete();
@@ -66,6 +106,20 @@ class AuthService
         $user->tokens()->delete();
 
         $this->audit->log('auth', 'logout_all', 'user', 'Logout em todos os dispositivos', $user->id);
+    }
+
+    private function uniqueUsername(string $email): string
+    {
+        $base = Str::slug(Str::before($email, '@')) ?: 'aluno';
+        $username = $base;
+        $suffix = 2;
+
+        while (User::query()->withoutGlobalScope('company')->where('username', $username)->exists()) {
+            $username = $base.'-'.$suffix;
+            $suffix++;
+        }
+
+        return $username;
     }
 
     /**

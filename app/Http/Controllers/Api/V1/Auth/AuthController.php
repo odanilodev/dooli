@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Auth;
 use App\DTO\LoginDTO;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
 use App\Support\ApiResponse;
@@ -24,6 +25,17 @@ class AuthController extends ApiController
             'token' => $result['token'],
             'token_type' => 'Bearer',
         ]);
+    }
+
+    public function register(RegisterRequest $request): JsonResponse
+    {
+        $result = $this->auth->register($request->validated());
+
+        return ApiResponse::success([
+            'user' => new UserResource($result['user']),
+            'token' => $result['token'],
+            'token_type' => 'Bearer',
+        ], 201);
     }
 
     public function me(Request $request): JsonResponse

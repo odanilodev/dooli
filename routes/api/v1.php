@@ -81,6 +81,9 @@ Route::middleware(['company', 'company.required', 'throttle:public'])->group(fun
 */
 Route::post('auth/login', [AuthController::class, 'login'])->middleware(['company', 'throttle:auth']);
 
+Route::post('auth/register', [AuthController::class, 'register'])
+    ->middleware(['company', 'company.required', 'throttle:auth']);
+
 Route::post('auth/forgot-password', [PasswordResetController::class, 'sendLink'])
     ->middleware(['company', 'throttle:password']);
 

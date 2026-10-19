@@ -43,6 +43,37 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Cria uma conta de aluno e retorna um token
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XCompany'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, password_confirmation, terms]
+              properties:
+                name: { type: string, maxLength: 255 }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                password_confirmation: { type: string, minLength: 8 }
+                terms: { type: boolean }
+                device_name: { type: string, maxLength: 100 }
+      responses:
+        '201':
+          description: Conta criada e autenticada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Success' }
+        '400': { description: Empresa não informada }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
   /api/v1/auth/me:
     get:
       tags: [Auth]

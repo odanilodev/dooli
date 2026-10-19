@@ -135,7 +135,7 @@ docker compose exec app php artisan test
 ## API
 
 - Base: `http://localhost:8000/api/v1`
-- Auth: Bearer Token (Sanctum) — `POST /api/v1/auth/login`
+- Auth: Bearer Token (Sanctum) — `POST /api/v1/auth/login` e `POST /api/v1/auth/register`
 - Rotas públicas e webhooks exigem o header `X-Company` (id da empresa).
 - Documentação completa: [`docs/API.md`](docs/API.md)
 - OpenAPI 3: [`docs/openapi.yaml`](docs/openapi.yaml)

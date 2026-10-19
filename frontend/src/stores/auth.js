@@ -40,6 +40,16 @@ export const useAuthStore = defineStore('auth', () => {
     setToken(null);
   }
 
+  function applySession(payload) {
+    token.value = payload.token;
+    setToken(token.value);
+    user.value = payload.user;
+    setCompanyId(user.value.company_id);
+    useBrandingStore().fetch();
+
+    return user.value;
+  }
+
   async function login(credentials) {
     loading.value = true;
 
@@ -50,13 +60,22 @@ export const useAuthStore = defineStore('auth', () => {
         device_name: 'web',
       });
 
-      token.value = data.data.token;
-      setToken(token.value);
-      user.value = data.data.user;
-      setCompanyId(user.value.company_id);
-      useBrandingStore().fetch();
+      return applySession(data.data);
+    } finally {
+      loading.value = false;
+    }
+  }
 
-      return user.value;
+  async function register(payload) {
+    loading.value = true;
+
+    try {
+      const { data } = await api.post('/auth/register', {
+        ...payload,
+        device_name: 'web',
+      });
+
+      return applySession(data.data);
     } finally {
       loading.value = false;
     }
@@ -129,6 +148,7 @@ export const useAuthStore = defineStore('auth', () => {
     canAccessAdmin,
     initials,
     login,
+    register,
     forgotPassword,
     resetPassword,
     fetchMe,

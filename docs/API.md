@@ -77,7 +77,7 @@ Authorization: Bearer {token}
 
 | Limiter   | Limite         | Chave                | Aplicado a |
 | --------- | -------------- | -------------------- | ---------- |
-| `auth`    | 5/min          | login + IP           | `POST /auth/login` (anti brute force) |
+| `auth`    | 5/min          | login/e-mail + IP    | `POST /auth/login` e `POST /auth/register` (anti brute force) |
 | `public`  | 60/min         | IP                   | Rotas públicas (loja, verify, página do certificado) |
 | `api`     | 120/min        | usuário (ou IP)      | Rotas autenticadas |
 | `admin`   | 300/min        | usuário              | Rotas administrativas |
@@ -109,6 +109,24 @@ Aceita `email` ou `username` (um dos dois é obrigatório).
 }
 ```
 **Erros:** `401 invalid_credentials` (usado também para conta/empresa inativa, para evitar enumeração), `422`, `429`.
+
+### POST /api/v1/auth/register
+**Objetivo:** criar uma conta de aluno e autenticar automaticamente.
+**Auth:** não. **Rate limit:** `auth`. **Header:** `X-Company` obrigatório.
+**Body:**
+```json
+{
+  "name": "Novo Aluno",
+  "email": "novo.aluno@example.com",
+  "password": "senha-segura",
+  "password_confirmation": "senha-segura",
+  "terms": true,
+  "device_name": "web"
+}
+```
+O `username` é gerado automaticamente a partir do e-mail (com sufixo numérico em caso de conflito). O tipo de usuário é sempre `student`, vinculado à empresa do header.
+**Sucesso 201:** mesmo payload do login (`user`, `token`, `token_type`).
+**Erros:** `400 company_required`, `422` (e-mail duplicado, senha/confirmação inválida ou termos não aceitos), `429`.
 
 ### GET /api/v1/auth/me
 **Auth:** Bearer. Retorna o usuário autenticado com `user_type` e `teams`.
