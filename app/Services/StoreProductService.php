@@ -5,7 +5,11 @@ namespace App\Services;
 use App\Enums\GeneralStatus;
 use App\Models\StoreProduct;
 use App\Repositories\StoreProductRepository;
+use App\Support\CompanyContext;
+use App\Support\ImageStorage;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class StoreProductService
@@ -13,6 +17,8 @@ class StoreProductService
     public function __construct(
         private readonly StoreProductRepository $storeProducts,
         private readonly DatalogService $audit,
+        private readonly ImageStorage $images,
+        private readonly CompanyContext $context,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -20,7 +26,7 @@ class StoreProductService
         return $this->storeProducts->paginate(
             perPage: $perPage,
             filters: $filters,
-            with: ['course'],
+            with: ['course', 'teams'],
             sort: $filters['sort'] ?? null,
             direction: $filters['direction'] ?? 'desc',
         );
@@ -31,9 +37,14 @@ class StoreProductService
         return $this->storeProducts->findWithTeams($id);
     }
 
-    public function create(array $data): StoreProduct
+    public function create(array $data, ?UploadedFile $image = null): StoreProduct
     {
         $data['slug'] = $data['slug'] ?? Str::slug($data['title']);
+        $data['image'] = $data['image'] ?? null;
+
+        if ($image) {
+            $data['image'] = $this->images->store($image, 'store-products', (int) $this->context->id());
+        }
 
         $storeProduct = $this->storeProducts->create($data);
 
@@ -42,10 +53,24 @@ class StoreProductService
         return $storeProduct;
     }
 
-    public function update(StoreProduct $storeProduct, array $data): StoreProduct
-    {
+    public function update(
+        StoreProduct $storeProduct,
+        array $data,
+        ?UploadedFile $image = null,
+        bool $imageProvided = false,
+    ): StoreProduct {
         if (isset($data['title']) && empty($data['slug'])) {
             $data['slug'] = Str::slug($data['title']);
+        }
+
+        if ($image) {
+            $this->images->delete($storeProduct->image);
+            $data['image'] = $this->images->store($image, 'store-products', (int) $storeProduct->company_id);
+        } elseif ($imageProvided && empty($data['image'])) {
+            $this->images->delete($storeProduct->image);
+            $data['image'] = null;
+        } elseif (array_key_exists('image', $data) && $storeProduct->image !== $data['image']) {
+            $this->images->delete($storeProduct->image);
         }
 
         return $this->storeProducts->update($storeProduct, $data);
@@ -53,7 +78,12 @@ class StoreProductService
 
     public function delete(StoreProduct $storeProduct): void
     {
-        $storeProduct->delete();
+        DB::transaction(function () use ($storeProduct) {
+            $storeProduct->teams()->detach();
+            $storeProduct->delete();
+        });
+
+        $this->images->delete($storeProduct->image);
 
         $this->audit->log('store_product', 'delete', 'store_product', "Produto de loja excluído: {$storeProduct->title}");
     }

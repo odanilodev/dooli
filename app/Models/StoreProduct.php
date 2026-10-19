@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\BelongsToCompany;
+use App\Concerns\HasImageUrl;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class StoreProduct extends Model
 {
-    use BelongsToCompany, HasFactory;
+    use BelongsToCompany, HasFactory, HasImageUrl;
 
     protected $attributes = ['status' => 'active'];
 

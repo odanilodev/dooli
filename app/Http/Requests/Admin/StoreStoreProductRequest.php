@@ -23,6 +23,7 @@ class StoreStoreProductRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'image' => ['nullable', 'string', 'max:255'],
+            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'slug' => [
                 'nullable', 'string', 'max:255',
                 Rule::unique('store_products', 'slug')->where('company_id', (int) $this->user()?->company_id),

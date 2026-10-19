@@ -24,6 +24,7 @@ class UpdateStoreProductRequest extends FormRequest
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'image' => ['nullable', 'string', 'max:255'],
+            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'slug' => [
                 'sometimes', 'string', 'max:255',
                 Rule::unique('store_products', 'slug')

@@ -2,7 +2,7 @@
   <router-link :to="to" class="card card-product" style="display:block;">
     <div class="card-thumb" :style="{ background: grad }">
       <span class="glow"></span>
-      <img v-if="product.image" :src="product.image" :alt="product.title" class="product-thumb-image" />
+      <img v-if="product.image_url || product.image" :src="product.image_url || product.image" :alt="product.title" class="product-thumb-image" />
       <svg v-else class="icon" width="30" height="30" viewBox="0 0 24 24"><path :d="icon" /></svg>
       <span v-if="onSale" class="card-dur sale-badge">Oferta</span>
     </div>

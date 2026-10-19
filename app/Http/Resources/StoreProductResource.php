@@ -15,6 +15,7 @@ class StoreProductResource extends JsonResource
             'title' => $this->title,
             'description' => $this->description,
             'image' => $this->image,
+            'image_url' => $this->imageUrl(),
             'slug' => $this->slug,
             'tags' => $this->tags,
             'price' => $this->price,

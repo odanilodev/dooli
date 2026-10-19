@@ -344,7 +344,7 @@ CRUD. Campos: `code`, `type` (`fixed`/`percent`), `value`, `status`, `starts_at`
 A validação/recalculo é sempre no backend.
 
 ### Produtos de loja (`store-products`)
-CRUD. Campos: `course_id`, `title`, `slug`, `price`, `sale`, `status`, `release_at`, `team_ids[]` (turmas que a compra libera).
+CRUD. Campos: `course_id`, `title`, `slug`, `description`, `tags[]`, `price`, `sale`, `status`, `release_at`, `team_ids[]` (turmas que a compra libera), `image` (URL/caminho) e `image_file` (upload JPG/PNG/WEBP até 4 MB). A resposta expõe `image_url` e, no detalhe, `teams[]`.
 
 ### Pagamentos (`payments`)
 - `GET /payments`, `GET /payments/{payment}`

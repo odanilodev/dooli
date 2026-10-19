@@ -84,6 +84,7 @@ const FALLBACK_MENU = [
       { id: 'fb-documents', name: 'Documentos', type: 'link', depth: 1, link: '/admin/documentos', icon: 'documents' },
       { id: 'fb-attachments', name: 'Anexos', type: 'link', depth: 1, link: '/admin/anexos', icon: 'attachments' },
       { id: 'fb-banners', name: 'Banners', type: 'link', depth: 1, link: '/admin/banners', icon: 'banners' },
+      { id: 'fb-products', name: 'Produtos', type: 'link', depth: 1, link: '/admin/produtos', icon: 'store' },
       { id: 'fb-certificates', name: 'Certificados', type: 'link', depth: 1, link: '/admin/certificados', icon: 'certificate' },
       { id: 'fb-video-platforms', name: 'Plataformas de vídeo', type: 'link', depth: 1, link: '/admin/video-platforms', icon: 'video-platforms' },
       { id: 'fb-menus', name: 'Menus', type: 'link', depth: 1, link: '/admin/menus', icon: 'menu' },

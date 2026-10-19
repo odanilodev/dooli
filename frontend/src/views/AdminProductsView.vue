@@ -1,0 +1,529 @@
+<template>
+  <main class="content">
+
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Produtos da loja</h1>
+        <p class="page-subtitle">{{ meta.total ?? products.length }} produto(s) — cada compra libera o curso nas turmas selecionadas.</p>
+      </div>
+      <button class="btn btn-primary" @click="toggleForm">{{ showForm ? 'Cancelar' : '+ Novo produto' }}</button>
+    </div>
+
+    <form v-if="showForm" class="panel" @submit.prevent="save">
+      <h2 class="panel-title">{{ editingId ? `Editar produto #${editingId}` : 'Novo produto' }}</h2>
+      <p class="panel-desc">Defina o curso, as turmas liberadas na compra e as condições de venda.</p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="p-title">Título</label>
+          <input id="p-title" class="form-control" v-model="form.title" required placeholder="Curso de PHP">
+        </div>
+        <div class="form-group">
+          <label for="p-status">Status</label>
+          <select id="p-status" class="form-control" v-model="form.status">
+            <option value="active">Ativo</option>
+            <option value="inactive">Inativo</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="p-slug">Slug</label>
+          <input id="p-slug" class="form-control" v-model="form.slug" placeholder="gerado pelo título quando vazio">
+        </div>
+        <div class="form-group">
+          <label for="p-course">Curso liberado</label>
+          <SearchSelect
+            id="p-course"
+            v-model="form.course_id"
+            :options="courseOptions"
+            placeholder="Buscar curso..."
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="p-description">Descrição</label>
+        <textarea id="p-description" class="form-control" rows="3" v-model="form.description"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="p-price">Preço (R$)</label>
+          <input id="p-price" type="number" min="0" step="0.01" class="form-control" v-model="form.price" required>
+        </div>
+        <div class="form-group">
+          <label for="p-sale">Promoção (R$)</label>
+          <input id="p-sale" type="number" min="0" step="0.01" class="form-control" v-model="form.sale">
+          <span class="form-hint">Use 0 para vender pelo preço normal.</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="p-release">Lançamento</label>
+          <input id="p-release" type="datetime-local" class="form-control" v-model="form.release_at">
+          <span class="form-hint">Antes desta data o produto não aparece na loja.</span>
+        </div>
+        <div class="form-group">
+          <label for="p-tags">Tags</label>
+          <input id="p-tags" class="form-control" v-model="form.tags" placeholder="php, backend, anual">
+          <span class="form-hint">Separe as tags por vírgula.</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Turmas que a compra libera</label>
+        <TeamPicker v-model="selectedTeams" />
+        <span class="form-hint">O aluno entra nestas turmas quando o pagamento for confirmado.</span>
+      </div>
+
+      <div class="form-group">
+        <label>Imagem do produto</label>
+        <div v-if="imagePreviewUrl" class="product-image-preview">
+          <img :src="imagePreviewUrl" alt="Pré-visualização do produto">
+          <button type="button" class="product-image-remove" @click="clearImage">remover</button>
+        </div>
+        <FilePicker
+          accept="image/png,image/jpeg,image/webp"
+          title="Enviar imagem"
+          hint="JPG, PNG ou WEBP até 4MB"
+          :file-name="imageFile?.name || ''"
+          @change="onImagePicked"
+        />
+        <input class="form-control" v-model="form.image" placeholder="ou cole uma URL https://..." @input="onImageUrlInput">
+      </div>
+
+      <div class="admin-head-actions">
+        <button class="btn btn-primary" :disabled="saving">{{ saving ? 'Salvando...' : 'Salvar produto' }}</button>
+        <button type="button" class="btn btn-outline" :disabled="saving" @click="toggleForm">Cancelar</button>
+      </div>
+    </form>
+
+    <template v-if="!showForm">
+
+      <div class="catalog-toolbar">
+        <div class="filter-tabs">
+          <button
+            v-for="tab in statusFilters"
+            :key="tab.value"
+            class="filter-tab"
+            :class="{ active: status === tab.value }"
+            @click="setStatus(tab.value)"
+          >{{ tab.label }}</button>
+        </div>
+        <input class="form-control admin-search" type="search" v-model="search" placeholder="Buscar produto..." @input="scheduleSearch">
+      </div>
+
+      <p v-if="loading" class="page-subtitle">Carregando...</p>
+
+      <div v-else-if="products.length === 0" class="empty-state">
+        <strong>Nenhum produto encontrado</strong>
+        <span>{{ search || status ? 'Ajuste os filtros selecionados.' : 'Crie o primeiro produto da loja.' }}</span>
+        <button v-if="!search && !status" class="btn btn-primary" @click="openCreate">+ Novo produto</button>
+      </div>
+
+      <div v-else class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Produto</th><th>Curso</th><th>Turmas</th><th>Preço</th><th>Lançamento</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="product in products" :key="product.id">
+              <td>
+                <div class="product-table-title">
+                  <img
+                    v-if="product.image_url || product.image"
+                    :src="product.image_url || product.image"
+                    :alt="product.title"
+                    class="product-thumb"
+                  >
+                  <span v-else class="product-thumb product-thumb-placeholder">{{ product.title.charAt(0).toUpperCase() }}</span>
+                  <span>
+                    <strong>{{ product.title }}</strong>
+                    <span class="admin-sub">{{ product.slug }} · #{{ product.id }}</span>
+                  </span>
+                </div>
+              </td>
+              <td class="admin-muted">{{ product.course?.name || '—' }}</td>
+              <td class="admin-muted">{{ product.teams?.length ?? 0 }} turma(s)</td>
+              <td>
+                <span class="product-price">
+                  <span v-if="Number(product.sale) > 0" class="price-old">{{ formatCurrency(product.price) }}</span>
+                  <span class="price-now">{{ formatCurrency(Number(product.sale) > 0 ? product.sale : product.price) }}</span>
+                </span>
+              </td>
+              <td class="admin-muted">{{ product.release_at ? formatDateTime(product.release_at) : 'Imediato' }}</td>
+              <td><span class="status-pill" :class="product.status">{{ statusLabel(product.status) }}</span></td>
+              <td class="admin-actions">
+                <button class="btn btn-outline btn-sm" :disabled="busyId === product.id" @click="openEdit(product)">Editar</button>
+                <button class="btn btn-danger btn-sm" :disabled="busyId === product.id" @click="remove(product)">Excluir</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="meta.last_page > 1" class="admin-pager">
+        <button class="btn btn-outline btn-sm" :disabled="meta.current_page <= 1" @click="goPage(meta.current_page - 1)">Anterior</button>
+        <span class="admin-muted">Página {{ meta.current_page }} de {{ meta.last_page }}</span>
+        <button class="btn btn-outline btn-sm" :disabled="meta.current_page >= meta.last_page" @click="goPage(meta.current_page + 1)">Próxima</button>
+      </div>
+
+    </template>
+
+    <ImageCropper
+      v-if="cropFile"
+      :file="cropFile"
+      @confirm="onCropConfirm"
+      @cancel="onCropCancel"
+    />
+
+  </main>
+</template>
+
+<script setup>
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { api } from '../api/http';
+import { useToast } from '../composables/useToast';
+import { formatCurrency, formatDateTime, toDateTimeInput } from '../utils/format';
+import FilePicker from '../components/admin/FilePicker.vue';
+import ImageCropper from '../components/admin/ImageCropper.vue';
+import SearchSelect from '../components/admin/SearchSelect.vue';
+import TeamPicker from '../components/admin/TeamPicker.vue';
+
+const toast = useToast();
+
+const statusFilters = [
+  { value: '', label: 'Todos' },
+  { value: 'active', label: 'Ativos' },
+  { value: 'inactive', label: 'Inativos' },
+];
+
+const products = ref([]);
+const courses = ref([]);
+const meta = ref({ current_page: 1, last_page: 1, total: 0 });
+const loading = ref(true);
+const saving = ref(false);
+const busyId = ref(null);
+const status = ref('');
+const search = ref('');
+
+const showForm = ref(false);
+const editingId = ref(null);
+const selectedTeams = ref([]);
+const imageFile = ref(null);
+const imagePreview = ref('');
+const cropFile = ref(null);
+
+const form = reactive({
+  title: '',
+  slug: '',
+  course_id: '',
+  description: '',
+  price: '',
+  sale: 0,
+  status: 'active',
+  release_at: '',
+  tags: '',
+  image: '',
+});
+
+let searchTimer = null;
+
+const courseOptions = computed(() => courses.value.map((course) => ({
+  value: course.id,
+  label: course.name,
+  sub: course.status === 'active' ? 'Ativo' : 'Inativo',
+})));
+
+const imagePreviewUrl = computed(() => imagePreview.value || form.image || '');
+
+async function load() {
+  loading.value = true;
+
+  try {
+    const { data } = await api.get('/admin/store-products', {
+      params: {
+        search: search.value || undefined,
+        status: status.value || undefined,
+        page: meta.value.current_page || 1,
+        per_page: 15,
+      },
+    });
+
+    products.value = data.data ?? [];
+    meta.value = data.meta ?? { current_page: 1, last_page: 1, total: 0 };
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível carregar os produtos.');
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function loadCourses() {
+  try {
+    const { data } = await api.get('/admin/courses', { params: { per_page: 100 } });
+    courses.value = data.data ?? [];
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível carregar os cursos.');
+  }
+}
+
+function setStatus(value) {
+  status.value = value;
+  meta.value.current_page = 1;
+  load();
+}
+
+function statusLabel(value) {
+  return value === 'active' ? 'Ativo' : 'Inativo';
+}
+
+function scheduleSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    meta.value.current_page = 1;
+    load();
+  }, 350);
+}
+
+function goPage(page) {
+  meta.value.current_page = page;
+  load();
+}
+
+function resetForm() {
+  form.title = '';
+  form.slug = '';
+  form.course_id = '';
+  form.description = '';
+  form.price = '';
+  form.sale = 0;
+  form.status = 'active';
+  form.release_at = '';
+  form.tags = '';
+  form.image = '';
+  selectedTeams.value = [];
+  imageFile.value = null;
+  cropFile.value = null;
+
+  if (imagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
+
+  imagePreview.value = '';
+}
+
+function openCreate() {
+  editingId.value = null;
+  resetForm();
+  showForm.value = true;
+}
+
+function toggleForm() {
+  if (showForm.value) {
+    showForm.value = false;
+    return;
+  }
+
+  openCreate();
+}
+
+async function openEdit(product) {
+  busyId.value = product.id;
+
+  try {
+    const { data } = await api.get(`/admin/store-products/${product.id}`);
+    const item = data.data;
+
+    editingId.value = item.id;
+    form.title = item.title ?? '';
+    form.slug = item.slug ?? '';
+    form.course_id = item.course_id ?? '';
+    form.description = item.description ?? '';
+    form.price = item.price ?? '';
+    form.sale = item.sale ?? 0;
+    form.status = item.status ?? 'active';
+    form.release_at = toDateTimeInput(item.release_at);
+    form.tags = (item.tags ?? []).join(', ');
+    form.image = item.image ?? '';
+    selectedTeams.value = (item.teams ?? []).map((team) => ({ id: team.id, name: team.name }));
+    imageFile.value = null;
+
+    if (imagePreview.value.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview.value);
+    }
+
+    imagePreview.value = item.image_url || item.image || '';
+    showForm.value = true;
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível carregar o produto.');
+  } finally {
+    busyId.value = null;
+  }
+}
+
+function onImagePicked(file) {
+  if (file) {
+    cropFile.value = file;
+  }
+}
+
+function onCropConfirm(file) {
+  if (imagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
+
+  cropFile.value = null;
+  imageFile.value = file;
+  form.image = '';
+  imagePreview.value = URL.createObjectURL(file);
+}
+
+function onCropCancel() {
+  cropFile.value = null;
+}
+
+function onImageUrlInput() {
+  if (imagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
+
+  imageFile.value = null;
+  imagePreview.value = form.image.trim();
+}
+
+function clearImage() {
+  if (imagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
+
+  imageFile.value = null;
+  imagePreview.value = '';
+  form.image = '';
+}
+
+function parseTags(value) {
+  return value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function payload() {
+  const data = {
+    course_id: Number(form.course_id),
+    title: form.title.trim(),
+    description: form.description || null,
+    price: Number(form.price) || 0,
+    sale: Number(form.sale) || 0,
+    status: form.status,
+    release_at: form.release_at || null,
+    tags: parseTags(form.tags),
+    team_ids: selectedTeams.value.map((team) => team.id),
+  };
+
+  if (form.slug.trim()) {
+    data.slug = form.slug.trim();
+  }
+
+  return data;
+}
+
+async function save() {
+  if (!form.title.trim() || !form.course_id) {
+    toast.error('Informe o título e o curso.');
+    return;
+  }
+
+  saving.value = true;
+
+  try {
+    const url = editingId.value ? `/admin/store-products/${editingId.value}` : '/admin/store-products';
+    const data = payload();
+
+    if (imageFile.value) {
+      const body = new FormData();
+
+      Object.entries(data).forEach(([key, value]) => {
+        if (key === 'team_ids' || key === 'tags') {
+          value.forEach((item) => body.append(`${key}[]`, item));
+        } else if (value !== null && value !== undefined) {
+          body.append(key, value);
+        }
+      });
+
+      body.append('image_file', imageFile.value);
+
+      if (editingId.value) {
+        body.append('_method', 'PUT');
+      }
+
+      await api.post(url, body);
+    } else {
+      data.image = form.image.trim();
+
+      if (editingId.value) {
+        await api.put(url, data);
+      } else {
+        await api.post(url, data);
+      }
+    }
+
+    showForm.value = false;
+    editingId.value = null;
+    resetForm();
+    toast.success('Produto salvo.');
+    await load();
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível salvar o produto.');
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function remove(product) {
+  if (!window.confirm(`Excluir o produto "${product.title}"?`)) {
+    return;
+  }
+
+  busyId.value = product.id;
+
+  try {
+    await api.delete(`/admin/store-products/${product.id}`);
+    toast.success('Produto excluído.');
+    await load();
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível excluir o produto.');
+  } finally {
+    busyId.value = null;
+  }
+}
+
+onMounted(() => {
+  loadCourses();
+  load();
+});
+
+onBeforeUnmount(() => {
+  clearTimeout(searchTimer);
+
+  if (imagePreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
+});
+</script>
+
+<style scoped>
+.product-table-title{display:flex;align-items:center;gap:10px;min-width:0;}
+.product-thumb{width:48px;height:48px;border-radius:9px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;}
+.product-thumb-placeholder{display:flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:16px;}
+.product-image-preview{position:relative;max-width:360px;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:8px;}
+.product-image-preview img{display:block;width:100%;height:100%;object-fit:cover;}
+.product-image-remove{
+  position:absolute;top:8px;right:8px;background:rgba(0,0,0,.62);color:#fff;border:none;border-radius:8px;
+  padding:4px 9px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;
+}
+</style>

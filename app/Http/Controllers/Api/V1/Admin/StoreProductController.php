@@ -32,7 +32,10 @@ class StoreProductController extends ApiController
     {
         $this->authorize('create', StoreProduct::class);
 
-        $storeProduct = $this->storeProducts->create($request->validated());
+        $data = $request->validated();
+        unset($data['image_file']);
+
+        $storeProduct = $this->storeProducts->create($data, $request->file('image_file'));
 
         if ($request->has('team_ids')) {
             $this->storeProducts->syncTeams($storeProduct, $request->validated('team_ids') ?? []);
@@ -52,7 +55,15 @@ class StoreProductController extends ApiController
     {
         $this->authorize('update', $storeProduct);
 
-        $updated = $this->storeProducts->update($storeProduct, $request->validated());
+        $data = $request->validated();
+        unset($data['image_file']);
+
+        $updated = $this->storeProducts->update(
+            $storeProduct,
+            $data,
+            $request->file('image_file'),
+            $request->exists('image'),
+        );
 
         if ($request->has('team_ids')) {
             $this->storeProducts->syncTeams($updated, $request->validated('team_ids') ?? []);

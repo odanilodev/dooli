@@ -21,6 +21,7 @@ class MenuSeeder extends Seeder
         ['Documentos', '/admin/documentos', 'documents'],
         ['Anexos', '/admin/anexos', 'attachments'],
         ['Banners', '/admin/banners', 'banners'],
+        ['Produtos', '/admin/produtos', 'store'],
         ['Certificados', '/admin/certificados', 'certificate'],
         ['Plataformas de vídeo', '/admin/video-platforms', 'video-platforms'],
         ['Menus', '/admin/menus', 'menu'],

@@ -14,7 +14,7 @@
 
     <section v-else-if="product" class="product-detail">
       <div class="product-detail-media" :style="{ background: grad }">
-        <img v-if="product.image" :src="product.image" :alt="product.title" />
+        <img v-if="product.image_url || product.image" :src="product.image_url || product.image" :alt="product.title" />
         <svg v-else class="icon" width="52" height="52" viewBox="0 0 24 24"><path :d="icon" /></svg>
       </div>
 
