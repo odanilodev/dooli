@@ -75,21 +75,33 @@
       {{ auth.loading ? 'Criando conta...' : 'Criar conta' }}
     </button>
 
-    <p class="auth-switch">Já tem conta? <router-link to="/login">Entrar</router-link></p>
+    <p v-if="companySlug" class="auth-switch">Já tem conta? <router-link :to="{ name: 'public-login', params: { companySlug }, query: nextUrl ? { redirect: nextUrl } : {} }">Entrar</router-link></p>
+    <p v-else class="auth-switch">Já tem conta? <router-link to="/login">Entrar</router-link></p>
   </form>
 </template>
 
 <script setup>
 import { computed, reactive } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useToast } from '../composables/useToast';
 
+const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const toast = useToast();
 const form = reactive({ name: '', email: '', password: '', passwordConfirm: '', terms: false });
 const mismatch = computed(() => form.password && form.passwordConfirm && form.password !== form.passwordConfirm);
+const companySlug = computed(() => (typeof route.params.companySlug === 'string' ? route.params.companySlug : null));
+const nextUrl = computed(() => {
+  const value = route.query.next;
+
+  if (!companySlug.value || typeof value !== 'string') {
+    return null;
+  }
+
+  return value.startsWith(`/e/${companySlug.value}/`) ? value : null;
+});
 
 async function submit() {
   const name = form.name.trim();
@@ -122,10 +134,17 @@ async function submit() {
       password: form.password,
       password_confirmation: form.passwordConfirm,
       terms: true,
-    });
+    }, companySlug.value);
 
     toast.success('Conta criada! Bem-vindo(a).');
-    await router.push({ name: 'dashboard' });
+
+    if (nextUrl.value) {
+      await router.push(nextUrl.value);
+    } else if (companySlug.value) {
+      await router.push({ name: 'public-loja', params: { companySlug: companySlug.value } });
+    } else {
+      await router.push({ name: 'dashboard' });
+    }
   } catch (e) {
     const firstError = e?.errors ? Object.values(e.errors).flat()[0] : null;
     toast.error(firstError || e?.message || 'Não foi possível criar a conta.');

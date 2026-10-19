@@ -17,6 +17,10 @@ class UpdateCompanyRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'string', 'max:255'],
+            'slug' => [
+                'sometimes', 'string', 'max:255', 'alpha_dash',
+                Rule::unique('companies', 'slug')->ignore($this->route('company')),
+            ],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
         ];
     }

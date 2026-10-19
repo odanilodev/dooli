@@ -17,7 +17,7 @@ class StoreGatewayRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['required', 'string', 'max:255'],
+            'code' => ['required', Rule::in(['mercadopago', 'manual'])],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
             'credentials' => ['nullable', 'array'],
             'settings' => ['nullable', 'array'],

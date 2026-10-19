@@ -6,11 +6,40 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
-#[Fillable(['name', 'status'])]
+#[Fillable(['name', 'slug', 'status'])]
 class Company extends Model
 {
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::saving(function (Company $company) {
+            if (filled($company->slug)) {
+                $company->slug = Str::slug((string) $company->slug);
+
+                return;
+            }
+
+            $base = Str::slug((string) $company->name) ?: 'empresa';
+            $slug = $base;
+            $suffix = 2;
+
+            while (Company::query()->where('slug', $slug)->whereKeyNot($company->getKey())->exists()) {
+                $slug = $base.'-'.$suffix;
+                $suffix++;
+            }
+
+            $company->slug = $slug;
+        });
+    }
+
+    public function publicStoreUrl(): string
+    {
+        return rtrim((string) config('app.frontend_url'), '/')
+            .'/#/e/'.rawurlencode((string) $this->slug).'/loja';
+    }
 
     public function users(): HasMany
     {

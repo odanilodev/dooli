@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Support\CompanyContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -26,7 +27,13 @@ class RegisterRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'email' => [
+                'required', 'email', 'max:255',
+                Rule::unique('users', 'email')->where(
+                    'company_id',
+                    app(CompanyContext::class)->id(),
+                ),
+            ],
             'password' => ['required', 'confirmed', Password::defaults()],
             'terms' => ['required', 'accepted'],
             'device_name' => ['sometimes', 'string', 'max:100'],

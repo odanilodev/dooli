@@ -160,3 +160,20 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@cursos.test","password":"password"}'
 ```
+
+## Loja por empresa (multiempresa)
+
+Cada empresa tem um slug publico e uma loja isolada:
+
+```text
+http://localhost:5174/#/e/{slug}/loja
+```
+
+- Produtos pertencem a empresa e devem ser vinculados a pelo menos uma turma.
+- O admin escolhe pagamento unico ou assinatura mensal.
+- Compra unica aceita PIX e cartao; assinatura usa cartao recorrente.
+- Produtos de compra unica podem ter acesso permanente ou por quantidade de dias, contando da confirmacao do pagamento.
+- O cadastro do aluno acontece no checkout e cria a conta na empresa do slug.
+- O mesmo e-mail pode ser usado em empresas diferentes.
+
+O admin encontra o link em Produtos ou em Empresas (superadmin). As credenciais do Mercado Pago ficam em Admin > Gateways.

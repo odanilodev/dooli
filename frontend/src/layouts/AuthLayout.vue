@@ -8,7 +8,7 @@
 
     <div class="auth-visual">
       <span class="auth-visual-glow"></span>
-      <router-link to="/" class="brand" style="position:relative;">
+      <router-link :to="brandLink" class="brand" style="position:relative;">
         <BrandLogo variant="auth" />
       </router-link>
       <p class="auth-visual-quote">{{ route.meta.quote }} <span>{{ route.meta.quoteHighlight }}</span></p>
@@ -22,10 +22,28 @@
 </template>
 
 <script setup>
+import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import BrandLogo from '../components/BrandLogo.vue';
 import { useTheme } from '../composables/useTheme';
+import { useStorefrontStore } from '../stores/storefront';
 
 const route = useRoute();
+const storefront = useStorefrontStore();
 const { toggleTheme } = useTheme();
+
+const companySlug = computed(() => (typeof route.params.companySlug === 'string' ? route.params.companySlug : null));
+const brandLink = computed(() => (companySlug.value
+  ? { name: 'public-loja', params: { companySlug: companySlug.value } }
+  : '/'));
+
+watch(companySlug, async (slug) => {
+  if (slug) {
+    try {
+      await storefront.loadCompany(slug);
+    } catch (e) {
+      /* the form still renders; API calls will surface the error */
+    }
+  }
+}, { immediate: true });
 </script>

@@ -50,11 +50,15 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value;
   }
 
-  async function login(credentials) {
+  async function login(credentials, companySlug = null) {
     loading.value = true;
 
     try {
-      const { data } = await api.post('/auth/login', {
+      const endpoint = companySlug
+        ? `/public/companies/${encodeURIComponent(companySlug)}/auth/login`
+        : '/auth/login';
+
+      const { data } = await api.post(endpoint, {
         email: credentials.email,
         password: credentials.password,
         device_name: 'web',
@@ -66,11 +70,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(payload) {
+  async function register(payload, companySlug = null) {
     loading.value = true;
 
     try {
-      const { data } = await api.post('/auth/register', {
+      const endpoint = companySlug
+        ? `/public/companies/${encodeURIComponent(companySlug)}/auth/register`
+        : '/auth/register';
+
+      const { data } = await api.post(endpoint, {
         ...payload,
         device_name: 'web',
       });
@@ -81,14 +89,22 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function forgotPassword(email) {
-    const { data } = await api.post('/auth/forgot-password', { email });
+  async function forgotPassword(email, companySlug = null) {
+    const endpoint = companySlug
+      ? `/public/companies/${encodeURIComponent(companySlug)}/auth/forgot-password`
+      : '/auth/forgot-password';
+
+    const { data } = await api.post(endpoint, { email });
 
     return data;
   }
 
-  async function resetPassword(payload) {
-    const { data } = await api.post('/auth/reset-password', payload);
+  async function resetPassword(payload, companySlug = null) {
+    const endpoint = companySlug
+      ? `/public/companies/${encodeURIComponent(companySlug)}/auth/reset-password`
+      : '/auth/reset-password';
+
+    const { data } = await api.post(endpoint, payload);
 
     return data;
   }

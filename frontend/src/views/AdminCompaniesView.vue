@@ -29,6 +29,12 @@
         </div>
       </div>
 
+      <div class="form-group">
+        <label for="co-slug">Slug da loja</label>
+        <input id="co-slug" class="form-control" v-model="form.slug" placeholder="minha-escola">
+        <span class="form-hint">Usado no link /#/e/{slug}/loja. Alterar o slug quebra links antigos.</span>
+      </div>
+
       <template v-if="!editingId">
         <div class="form-row">
           <div class="form-group">
@@ -122,6 +128,7 @@
               <td><span class="status-pill" :class="company.status">{{ statusLabel(company.status) }}</span></td>
               <td class="admin-muted">{{ formatDate(company.created_at) }}</td>
               <td class="admin-actions">
+                <button v-if="company.public_store_url" class="btn btn-outline btn-sm" @click="copyPublicLink(company)">Copiar link</button>
                 <button class="btn btn-outline btn-sm" @click="openEdit(company)">Editar</button>
               </td>
             </tr>
@@ -154,6 +161,7 @@ const logoDarkFile = ref(null);
 
 const form = reactive({
   name: '',
+  slug: '',
   status: 'active',
   admin_name: '',
   admin_username: '',
@@ -184,6 +192,15 @@ function statusLabel(status) {
   return status === 'active' ? 'Ativa' : 'Inativa';
 }
 
+async function copyPublicLink(company) {
+  try {
+    await navigator.clipboard.writeText(company.public_store_url);
+    toast.success('Link da loja copiado.');
+  } catch (e) {
+    toast.error('Não foi possível copiar o link.');
+  }
+}
+
 function formatDate(value) {
   if (!value) {
     return '—';
@@ -194,6 +211,7 @@ function formatDate(value) {
 
 function resetForm() {
   form.name = '';
+  form.slug = '';
   form.status = 'active';
   form.admin_name = '';
   form.admin_username = '';
@@ -222,6 +240,7 @@ function openCreate() {
 async function openEdit(company) {
   editingId.value = company.id;
   form.name = company.name ?? '';
+  form.slug = company.slug ?? '';
   form.status = company.status ?? 'active';
   form.primary_color = DEFAULT_PRIMARY_COLOR;
   revokePreview(logoLightPreview.value);
@@ -251,11 +270,13 @@ async function save() {
     if (editingId.value) {
       await companies.updateCompany(editingId.value, {
         name: form.name,
+        slug: form.slug.trim(),
         status: form.status,
       });
     } else {
       const created = await companies.createCompany({
         name: form.name,
+        ...(form.slug.trim() ? { slug: form.slug.trim() } : {}),
         status: form.status,
         admin_name: form.admin_name,
         admin_username: form.admin_username,

@@ -50,6 +50,7 @@ class StoreProductSeeder extends Seeder
                 'sale' => 0,
                 'status' => GeneralStatus::Active->value,
                 'tags' => ['php', 'anual'],
+                'access_duration_days' => 365,
             ],
             [
                 'title' => 'Curso de PHP - Promoção',

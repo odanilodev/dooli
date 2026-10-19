@@ -47,6 +47,6 @@ class StoreProductRepository extends BaseRepository
 
     public function findWithTeams(int $id): StoreProduct
     {
-        return $this->query()->with(['course', 'teams'])->findOrFail($id);
+        return $this->query()->with(['course', 'teams.courses'])->findOrFail($id);
     }
 }

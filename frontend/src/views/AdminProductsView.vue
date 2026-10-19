@@ -6,7 +6,13 @@
         <h1 class="page-title">Produtos da loja</h1>
         <p class="page-subtitle">{{ meta.total ?? products.length }} produto(s) — cada compra libera o curso nas turmas selecionadas.</p>
       </div>
-      <button class="btn btn-primary" @click="toggleForm">{{ showForm ? 'Cancelar' : '+ Novo produto' }}</button>
+      <div class="admin-head-actions">
+        <router-link :to="{ name: 'admin-gateways' }" class="btn btn-outline">Gateways</router-link>
+        <router-link :to="{ name: 'admin-pedidos' }" class="btn btn-outline">Pedidos</router-link>
+        <router-link :to="{ name: 'admin-assinaturas' }" class="btn btn-outline">Assinaturas</router-link>
+        <button v-if="publicStoreUrl" class="btn btn-outline" type="button" @click="copyStoreLink">Copiar link da loja</button>
+        <button class="btn btn-primary" @click="toggleForm">{{ showForm ? 'Cancelar' : '+ Novo produto' }}</button>
+      </div>
     </div>
 
     <form v-if="showForm" class="panel" @submit.prevent="save">
@@ -73,10 +79,41 @@
         </div>
       </div>
 
+      <div class="form-row">
+        <div class="form-group">
+          <label for="p-billing">Forma de cobrança</label>
+          <select id="p-billing" class="form-control" v-model="form.billing_type">
+            <option value="one_time">Pagamento único</option>
+            <option value="subscription">Assinatura mensal</option>
+          </select>
+        </div>
+        <div v-if="form.billing_type === 'one_time'" class="form-group">
+          <label for="p-access">Duração do acesso</label>
+          <select id="p-access" class="form-control" v-model="form.access_type">
+            <option value="permanent">Permanente</option>
+            <option value="limited">Por período</option>
+          </select>
+        </div>
+        <div v-else class="form-group">
+          <label for="p-grace">Tolerância de atraso (dias)</label>
+          <input id="p-grace" type="number" min="0" max="90" class="form-control" v-model="form.grace_days">
+        </div>
+      </div>
+
+      <div v-if="form.billing_type === 'one_time' && form.access_type === 'limited'" class="form-group">
+        <label for="p-access-days">Dias de acesso após o pagamento</label>
+        <input id="p-access-days" type="number" min="1" max="3650" class="form-control" v-model="form.access_duration_days">
+        <span class="form-hint">Ex.: 7 para uma semana, contando da confirmação do pagamento.</span>
+      </div>
+
+      <div v-if="form.billing_type === 'subscription'" class="form-hint" style="margin-bottom:14px;">
+        A primeira cobrança ocorre na autorização. O acesso fica ativo enquanto a assinatura estiver paga.
+      </div>
+
       <div class="form-group">
         <label>Turmas que a compra libera</label>
         <TeamPicker v-model="selectedTeams" />
-        <span class="form-hint">O aluno entra nestas turmas quando o pagamento for confirmado.</span>
+        <span class="form-hint">Obrigatório. A compra libera todos os cursos ativos das turmas selecionadas.</span>
       </div>
 
       <div class="form-group">
@@ -127,7 +164,7 @@
       <div v-else class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr><th>Produto</th><th>Curso</th><th>Turmas</th><th>Preço</th><th>Lançamento</th><th>Status</th><th></th></tr>
+            <tr><th>Produto</th><th>Curso</th><th>Turmas</th><th>Preço</th><th>Cobrança</th><th>Lançamento</th><th>Status</th><th></th></tr>
           </thead>
           <tbody>
             <tr v-for="product in products" :key="product.id">
@@ -154,6 +191,7 @@
                   <span class="price-now">{{ formatCurrency(Number(product.sale) > 0 ? product.sale : product.price) }}</span>
                 </span>
               </td>
+              <td class="admin-muted">{{ product.is_subscription ? 'Mensal' : product.access_label }}</td>
               <td class="admin-muted">{{ product.release_at ? formatDateTime(product.release_at) : 'Imediato' }}</td>
               <td><span class="status-pill" :class="product.status">{{ statusLabel(product.status) }}</span></td>
               <td class="admin-actions">
@@ -216,6 +254,7 @@ const selectedTeams = ref([]);
 const imageFile = ref(null);
 const imagePreview = ref('');
 const cropFile = ref(null);
+const publicStoreUrl = ref('');
 
 const form = reactive({
   title: '',
@@ -228,6 +267,11 @@ const form = reactive({
   release_at: '',
   tags: '',
   image: '',
+  billing_type: 'one_time',
+  billing_interval: 'month',
+  access_type: 'permanent',
+  access_duration_days: '',
+  grace_days: 3,
 });
 
 let searchTimer = null;
@@ -267,7 +311,25 @@ async function loadCourses() {
     const { data } = await api.get('/admin/courses', { params: { per_page: 100 } });
     courses.value = data.data ?? [];
   } catch (e) {
-    toast.error(e?.message || 'Não foi possível carregar os cursos.');
+    toast.error(e?.message || 'Nǜo foi poss��vel carregar os cursos.');
+  }
+}
+
+async function loadPublicLink() {
+  try {
+    const { data } = await api.get('/admin/company/public-link');
+    publicStoreUrl.value = data.data?.public_store_url || '';
+  } catch (e) {
+    /* company link is optional for this screen */
+  }
+}
+
+async function copyStoreLink() {
+  try {
+    await navigator.clipboard.writeText(publicStoreUrl.value);
+    toast.success('Link da loja copiado.');
+  } catch (e) {
+    toast.error('Não foi possível copiar o link.');
   }
 }
 
@@ -305,6 +367,11 @@ function resetForm() {
   form.release_at = '';
   form.tags = '';
   form.image = '';
+  form.billing_type = 'one_time';
+  form.billing_interval = 'month';
+  form.access_type = 'permanent';
+  form.access_duration_days = '';
+  form.grace_days = 3;
   selectedTeams.value = [];
   imageFile.value = null;
   cropFile.value = null;
@@ -349,6 +416,11 @@ async function openEdit(product) {
     form.release_at = toDateTimeInput(item.release_at);
     form.tags = (item.tags ?? []).join(', ');
     form.image = item.image ?? '';
+    form.billing_type = item.billing_type || 'one_time';
+    form.billing_interval = item.billing_interval || 'month';
+    form.access_type = item.access_duration_days ? 'limited' : 'permanent';
+    form.access_duration_days = item.access_duration_days ?? '';
+    form.grace_days = item.grace_days ?? 3;
     selectedTeams.value = (item.teams ?? []).map((team) => ({ id: team.id, name: team.name }));
     imageFile.value = null;
 
@@ -423,6 +495,12 @@ function payload() {
     release_at: form.release_at || null,
     tags: parseTags(form.tags),
     team_ids: selectedTeams.value.map((team) => team.id),
+    billing_type: form.billing_type,
+    billing_interval: form.billing_type === 'subscription' ? form.billing_interval : '',
+    access_duration_days: form.billing_type === 'one_time' && form.access_type === 'limited'
+      ? Number(form.access_duration_days) || ''
+      : '',
+    grace_days: Number(form.grace_days) || 0,
   };
 
   if (form.slug.trim()) {
@@ -435,6 +513,16 @@ function payload() {
 async function save() {
   if (!form.title.trim() || !form.course_id) {
     toast.error('Informe o título e o curso.');
+    return;
+  }
+
+  if (!selectedTeams.value.length) {
+    toast.error('Vincule pelo menos uma turma ao produto.');
+    return;
+  }
+
+  if (form.billing_type === 'one_time' && form.access_type === 'limited' && Number(form.access_duration_days) < 1) {
+    toast.error('Informe a quantidade de dias de acesso.');
     return;
   }
 
@@ -504,6 +592,7 @@ async function remove(product) {
 
 onMounted(() => {
   loadCourses();
+  loadPublicLink();
   load();
 });
 

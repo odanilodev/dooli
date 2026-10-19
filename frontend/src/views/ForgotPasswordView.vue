@@ -20,9 +20,11 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useToast } from '../composables/useToast';
 
+const route = useRoute();
 const auth = useAuthStore();
 const toast = useToast();
 
@@ -38,7 +40,7 @@ async function submit() {
   loading.value = true;
 
   try {
-    await auth.forgotPassword(email.value.trim());
+    await auth.forgotPassword(email.value.trim(), route.query.company || null);
     toast.success('Se o e-mail estiver cadastrado, enviaremos o link de redefinição.');
   } catch (e) {
     toast.error(e?.message || 'Não foi possível enviar o link.');

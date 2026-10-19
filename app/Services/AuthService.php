@@ -81,7 +81,7 @@ class AuthService
             'company_id' => $companyId,
             'user_type_id' => $studentType->id,
             'name' => $data['name'],
-            'username' => $this->uniqueUsername($data['email']),
+            'username' => $this->uniqueUsername($data['email'], $companyId),
             'email' => $data['email'],
             'password' => $data['password'],
             'status' => GeneralStatus::Active->value,
@@ -108,13 +108,17 @@ class AuthService
         $this->audit->log('auth', 'logout_all', 'user', 'Logout em todos os dispositivos', $user->id);
     }
 
-    private function uniqueUsername(string $email): string
+    private function uniqueUsername(string $email, int $companyId): string
     {
         $base = Str::slug(Str::before($email, '@')) ?: 'aluno';
         $username = $base;
         $suffix = 2;
 
-        while (User::query()->withoutGlobalScope('company')->where('username', $username)->exists()) {
+        while (User::query()
+            ->withoutGlobalScope('company')
+            ->where('company_id', $companyId)
+            ->where('username', $username)
+            ->exists()) {
             $username = $base.'-'.$suffix;
             $suffix++;
         }

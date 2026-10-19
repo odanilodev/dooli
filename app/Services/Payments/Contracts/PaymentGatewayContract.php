@@ -2,6 +2,7 @@
 
 namespace App\Services\Payments\Contracts;
 
+use App\Models\Gateway;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 
@@ -19,7 +20,7 @@ interface PaymentGatewayContract
     /**
      * Validates the authenticity of an incoming webhook (signature/secret).
      */
-    public function verifyWebhook(Request $request): bool;
+    public function verifyWebhook(Request $request, Gateway $gateway): bool;
 
     /**
      * Normalizes the webhook payload.

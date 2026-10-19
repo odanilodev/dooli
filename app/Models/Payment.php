@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['company_id', 'order_id', 'gateway_id', 'method', 'transaction_id', 'status', 'amount', 'paid_at'])]
+#[Fillable(['company_id', 'order_id', 'gateway_id', 'method', 'transaction_id', 'status', 'amount', 'paid_at', 'metadata'])]
 class Payment extends Model
 {
     use BelongsToCompany, HasFactory;
@@ -19,6 +19,7 @@ class Payment extends Model
         return [
             'amount' => 'decimal:2',
             'paid_at' => 'datetime',
+            'metadata' => 'array',
         ];
     }
 

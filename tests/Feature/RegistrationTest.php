@@ -72,11 +72,10 @@ class RegistrationTest extends TestCase
         ])->assertStatus(422)->assertJsonValidationErrors('terms');
     }
 
-    public function test_registration_requires_company_context(): void
+    public function test_registration_rejects_unknown_company_slug(): void
     {
-        $this->postJson('/api/v1/auth/register', $this->payload())
-            ->assertStatus(400)
-            ->assertJsonPath('code', 'company_required');
+        $this->postJson('/api/v1/public/companies/empresa-inexistente/auth/register', $this->payload())
+            ->assertNotFound();
     }
 
     public function test_registration_always_creates_a_student(): void
@@ -130,8 +129,10 @@ class RegistrationTest extends TestCase
      */
     private function register(array $overrides = []): TestResponse
     {
-        return $this->withHeader('X-Company', (string) $this->company->id)
-            ->postJson('/api/v1/auth/register', array_merge($this->payload(), $overrides));
+        return $this->postJson(
+            '/api/v1/public/companies/'.$this->company->slug.'/auth/register',
+            array_merge($this->payload(), $overrides),
+        );
     }
 
     /**

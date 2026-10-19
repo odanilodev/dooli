@@ -17,7 +17,7 @@ class UpdateGatewayRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'string', 'max:255'],
-            'code' => ['sometimes', 'string', 'max:255'],
+            'code' => ['sometimes', Rule::in(['mercadopago', 'manual'])],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
             'credentials' => ['nullable', 'array'],
             'settings' => ['nullable', 'array'],

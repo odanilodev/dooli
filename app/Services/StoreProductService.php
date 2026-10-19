@@ -26,7 +26,7 @@ class StoreProductService
         return $this->storeProducts->paginate(
             perPage: $perPage,
             filters: $filters,
-            with: ['course', 'teams'],
+            with: ['course', 'teams.courses'],
             sort: $filters['sort'] ?? null,
             direction: $filters['direction'] ?? 'desc',
         );

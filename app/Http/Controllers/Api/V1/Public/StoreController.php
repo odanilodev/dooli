@@ -22,7 +22,7 @@ class StoreController extends ApiController
                 'status' => GeneralStatus::Active->value,
                 ...$request->only(['search']),
             ],
-            with: ['course'],
+            with: ['course', 'teams.courses'],
         );
 
         return ApiResponse::paginated($paginator, StoreProductResource::class);
@@ -34,6 +34,16 @@ class StoreController extends ApiController
 
         abort_unless($storeProduct, 404, 'Produto não encontrado.');
 
-        return ApiResponse::success(new StoreProductResource($storeProduct->load('course')));
+        return ApiResponse::success(new StoreProductResource($storeProduct->load(['course', 'teams.courses'])));
+    }
+
+    public function showPublic(Request $request): JsonResponse
+    {
+        $slug = (string) $request->route('productSlug');
+        $storeProduct = $this->storeProducts->findReleasedBySlug($slug);
+
+        abort_unless($storeProduct, 404, 'Produto não encontrado.');
+
+        return ApiResponse::success(new StoreProductResource($storeProduct->load(['course', 'teams.courses'])));
     }
 }

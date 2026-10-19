@@ -488,3 +488,43 @@ Verifica a **assinatura** conforme o adapter do gateway (sem segredo configurado
 - Validação sempre no backend; valores de desconto/total recalculados no servidor.
 - Conclusão de aula e emissão de certificado validados no backend (nunca por payload do frontend).
 - Webhooks: assinatura obrigatória (falha fechada sem segredo configurado), tenant derivado do pagamento e idempotentes.
+
+## Loja publica por empresa
+
+Cada empresa possui um `slug` unico. A loja publica resolve o tenant pela URL, sem confiar em `X-Company`:
+
+- `GET /api/v1/public/companies/{companySlug}`
+- `GET /api/v1/public/companies/{companySlug}/store/products`
+- `GET /api/v1/public/companies/{companySlug}/store/products/{productSlug}`
+- `POST /api/v1/public/companies/{companySlug}/auth/login`
+- `POST /api/v1/public/companies/{companySlug}/auth/register`
+- `POST /api/v1/public/companies/{companySlug}/auth/forgot-password`
+- `POST /api/v1/public/companies/{companySlug}/auth/reset-password`
+
+O cadastro cria sempre um aluno da empresa do slug. O mesmo e-mail pode existir em empresas diferentes; a unicidade e `(company_id, email)` e `(company_id, username)`.
+
+### Produto
+
+`store_products` agora possui:
+
+- `billing_type`: `one_time` ou `subscription`;
+- `billing_interval`: `month`;
+- `access_duration_days`: nulo para acesso permanente, ou quantidade de dias;
+- `grace_days`: tolerancia de assinatura.
+
+Todo produto deve ter pelo menos uma turma (`team_ids`). A compra libera todos os cursos ativos das turmas vinculadas. O prazo de acesso conta da confirmacao do pagamento.
+
+### Checkout e pagamentos
+
+- Compra unica: `POST /api/v1/me/orders` e depois `POST /api/v1/me/orders/{order}/pay` com `method=pix` ou `method=credit_card`.
+- PIX retorna os dados do QR em `payment.metadata`.
+- Cartao usa Checkout Pro e retorna `checkout_url`.
+- Assinatura: `POST /api/v1/me/subscriptions` com `store_product_id` e `gateway_id`.
+- Consulta: `GET /api/v1/me/subscriptions`; cancelamento: `POST /api/v1/me/subscriptions/{subscription}/cancel`.
+
+### Webhooks por empresa
+
+- `POST /api/v1/webhooks/companies/{companySlug}/payments/{gateway}`
+- `POST /api/v1/webhooks/companies/{companySlug}/subscriptions/{gateway}`
+
+O segredo do webhook e lido das credenciais do gateway da empresa (`webhook_secret`), com fallback para a configuracao global.

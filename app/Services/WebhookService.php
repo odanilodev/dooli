@@ -29,11 +29,15 @@ class WebhookService
     {
         $adapter = $this->gatewayManager->for($gateway);
 
-        if (! $adapter->verifyWebhook($request)) {
+        if (! $adapter->verifyWebhook($request, $gateway)) {
             throw new ApiException('Assinatura do webhook inválida.', 401, 'invalid_webhook_signature');
         }
 
         $payload = $adapter->parseWebhook($request);
+
+        if (method_exists($adapter, 'enrichWebhook')) {
+            $payload = $adapter->enrichWebhook($payload, $gateway);
+        }
 
         $payment = $this->resolvePayment($payload);
 
@@ -67,6 +71,12 @@ class WebhookService
             if ($payment) {
                 return $payment;
             }
+        }
+
+        $localPaymentId = $payload['metadata']['local_payment_id'] ?? null;
+
+        if ($localPaymentId) {
+            return $this->payments->findAcrossCompanies((int) $localPaymentId);
         }
 
         $reference = $payload['metadata']['external_reference'] ?? $payload['metadata']['data']['external_reference'] ?? null;

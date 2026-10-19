@@ -18,10 +18,11 @@ class StoreCompanyRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'slug' => ['sometimes', 'nullable', 'string', 'max:255', 'alpha_dash', Rule::unique('companies', 'slug')],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
             'admin_name' => ['required', 'string', 'max:255'],
-            'admin_username' => ['required', 'string', 'max:255', Rule::unique('users', 'username')],
-            'admin_email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'admin_username' => ['required', 'string', 'max:255'],
+            'admin_email' => ['required', 'email', 'max:255'],
             'admin_password' => ['required', Password::defaults()],
         ];
     }

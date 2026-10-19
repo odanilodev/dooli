@@ -14,8 +14,10 @@ class PaymentWebhookController extends ApiController
 {
     public function __construct(private readonly WebhookService $webhooks) {}
 
-    public function handle(Request $request, string $gateway): JsonResponse
+    public function handle(Request $request): JsonResponse
     {
+        $gateway = (string) $request->route('gateway');
+
         // Tenant is mandatory: gateway codes are only unique per company.
         $model = Gateway::query()
             ->where('code', $gateway)

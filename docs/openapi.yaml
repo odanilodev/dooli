@@ -1,4 +1,4 @@
-openapi: 3.0.3
+﻿openapi: 3.0.3
 info:
   title: Cursos API
   description: API REST da plataforma de cursos (Laravel 13 + Sanctum, multi-tenant).
@@ -70,14 +70,14 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Success' }
-        '400': { description: Empresa não informada }
+        '400': { description: Empresa nÃ£o informada }
         '422': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /api/v1/auth/me:
     get:
       tags: [Auth]
-      summary: Usuário autenticado
+      summary: UsuÃ¡rio autenticado
       responses:
         '200': { description: OK }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -85,14 +85,14 @@ paths:
   /api/v1/auth/logout:
     post:
       tags: [Auth]
-      summary: Encerra a sessão atual
+      summary: Encerra a sessÃ£o atual
       responses:
         '200': { description: OK }
 
   /api/v1/auth/forgot-password:
     post:
       tags: [Auth]
-      summary: Envia o link de redefinição de senha
+      summary: Envia o link de redefiniÃ§Ã£o de senha
       security: []
       requestBody:
         required: true
@@ -104,13 +104,13 @@ paths:
               properties:
                 email: { type: string, format: email }
       responses:
-        '200': { description: 'Sempre 200 (não revela se o e-mail existe)' }
+        '200': { description: 'Sempre 200 (nÃ£o revela se o e-mail existe)' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /api/v1/auth/reset-password:
     post:
       tags: [Auth]
-      summary: Redefine a senha com um token válido
+      summary: Redefine a senha com um token vÃ¡lido
       security: []
       requestBody:
         required: true
@@ -126,19 +126,19 @@ paths:
                 password_confirmation: { type: string }
       responses:
         '200': { description: OK }
-        '422': { description: Token inválido }
+        '422': { description: Token invÃ¡lido }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /api/v1/me/profile:
     get:
       tags: [Auth]
-      summary: Perfil do usuário autenticado
+      summary: Perfil do usuÃ¡rio autenticado
       responses:
         '200': { description: OK }
         '401': { $ref: '#/components/responses/Unauthorized' }
     put:
       tags: [Auth]
-      summary: Atualiza o próprio perfil
+      summary: Atualiza o prÃ³prio perfil
       requestBody:
         required: true
         content:
@@ -160,7 +160,7 @@ paths:
   /api/v1/me/password:
     put:
       tags: [Auth]
-      summary: Troca a própria senha
+      summary: Troca a prÃ³pria senha
       requestBody:
         required: true
         content:
@@ -188,7 +188,7 @@ paths:
         - { $ref: '#/components/parameters/Search' }
       responses:
         '200': { description: OK }
-        '400': { description: Empresa não informada }
+        '400': { description: Empresa nÃ£o informada }
 
   /api/v1/store/products/{slug}:
     get:
@@ -214,7 +214,7 @@ paths:
         - { $ref: '#/components/parameters/XCompany' }
       responses:
         '200': { description: OK }
-        '400': { description: Empresa não informada }
+        '400': { description: Empresa nÃ£o informada }
 
   /api/v1/certificates/{code}/verify:
     get:
@@ -250,8 +250,8 @@ paths:
   /api/v1/public/certificates/{code}:
     get:
       tags: [Store]
-      summary: Payload da página pública do certificado
-      description: Não exige X-Company nem autenticação; o código público curto resolve o certificado. UUIDs antigos também são aceitos. Certificados substituídos automaticamente retornam redirect_url para o válido atual.
+      summary: Payload da pÃ¡gina pÃºblica do certificado
+      description: NÃ£o exige X-Company nem autenticaÃ§Ã£o; o cÃ³digo pÃºblico curto resolve o certificado. UUIDs antigos tambÃ©m sÃ£o aceitos. Certificados substituÃ­dos automaticamente retornam redirect_url para o vÃ¡lido atual.
       security: []
       parameters:
         - name: code
@@ -274,7 +274,7 @@ paths:
                     type: object
                     properties:
                       code: { type: string, example: A7K2M9QX }
-                      redirect_url: { type: string, format: uri, description: Presente quando o certificado foi substituído; aponta para o certificado válido atual. }
+                      redirect_url: { type: string, format: uri, description: Presente quando o certificado foi substituÃ­do; aponta para o certificado vÃ¡lido atual. }
                       valid: { type: boolean, example: true }
                       holder_name: { type: string }
                       course: { type: string, nullable: true }
@@ -296,7 +296,7 @@ paths:
   /api/v1/me/courses/{course}:
     get:
       tags: [Student]
-      summary: Conteúdo do curso
+      summary: ConteÃºdo do curso
       parameters:
         - { $ref: '#/components/parameters/CourseId' }
       responses:
@@ -360,7 +360,7 @@ paths:
                 team_id: { type: integer }
       responses:
         '201': { description: Emitido }
-        '422': { description: Critérios não atendidos }
+        '422': { description: CritÃ©rios nÃ£o atendidos }
 
   /api/v1/me/orders:
     get:
@@ -389,7 +389,7 @@ paths:
                 coupon_code: { type: string }
       responses:
         '201': { description: Criado }
-        '422': { description: Cupom inválido }
+        '422': { description: Cupom invÃ¡lido }
 
   /api/v1/admin/courses:
     get:
@@ -440,7 +440,7 @@ paths:
       parameters:
         - { $ref: '#/components/parameters/CourseId' }
       responses:
-        '204': { description: Sem conteúdo }
+        '204': { description: Sem conteÃºdo }
         '409': { $ref: '#/components/responses/Conflict' }
 
   /api/v1/admin/courses/{course}/publish:
@@ -455,7 +455,7 @@ paths:
   /api/v1/admin/teams/{team}/students:
     post:
       tags: [Admin]
-      summary: Adiciona aluno à turma
+      summary: Adiciona aluno Ã  turma
       parameters:
         - name: team
           in: path
@@ -501,7 +501,7 @@ paths:
   /api/v1/admin/certificates/{certificate}/transfer-issued:
     post:
       tags: [Admin]
-      summary: Transfere certificados válidos para outro modelo do mesmo curso
+      summary: Transfere certificados vÃ¡lidos para outro modelo do mesmo curso
       parameters:
         - name: certificate
           in: path
@@ -519,7 +519,7 @@ paths:
       responses:
         '200': { description: OK }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '422': { description: Regra de negócio }
+        '422': { description: Regra de negÃ³cio }
 
   /api/v1/admin/certificate-users:
     get:
@@ -555,33 +555,33 @@ paths:
   /api/v1/admin/comments:
     get:
       tags: [Admin]
-      summary: Lista comentários (moderação)
+      summary: Lista comentÃ¡rios (moderaÃ§Ã£o)
       responses:
         '200': { description: OK }
 
   /api/v1/admin/comments/{comment}:
     delete:
       tags: [Admin]
-      summary: Exclui um comentário
+      summary: Exclui um comentÃ¡rio
       parameters:
         - name: comment
           in: path
           required: true
           schema: { type: integer }
       responses:
-        '204': { description: Sem conteúdo }
+        '204': { description: Sem conteÃºdo }
 
   /api/v1/admin/ratings:
     get:
       tags: [Admin]
-      summary: Lista avaliações (moderação)
+      summary: Lista avaliaÃ§Ãµes (moderaÃ§Ã£o)
       responses:
         '200': { description: OK }
 
   /api/v1/admin/ratings/{rating}:
     delete:
       tags: [Admin]
-      summary: Exclui uma avaliação
+      summary: Exclui uma avaliaÃ§Ã£o
       parameters:
         - name: rating
           in: path
@@ -620,9 +620,78 @@ paths:
           schema: { type: string, example: manual }
       responses:
         '202': { description: Enfileirado }
-        '400': { description: Empresa não informada }
-        '401': { description: Assinatura inválida }
+        '400': { description: Empresa nÃ£o informada }
+        '401': { description: Assinatura invÃ¡lida }
 
+  /api/v1/public/companies/{companySlug}:
+    get:
+      tags: [Store]
+      summary: Dados publicos da empresa e branding
+      security: []
+      parameters:
+        - { name: companySlug, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK }
+        '404': { description: Empresa inexistente ou inativa }
+  /api/v1/public/companies/{companySlug}/store/products:
+    get:
+      tags: [Store]
+      summary: Catalogo publico da empresa
+      security: []
+      parameters:
+        - { name: companySlug, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK }
+  /api/v1/public/companies/{companySlug}/store/products/{productSlug}:
+    get:
+      tags: [Store]
+      summary: Detalhe publico de um produto
+      security: []
+      parameters:
+        - { name: companySlug, in: path, required: true, schema: { type: string } }
+        - { name: productSlug, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK }
+        '404': { description: Nao encontrado }
+  /api/v1/me/orders/{order}/pay:
+    post:
+      tags: [Student]
+      summary: Cria pagamento PIX ou checkout de cartao
+      parameters:
+        - { name: order, in: path, required: true, schema: { type: integer } }
+      responses:
+        '201': { description: Pagamento criado }
+  /api/v1/me/subscriptions:
+    get:
+      tags: [Student]
+      summary: Lista assinaturas do aluno
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [Student]
+      summary: Cria assinatura mensal por cartao
+      responses:
+        '201': { description: Assinatura criada }
+  /api/v1/webhooks/companies/{companySlug}/payments/{gateway}:
+    post:
+      tags: [Webhooks]
+      summary: Webhook de pagamento por empresa
+      security: []
+      parameters:
+        - { name: companySlug, in: path, required: true, schema: { type: string } }
+        - { name: gateway, in: path, required: true, schema: { type: string } }
+      responses:
+        '202': { description: Processado }
+  /api/v1/webhooks/companies/{companySlug}/subscriptions/{gateway}:
+    post:
+      tags: [Webhooks]
+      summary: Webhook de assinatura por empresa
+      security: []
+      parameters:
+        - { name: companySlug, in: path, required: true, schema: { type: string } }
+        - { name: gateway, in: path, required: true, schema: { type: string } }
+      responses:
+        '202': { description: Processado }
 components:
   securitySchemes:
     bearerAuth:
@@ -636,7 +705,7 @@ components:
       in: header
       required: true
       schema: { type: integer }
-      description: Id da empresa (obrigatório em rotas públicas/webhooks)
+      description: Id da empresa (obrigatÃ³rio em rotas pÃºblicas/webhooks)
     Page:
       name: page
       in: query
@@ -657,22 +726,22 @@ components:
 
   responses:
     Unauthorized:
-      description: Não autenticado
+      description: NÃ£o autenticado
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     Forbidden:
-      description: Sem permissão
+      description: Sem permissÃ£o
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     NotFound:
-      description: Não encontrado
+      description: NÃ£o encontrado
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     ValidationError:
-      description: Dados inválidos
+      description: Dados invÃ¡lidos
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ValidationError' }
@@ -682,7 +751,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     Conflict:
-      description: Registro duplicado ou com vínculos
+      description: Registro duplicado ou com vÃ­nculos
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }

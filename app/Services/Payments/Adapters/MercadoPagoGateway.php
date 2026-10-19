@@ -4,7 +4,9 @@ namespace App\Services\Payments\Adapters;
 
 use App\Enums\PaymentStatus;
 use App\Exceptions\PaymentException;
+use App\Models\Gateway;
 use App\Models\Payment;
+use App\Models\Subscription;
 use App\Services\Payments\Contracts\GatewayChargeResult;
 use App\Services\Payments\Contracts\GatewayRefundResult;
 use App\Services\Payments\Contracts\PaymentGatewayContract;
@@ -66,6 +68,115 @@ class MercadoPagoGateway implements PaymentGatewayContract
         );
     }
 
+    public function createPreference(Payment $payment, Gateway $gateway): array
+    {
+        $accessToken = $gateway->credentials['access_token'] ?? null;
+
+        if (! $accessToken) {
+            return [
+                'id' => 'mp-local-pref-'.$payment->id,
+                'init_point' => null,
+                'raw' => ['warning' => 'access_token ausente; checkout local criado.'],
+            ];
+        }
+
+        $payment->loadMissing(['order.items.storeProduct']);
+        $company = $gateway->company;
+        $slug = (string) $company?->slug;
+        $frontend = rtrim((string) config('app.frontend_url'), '/');
+        $api = rtrim((string) config('app.url'), '/');
+        $order = $payment->order;
+
+        $items = [[
+            'title' => $order->items->map(fn ($item) => $item->storeProduct?->title)->filter()->implode(', ') ?: 'Pedido',
+            'quantity' => 1,
+            'unit_price' => (float) $order->total,
+            'currency_id' => 'BRL',
+        ]];
+
+        $response = Http::withToken($accessToken)
+            ->acceptJson()
+            ->post('https://api.mercadopago.com/checkout/preferences', [
+                'items' => $items,
+                'external_reference' => (string) $payment->id,
+                'notification_url' => $api.'/api/v1/webhooks/companies/'.$slug.'/payments/mercadopago?local_payment_id='.$payment->id,
+                'back_urls' => [
+                    'success' => $frontend.'/#/e/'.$slug.'/pedido/'.$order->id,
+                    'failure' => $frontend.'/#/e/'.$slug.'/pedido/'.$order->id,
+                    'pending' => $frontend.'/#/e/'.$slug.'/pedido/'.$order->id,
+                ],
+                'auto_return' => 'approved',
+            ]);
+
+        if ($response->failed()) {
+            Log::warning('MercadoPago preference failed', [
+                'payment_id' => $payment->id,
+                'status' => $response->status(),
+            ]);
+
+            throw new PaymentException('Não foi possível criar o checkout de cartão.', 'gateway_preference_failed');
+        }
+
+        $data = $response->json();
+
+        return [
+            'id' => (string) ($data['id'] ?? ''),
+            'init_point' => $data['init_point'] ?? $data['sandbox_init_point'] ?? null,
+            'raw' => $data,
+        ];
+    }
+
+    public function createSubscription(Subscription $subscription, Gateway $gateway): array
+    {
+        $accessToken = $gateway->credentials['access_token'] ?? null;
+
+        if (! $accessToken) {
+            return [
+                'id' => 'mp-local-sub-'.$subscription->id,
+                'init_point' => null,
+                'raw' => ['warning' => 'access_token ausente; assinatura local criada.'],
+            ];
+        }
+
+        $subscription->loadMissing(['user', 'storeProduct']);
+        $company = $gateway->company;
+        $slug = (string) $company?->slug;
+
+        $response = Http::withToken($accessToken)
+            ->acceptJson()
+            ->post('https://api.mercadopago.com/preapproval', [
+                'reason' => 'Assinatura: '.$subscription->storeProduct?->title,
+                'external_reference' => (string) $subscription->id,
+                'payer_email' => $subscription->user?->email,
+                'back_url' => rtrim((string) config('app.frontend_url'), '/').'/#/e/'.$slug.'/assinaturas',
+                'notification_url' => rtrim((string) config('app.url'), '/').'/api/v1/webhooks/companies/'.$slug.'/subscriptions/mercadopago',
+                'status' => 'pending',
+                'auto_recurring' => [
+                    'frequency' => 1,
+                    'frequency_type' => 'months',
+                    'transaction_amount' => (float) $subscription->amount,
+                    'currency_id' => 'BRL',
+                ],
+            ]);
+
+        if ($response->failed()) {
+            Log::warning('MercadoPago preapproval failed', [
+                'subscription_id' => $subscription->id,
+                'status' => $response->status(),
+            ]);
+
+            throw new PaymentException('Não foi possível criar a assinatura no MercadoPago.', 'gateway_subscription_failed');
+        }
+
+        $data = $response->json();
+
+        return [
+            'id' => (string) ($data['id'] ?? ''),
+            'init_point' => $data['init_point'] ?? null,
+            'raw' => $data,
+        ];
+    }
+
     public function refund(Payment $payment, float $amount, ?string $reason = null): GatewayRefundResult
     {
         $accessToken = $this->credential($payment, 'access_token');
@@ -87,9 +198,9 @@ class MercadoPagoGateway implements PaymentGatewayContract
         return new GatewayRefundResult(success: true, status: 'refunded', raw: $response->json());
     }
 
-    public function verifyWebhook(Request $request): bool
+    public function verifyWebhook(Request $request, Gateway $gateway): bool
     {
-        $secret = config('services.mercadopago.webhook_secret');
+        $secret = $gateway->credentials['webhook_secret'] ?? config('services.mercadopago.webhook_secret');
 
         // Fail closed: without a configured secret no webhook can be trusted.
         if (! $secret) {
@@ -116,6 +227,105 @@ class MercadoPagoGateway implements PaymentGatewayContract
         $expected = hash_hmac('sha256', $manifest, $secret);
 
         return hash_equals($expected, $this->extractV1($signature));
+    }
+
+    /**
+     * Fetch the authoritative resource from Mercado Pago for payment webhooks.
+     * The webhook body often only contains the resource id.
+     */
+    public function enrichWebhook(array $payload, Gateway $gateway): array
+    {
+        $accessToken = $gateway->credentials['access_token'] ?? null;
+        $id = $payload['transaction_id'] ?? $payload['external_id'] ?? null;
+
+        if (! $accessToken || ! $id) {
+            return $payload;
+        }
+
+        $type = (string) ($payload['event'] ?? '');
+
+        if (! str_contains($type, 'payment')) {
+            return $payload;
+        }
+
+        $response = Http::withToken($accessToken)
+            ->acceptJson()
+            ->get("https://api.mercadopago.com/v1/payments/{$id}");
+
+        if ($response->failed()) {
+            Log::warning('MercadoPago webhook payment lookup failed', ['id' => $id, 'status' => $response->status()]);
+
+            return $payload;
+        }
+
+        $data = $response->json();
+
+        return array_merge($payload, [
+            'status' => $this->mapStatus((string) ($data['status'] ?? '')),
+            'transaction_id' => (string) ($data['id'] ?? $id),
+            'paid_at' => $data['date_approved'] ?? null,
+            'metadata' => array_merge($payload['metadata'] ?? [], $data),
+        ]);
+    }
+
+    public function resolveSubscriptionWebhook(array $payload, Gateway $gateway): array
+    {
+        $accessToken = $gateway->credentials['access_token'] ?? null;
+        $id = $payload['data']['id'] ?? $payload['id'] ?? null;
+        $type = (string) ($payload['type'] ?? $payload['action'] ?? '');
+
+        if (! $accessToken || ! $id) {
+            return $payload;
+        }
+
+        if (str_contains($type, 'authorized_payment') || str_contains($type, 'payment')) {
+            $response = Http::withToken($accessToken)
+                ->acceptJson()
+                ->get("https://api.mercadopago.com/v1/payments/{$id}");
+
+            if ($response->failed()) {
+                return $payload;
+            }
+
+            $data = $response->json();
+
+            return [
+                'provider_subscription_id' => $data['metadata']['preapproval_id']
+                    ?? $data['preapproval_id']
+                    ?? null,
+                'external_reference' => $data['external_reference'] ?? null,
+                'status' => $this->mapStatus((string) ($data['status'] ?? '')),
+                'transaction_id' => (string) ($data['id'] ?? $id),
+                'paid_at' => $data['date_approved'] ?? null,
+            ];
+        }
+
+        if (str_contains($type, 'preapproval')) {
+            $response = Http::withToken($accessToken)
+                ->acceptJson()
+                ->get("https://api.mercadopago.com/preapproval/{$id}");
+
+            if ($response->failed()) {
+                return $payload;
+            }
+
+            $data = $response->json();
+
+            return [
+                'provider_subscription_id' => (string) ($data['id'] ?? $id),
+                'external_reference' => $data['external_reference'] ?? null,
+                'status' => match ((string) ($data['status'] ?? '')) {
+                    'authorized' => 'paid',
+                    'cancelled', 'canceled' => 'canceled',
+                    'paused' => 'past_due',
+                    default => 'pending',
+                },
+                'transaction_id' => null,
+                'paid_at' => null,
+            ];
+        }
+
+        return $payload;
     }
 
     public function parseWebhook(Request $request): array

@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/auth';
 
 import AppLayout from '../layouts/AppLayout.vue';
 import AuthLayout from '../layouts/AuthLayout.vue';
+import PublicLayout from '../layouts/PublicLayout.vue';
 
 import HomeView from '../views/HomeView.vue';
 import CoursesView from '../views/CoursesView.vue';
@@ -13,6 +14,11 @@ import LiveClassesView from '../views/LiveClassesView.vue';
 import LessonView from '../views/LessonView.vue';
 import StoreView from '../views/StoreView.vue';
 import StoreProductView from '../views/StoreProductView.vue';
+import PublicStoreView from '../views/PublicStoreView.vue';
+import PublicProductView from '../views/PublicProductView.vue';
+import PublicCheckoutView from '../views/PublicCheckoutView.vue';
+import PublicOrderView from '../views/PublicOrderView.vue';
+import PublicSubscriptionsView from '../views/PublicSubscriptionsView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import AdminVideoPlatformsView from '../views/AdminVideoPlatformsView.vue';
@@ -33,6 +39,9 @@ import AdminUsersView from '../views/AdminUsersView.vue';
 import AdminUserTypesView from '../views/AdminUserTypesView.vue';
 import AdminMenusView from '../views/AdminMenusView.vue';
 import AdminCompaniesView from '../views/AdminCompaniesView.vue';
+import AdminGatewaysView from '../views/AdminGatewaysView.vue';
+import AdminOrdersView from '../views/AdminOrdersView.vue';
+import AdminSubscriptionsView from '../views/AdminSubscriptionsView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
 import ForgotPasswordView from '../views/ForgotPasswordView.vue';
@@ -71,11 +80,75 @@ const routes = [
       { path: 'admin/certificados', name: 'admin-certificados', component: AdminCertificatesView, meta: { title: 'Certificados (admin)', requiresAdminMenu: true } },
       { path: 'admin/comentarios', name: 'admin-comentarios', component: AdminCommentsView, meta: { title: 'Comentários (admin)', requiresAdminMenu: true } },
       { path: 'admin/produtos', name: 'admin-produtos', component: AdminProductsView, meta: { title: 'Produtos da loja (admin)', requiresAdminMenu: true } },
+      { path: 'admin/gateways', name: 'admin-gateways', component: AdminGatewaysView, meta: { title: 'Gateways (admin)', requiresAdminMenu: true } },
+      { path: 'admin/pedidos', name: 'admin-pedidos', component: AdminOrdersView, meta: { title: 'Pedidos (admin)', requiresAdminMenu: true } },
+      { path: 'admin/assinaturas', name: 'admin-assinaturas', component: AdminSubscriptionsView, meta: { title: 'Assinaturas (admin)', requiresAdminMenu: true } },
       { path: 'admin/usuarios', name: 'admin-usuarios', component: AdminUsersView, meta: { title: 'Usuários (admin)', requiresAdmin: true } },
       { path: 'admin/tipos-de-usuario', name: 'admin-tipos-de-usuario', component: AdminUserTypesView, meta: { title: 'Tipos de usuário (admin)', requiresAdmin: true } },
       { path: 'admin/menus', name: 'admin-menus', component: AdminMenusView, meta: { title: 'Menus (admin)', requiresSuperAdmin: true } },
       { path: 'admin/empresas', name: 'admin-empresas', component: AdminCompaniesView, meta: { title: 'Empresas (admin)', requiresSuperAdmin: true } },
       { path: ':pathMatch(.*)*', name: 'not-found', component: NotFoundView, meta: { title: 'Página não encontrada' } },
+    ],
+  },
+  {
+    path: '/e/:companySlug',
+    component: PublicLayout,
+    children: [
+      {
+        path: '',
+        redirect: (to) => ({ name: 'public-loja', params: { companySlug: to.params.companySlug } }),
+      },
+      { path: 'loja', name: 'public-loja', component: PublicStoreView, meta: { title: 'Loja' } },
+      {
+        path: 'loja/:productSlug',
+        name: 'public-produto',
+        component: PublicProductView,
+        meta: { title: 'Produto' },
+      },
+      {
+        path: 'checkout/:productSlug',
+        name: 'public-checkout',
+        component: PublicCheckoutView,
+        meta: { title: 'Checkout', requiresCompanyAuth: true },
+      },
+      {
+        path: 'pedido/:orderId',
+        name: 'public-pedido',
+        component: PublicOrderView,
+        meta: { title: 'Pedido', requiresCompanyAuth: true },
+      },
+      {
+        path: 'assinaturas',
+        name: 'public-assinaturas',
+        component: PublicSubscriptionsView,
+        meta: { title: 'Minhas assinaturas', requiresCompanyAuth: true },
+      },
+    ],
+  },
+  {
+    path: '/e/:companySlug',
+    component: AuthLayout,
+    children: [
+      {
+        path: 'entrar',
+        name: 'public-login',
+        component: LoginView,
+        meta: {
+          title: 'Entrar',
+          quote: 'Aprenda com quem entende de mercado e evolua com',
+          quoteHighlight: 'estratégia, disciplina e consistência.',
+        },
+      },
+      {
+        path: 'cadastro',
+        name: 'public-cadastro',
+        component: RegisterView,
+        meta: {
+          title: 'Criar conta',
+          quote: 'Seu próximo passo começa com uma conta e um curso escolhido por você.',
+          quoteHighlight: 'Estude no seu ritmo e evolua sempre.',
+        },
+      },
     ],
   },
   {
@@ -91,16 +164,6 @@ const routes = [
           title: 'Entrar',
           quote: 'Aprenda a operar com estratégia, gerencie seu risco e conquiste',
           quoteHighlight: 'resultados consistentes no mercado financeiro.',
-        },
-      },
-      {
-        path: 'cadastro',
-        name: 'cadastro',
-        component: RegisterView,
-        meta: {
-          title: 'Criar conta',
-          quote: 'Junte-se a milhares de alunos que já estão evoluindo com',
-          quoteHighlight: 'disciplina e estratégia no mercado financeiro.',
         },
       },
       {
@@ -140,6 +203,18 @@ router.beforeEach(async (to) => {
 
   if (!auth.initialized) {
     await auth.init();
+  }
+
+  if (to.name === 'public-cadastro' && typeof to.query.next !== 'string') {
+    return { name: 'public-loja', params: { companySlug: to.params.companySlug } };
+  }
+
+  if (to.meta?.requiresCompanyAuth && !auth.isAuthenticated) {
+    return {
+      name: 'public-login',
+      params: { companySlug: to.params.companySlug },
+      query: { redirect: to.fullPath },
+    };
   }
 
   if (to.meta?.requiresAuth && !auth.isAuthenticated) {

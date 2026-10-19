@@ -19,7 +19,7 @@ class CompanyService
      * admin account. Companies are the tenant root, so their rows have an
      * explicit company_id that must survive the current request context.
      *
-     * @param  array{name: string, status?: string, admin_name: string, admin_username: string, admin_email: string, admin_password: string}  $data
+     * @param  array{name: string, slug?: string|null, status?: string, admin_name: string, admin_username: string, admin_email: string, admin_password: string}  $data
      * @return array{company: Company, admin: User}
      */
     public function create(array $data): array
@@ -35,6 +35,7 @@ class CompanyService
             [$company, $admin] = DB::transaction(function () use ($data) {
                 $company = Company::query()->create([
                     'name' => $data['name'],
+                    'slug' => $data['slug'] ?? null,
                     'status' => $data['status'] ?? GeneralStatus::Active->value,
                 ]);
 

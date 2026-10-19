@@ -20,19 +20,20 @@
         <input type="checkbox" v-model="form.remember">
         Lembrar de mim
       </label>
-      <router-link to="/recuperar-senha">Esqueci minha senha</router-link>
+      <router-link :to="{ path: '/recuperar-senha', query: companySlug ? { company: companySlug } : {} }">Esqueci minha senha</router-link>
     </div>
 
     <button type="submit" class="btn btn-primary btn-block" :disabled="auth.loading">
       {{ auth.loading ? 'Entrando...' : 'Entrar' }}
     </button>
 
-    <p class="auth-switch">Não tem conta? <router-link to="/cadastro">Cadastre-se</router-link></p>
+    <p v-if="companySlug" class="auth-switch">Ainda não tem conta? <router-link :to="{ name: 'public-loja', params: { companySlug } }">Compre um curso para criar sua conta.</router-link></p>
+    <p v-else class="auth-switch">Para criar uma conta, use o link da sua empresa.</p>
   </form>
 </template>
 
 <script setup>
-import { reactive } from 'vue';
+import { computed, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useToast } from '../composables/useToast';
@@ -41,6 +42,8 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const toast = useToast();
+
+const companySlug = computed(() => (typeof route.params.companySlug === 'string' ? route.params.companySlug : null));
 
 const form = reactive({ email: '', password: '', remember: false });
 
@@ -51,10 +54,14 @@ async function submit() {
   }
 
   try {
-    await auth.login({ email: form.email.trim(), password: form.password });
+    await auth.login({ email: form.email.trim(), password: form.password }, companySlug.value);
     toast.success('Login efetuado! Redirecionando...');
 
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/';
+    const redirect = typeof route.query.redirect === 'string'
+      ? route.query.redirect
+      : companySlug.value
+        ? { name: 'public-loja', params: { companySlug: companySlug.value } }
+        : '/';
     setTimeout(() => router.push(redirect), 500);
   } catch (e) {
     toast.error(e?.message || 'Não foi possível entrar.');

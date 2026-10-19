@@ -3,14 +3,17 @@
 namespace App\Services;
 
 use App\DTO\CreateTeamDTO;
+use App\Enums\AccessGrantSource;
 use App\Enums\GeneralStatus;
 use App\Exceptions\BusinessRuleException;
+use App\Models\AccessGrant;
 use App\Models\Course;
 use App\Models\Team;
 use App\Models\User;
 use App\Repositories\TeamRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -20,6 +23,7 @@ class TeamService
         private readonly TeamRepository $teams,
         private readonly DatalogService $audit,
         private readonly ScheduleService $schedules,
+        private readonly AccessGrantService $accessGrants,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -220,20 +224,41 @@ class TeamService
             throw new BusinessRuleException('Aluno pertence a outra empresa.');
         }
 
-        $team->users()->syncWithoutDetaching([
-            $user->id => [
-                'company_id' => $team->company_id,
-                'status' => GeneralStatus::Active->value,
-                'expired_at' => $expiredAt,
-            ],
-        ]);
+        $this->accessGrants->grantManual(
+            companyId: (int) $team->company_id,
+            userId: (int) $user->id,
+            teamId: (int) $team->id,
+            expiresAt: $expiredAt ? Carbon::parse($expiredAt) : null,
+        );
 
         $this->audit->log('team', 'add_student', 'team', "Aluno {$user->name} adicionado à turma {$team->name}");
     }
 
     public function removeStudent(Team $team, int $userId): void
     {
-        $team->users()->detach($userId);
+        AccessGrant::query()
+            ->withoutGlobalScope('company')
+            ->where('company_id', $team->company_id)
+            ->where('team_id', $team->id)
+            ->where('user_id', $userId)
+            ->where('source_type', AccessGrantSource::Manual->value)
+            ->where('source_id', 0)
+            ->update(['status' => GeneralStatus::Inactive->value]);
+
+        $this->accessGrants->syncTeamMembership((int) $team->company_id, (int) $team->id, $userId);
+
+        $activeGrants = AccessGrant::query()
+            ->withoutGlobalScope('company')
+            ->where('company_id', $team->company_id)
+            ->where('team_id', $team->id)
+            ->where('user_id', $userId)
+            ->where('status', GeneralStatus::Active->value)
+            ->get()
+            ->filter(fn (AccessGrant $grant) => $grant->isActive());
+
+        if ($activeGrants->isEmpty()) {
+            $team->users()->detach($userId);
+        }
 
         $this->audit->log('team', 'remove_student', 'team', "Aluno {$userId} removido da turma {$team->name}");
     }
@@ -244,7 +269,22 @@ class TeamService
             throw new BusinessRuleException('Aluno não está matriculado nesta turma.');
         }
 
-        $team->users()->updateExistingPivot($userId, $data);
+        $status = $data['status'] ?? GeneralStatus::Active->value;
+        $expiresAt = $data['expired_at'] ?? null;
+
+        AccessGrant::query()->withoutGlobalScope('company')->updateOrCreate([
+            'company_id' => $team->company_id,
+            'user_id' => $userId,
+            'team_id' => $team->id,
+            'source_type' => AccessGrantSource::Manual->value,
+            'source_id' => 0,
+        ], [
+            'starts_at' => now(),
+            'expires_at' => $expiresAt ? Carbon::parse($expiresAt) : null,
+            'status' => $status,
+        ]);
+
+        $this->accessGrants->syncTeamMembership((int) $team->company_id, (int) $team->id, $userId);
 
         $this->audit->log('team', 'update_student', 'team', "Vínculo do aluno {$userId} atualizado na turma {$team->name}");
     }

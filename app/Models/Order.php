@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['company_id', 'user_id', 'coupon_id', 'status', 'subtotal', 'discount', 'total'])]
+#[Fillable(['company_id', 'user_id', 'coupon_id', 'subscription_id', 'status', 'subtotal', 'discount', 'total', 'period_start', 'period_end'])]
 class Order extends Model
 {
     use BelongsToCompany, HasFactory;
@@ -20,6 +20,8 @@ class Order extends Model
             'subtotal' => 'decimal:2',
             'discount' => 'decimal:2',
             'total' => 'decimal:2',
+            'period_start' => 'datetime',
+            'period_end' => 'datetime',
         ];
     }
 
@@ -31,6 +33,11 @@ class Order extends Model
     public function coupon(): BelongsTo
     {
         return $this->belongsTo(Coupon::class);
+    }
+
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(Subscription::class);
     }
 
     public function items(): HasMany

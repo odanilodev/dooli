@@ -41,7 +41,7 @@ class StoreProductController extends ApiController
             $this->storeProducts->syncTeams($storeProduct, $request->validated('team_ids') ?? []);
         }
 
-        return ApiResponse::success(new StoreProductResource($storeProduct->load(['course', 'teams'])), 201);
+        return ApiResponse::success(new StoreProductResource($storeProduct->load(['course', 'teams.courses'])), 201);
     }
 
     public function show(StoreProduct $storeProduct): JsonResponse
@@ -69,7 +69,7 @@ class StoreProductController extends ApiController
             $this->storeProducts->syncTeams($updated, $request->validated('team_ids') ?? []);
         }
 
-        return ApiResponse::success(new StoreProductResource($updated->load(['course', 'teams'])));
+        return ApiResponse::success(new StoreProductResource($updated->load(['course', 'teams.courses'])));
     }
 
     public function destroy(StoreProduct $storeProduct): JsonResponse

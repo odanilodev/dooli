@@ -6,17 +6,29 @@ use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Services\AuthService;
+use App\Services\CompanyPasswordResetService;
 use App\Support\ApiResponse;
+use App\Support\CompanyContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Password;
 
 class PasswordResetController extends ApiController
 {
-    public function __construct(private readonly AuthService $auth) {}
+    public function __construct(
+        private readonly AuthService $auth,
+        private readonly CompanyPasswordResetService $companyReset,
+        private readonly CompanyContext $context,
+    ) {}
 
     public function sendLink(ForgotPasswordRequest $request): JsonResponse
     {
-        $this->auth->sendResetLink((string) $request->validated('email'));
+        $email = (string) $request->validated('email');
+
+        if ($this->context->has()) {
+            $this->companyReset->send($email, (int) $this->context->id());
+        } else {
+            $this->auth->sendResetLink($email);
+        }
 
         // Always return the same response regardless of whether the email
         // exists, to prevent account enumeration.
@@ -27,7 +39,9 @@ class PasswordResetController extends ApiController
 
     public function reset(ResetPasswordRequest $request): JsonResponse
     {
-        $status = $this->auth->resetPassword($request->validated());
+        $status = $this->context->has()
+            ? $this->companyReset->reset($request->validated(), (int) $this->context->id())
+            : $this->auth->resetPassword($request->validated());
 
         if ($status !== Password::PASSWORD_RESET) {
             return ApiResponse::error(

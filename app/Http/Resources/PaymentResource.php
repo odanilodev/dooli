@@ -18,6 +18,7 @@ class PaymentResource extends JsonResource
             'status' => $this->status,
             'amount' => $this->amount,
             'paid_at' => $this->paid_at?->toIso8601String(),
+            'metadata' => $this->metadata,
             'gateway' => new GatewayResource($this->whenLoaded('gateway')),
             'events' => PaymentEventResource::collection($this->whenLoaded('events')),
             'refunds' => RefundResource::collection($this->whenLoaded('refunds')),

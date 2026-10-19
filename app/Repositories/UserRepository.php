@@ -23,8 +23,9 @@ class UserRepository extends BaseRepository
     public function findByLogin(string $login): ?User
     {
         return $this->query()
-            ->where('email', $login)
-            ->orWhere('username', $login)
+            ->where(function (Builder $query) use ($login) {
+                $query->where('email', $login)->orWhere('username', $login);
+            })
             ->first();
     }
 

@@ -16,6 +16,7 @@ use App\Repositories\OrderRepository;
 use App\Repositories\PaymentRepository;
 use App\Support\CompanyContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class PaymentService
@@ -73,6 +74,7 @@ class PaymentService
             $payment = $this->payments->update($payment, [
                 'transaction_id' => $result->transactionId,
                 'status' => $result->status,
+                'metadata' => $result->raw ?: null,
             ]);
 
             PaymentEvent::query()->create([
@@ -94,6 +96,63 @@ class PaymentService
     }
 
     /**
+     * Creates a hosted card checkout (MercadoPago Checkout Pro) for an order.
+     *
+     * @return array{payment: Payment, checkout_url: string|null}
+     */
+    public function createCardPreference(Order $order, Gateway $gateway): array
+    {
+        if ($order->status === OrderStatus::Paid->value) {
+            throw new PaymentException('Pedido já está pago.', 'order_already_paid');
+        }
+
+        if ($order->status === OrderStatus::Canceled->value) {
+            throw new PaymentException('Pedido cancelado.', 'order_canceled');
+        }
+
+        $adapter = $this->gatewayManager->for($gateway);
+
+        if (! method_exists($adapter, 'createPreference')) {
+            throw new PaymentException('Este gateway não suporta checkout de cartão.', 'gateway_card_unsupported');
+        }
+
+        return DB::transaction(function () use ($order, $gateway, $adapter) {
+            $payment = $this->payments->create([
+                'order_id' => $order->id,
+                'gateway_id' => $gateway->id,
+                'method' => 'credit_card',
+                'status' => PaymentStatus::Pending->value,
+                'amount' => $order->total,
+            ]);
+
+            $result = $adapter->createPreference($payment, $gateway);
+
+            $payment = $this->payments->update($payment, [
+                'metadata' => [
+                    'checkout_url' => $result['init_point'] ?? null,
+                    'preference_id' => $result['id'] ?? null,
+                    'gateway' => $result['raw'] ?? [],
+                ],
+            ]);
+
+            PaymentEvent::query()->create([
+                'payment_id' => $payment->id,
+                'status' => PaymentEventStatus::Received->value,
+                'event' => 'preference.created',
+                'description' => 'Checkout de cartão criado no gateway.',
+                'metadata' => $result['raw'] ?? [],
+            ]);
+
+            $this->audit->log('payment', 'create', 'payment', "Checkout de cartão criado: {$payment->id}");
+
+            return [
+                'payment' => $payment->refresh()->load(['gateway', 'order', 'events']),
+                'checkout_url' => $result['init_point'] ?? null,
+            ];
+        });
+    }
+
+    /**
      * Confirms a payment and releases course access. Idempotent.
      */
     public function confirm(Payment $payment, array $context = []): Payment
@@ -111,7 +170,29 @@ class PaymentService
             $order = $payment->order;
             $order->update(['status' => OrderStatus::Paid->value]);
 
-            $this->enrollments->grantAccessForOrder($order->load('items.storeProduct'));
+            if ($order->subscription_id) {
+                $order->loadMissing('subscription.storeProduct.teams');
+
+                if ($order->subscription) {
+                    $periodStart = $order->period_start
+                        ? Carbon::parse($order->period_start)
+                        : now();
+                    $periodEnd = $order->period_end
+                        ? Carbon::parse($order->period_end)
+                        : $periodStart->copy()->addMonthNoOverflow();
+
+                    $this->enrollments->grantAccessForSubscription(
+                        $order->subscription,
+                        $periodStart,
+                        $periodEnd,
+                    );
+                }
+            } else {
+                $this->enrollments->grantAccessForOrder(
+                    $order->load('items.storeProduct'),
+                    $payment->paid_at ? Carbon::parse($payment->paid_at) : now(),
+                );
+            }
 
             PaymentEvent::query()->create([
                 'payment_id' => $payment->id,
@@ -208,6 +289,12 @@ class PaymentService
                 if ($exists) {
                     return PaymentEventStatus::Duplicated->value;
                 }
+            }
+
+            if (empty($payment->transaction_id) && ! empty($payload['transaction_id'])) {
+                $payment = $this->payments->update($payment, [
+                    'transaction_id' => $payload['transaction_id'],
+                ]);
             }
 
             PaymentEvent::query()->create([

@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\BillingInterval;
+use App\Enums\BillingType;
 use App\Enums\GeneralStatus;
 use App\Http\Requests\Concerns\ScopedExists;
 use Illuminate\Foundation\Http\FormRequest;
@@ -33,7 +35,17 @@ class StoreStoreProductRequest extends FormRequest
             'sale' => ['sometimes', 'numeric', 'min:0'],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
             'release_at' => ['nullable', 'date'],
-            'team_ids' => ['sometimes', 'array'],
+            'billing_type' => ['sometimes', Rule::in(BillingType::values())],
+            'billing_interval' => [
+                'nullable', 'required_if:billing_type,'.BillingType::Subscription->value,
+                Rule::in(BillingInterval::values()),
+            ],
+            'access_duration_days' => [
+                'nullable', 'integer', 'min:1', 'max:3650',
+                'prohibited_if:billing_type,'.BillingType::Subscription->value,
+            ],
+            'grace_days' => ['sometimes', 'integer', 'min:0', 'max:90'],
+            'team_ids' => ['required', 'array', 'min:1'],
             'team_ids.*' => ['integer', $this->companyExists('teams')],
         ];
     }

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Admin\BannerController as AdminBannerController;
 use App\Http\Controllers\Api\V1\Admin\CertificateController as AdminCertificateController;
 use App\Http\Controllers\Api\V1\Admin\CommentController as AdminCommentController;
 use App\Http\Controllers\Api\V1\Admin\CompanyController as AdminCompanyController;
+use App\Http\Controllers\Api\V1\Admin\CompanyLinkController as AdminCompanyLinkController;
 use App\Http\Controllers\Api\V1\Admin\CompanySettingController as AdminCompanySettingController;
 use App\Http\Controllers\Api\V1\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Api\V1\Admin\CourseController as AdminCourseController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\Api\V1\Admin\RatingController as AdminRatingController;
 use App\Http\Controllers\Api\V1\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Api\V1\Admin\ScheduleController as AdminScheduleController;
 use App\Http\Controllers\Api\V1\Admin\StoreProductController as AdminStoreProductController;
+use App\Http\Controllers\Api\V1\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Api\V1\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Api\V1\Admin\TopicController as AdminTopicController;
 use App\Http\Controllers\Api\V1\Admin\UserController as AdminUserController;
@@ -36,6 +38,7 @@ use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\Public\BannerController as PublicBannerController;
 use App\Http\Controllers\Api\V1\Public\BrandingController as PublicBrandingController;
 use App\Http\Controllers\Api\V1\Public\CertificateVerifyController;
+use App\Http\Controllers\Api\V1\Public\CompanyController as PublicCompanyController;
 use App\Http\Controllers\Api\V1\Public\StoreController;
 use App\Http\Controllers\Api\V1\Student\CertificateController as StudentCertificateController;
 use App\Http\Controllers\Api\V1\Student\CommentController;
@@ -47,9 +50,11 @@ use App\Http\Controllers\Api\V1\Student\NotificationController as StudentNotific
 use App\Http\Controllers\Api\V1\Student\OrderController as StudentOrderController;
 use App\Http\Controllers\Api\V1\Student\ProgressController;
 use App\Http\Controllers\Api\V1\Student\RatingController;
+use App\Http\Controllers\Api\V1\Student\SubscriptionController as StudentSubscriptionController;
 use App\Http\Controllers\Api\V1\Student\TeamController as StudentTeamController;
 use App\Http\Controllers\Api\V1\Student\VideoController as StudentVideoController;
 use App\Http\Controllers\Api\V1\Webhook\PaymentWebhookController;
+use App\Http\Controllers\Api\V1\Webhook\SubscriptionWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -60,6 +65,24 @@ use Illuminate\Support\Facades\Route;
 Route::get('public/certificates/{code}', [CertificateVerifyController::class, 'show'])
     ->where('code', '[A-Za-z0-9-]+')
     ->middleware('throttle:public');
+
+/*
+|--------------------------------------------------------------------------
+| Public company storefront (tenant via URL slug)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('public/companies/{companySlug}')
+    ->middleware(['company.slug', 'throttle:public'])
+    ->group(function () {
+        Route::get('/', [PublicCompanyController::class, 'show']);
+        Route::get('store/products', [StoreController::class, 'index']);
+        Route::get('store/products/{productSlug}', [StoreController::class, 'showPublic']);
+
+        Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth');
+        Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:auth');
+        Route::post('auth/forgot-password', [PasswordResetController::class, 'sendLink'])->middleware('throttle:password');
+        Route::post('auth/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:password');
+    });
 
 /*
 |--------------------------------------------------------------------------
@@ -81,9 +104,6 @@ Route::middleware(['company', 'company.required', 'throttle:public'])->group(fun
 */
 Route::post('auth/login', [AuthController::class, 'login'])->middleware(['company', 'throttle:auth']);
 
-Route::post('auth/register', [AuthController::class, 'register'])
-    ->middleware(['company', 'company.required', 'throttle:auth']);
-
 Route::post('auth/forgot-password', [PasswordResetController::class, 'sendLink'])
     ->middleware(['company', 'throttle:password']);
 
@@ -97,6 +117,12 @@ Route::post('auth/reset-password', [PasswordResetController::class, 'reset'])
 */
 Route::post('webhooks/payments/{gateway}', [PaymentWebhookController::class, 'handle'])
     ->middleware(['company', 'company.required', 'throttle:webhooks']);
+
+Route::post('webhooks/companies/{companySlug}/payments/{gateway}', [PaymentWebhookController::class, 'handle'])
+    ->middleware(['company.slug', 'throttle:webhooks']);
+
+Route::post('webhooks/companies/{companySlug}/subscriptions/{gateway}', [SubscriptionWebhookController::class, 'handle'])
+    ->middleware(['company.slug', 'throttle:webhooks']);
 
 /*
 |--------------------------------------------------------------------------
@@ -146,9 +172,15 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     Route::post('me/notifications/read-all', [StudentNotificationController::class, 'markAllAsRead']);
     Route::post('me/notifications/{notification}/read', [StudentNotificationController::class, 'markAsRead']);
 
+    Route::get('me/subscriptions', [StudentSubscriptionController::class, 'index']);
+    Route::post('me/subscriptions', [StudentSubscriptionController::class, 'store']);
+    Route::get('me/subscriptions/{subscription}', [StudentSubscriptionController::class, 'show']);
+    Route::post('me/subscriptions/{subscription}/cancel', [StudentSubscriptionController::class, 'cancel']);
+
     Route::get('me/orders', [StudentOrderController::class, 'index']);
     Route::post('me/orders', [StudentOrderController::class, 'store']);
     Route::get('me/orders/{order}', [StudentOrderController::class, 'show']);
+    Route::post('me/orders/{order}/pay', [StudentOrderController::class, 'pay']);
     Route::post('me/orders/{order}/cancel', [StudentOrderController::class, 'cancel']);
 
     Route::get('comments', [CommentController::class, 'index']);
@@ -222,6 +254,10 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::post('payments/{payment}/refund', [AdminPaymentController::class, 'refund']);
 
         Route::apiResource('orders', AdminOrderController::class)->only(['index', 'show']);
+
+        Route::get('company/public-link', [AdminCompanyLinkController::class, 'show']);
+        Route::apiResource('subscriptions', AdminSubscriptionController::class)->only(['index', 'show']);
+        Route::post('subscriptions/{subscription}/cancel', [AdminSubscriptionController::class, 'cancel']);
 
         Route::apiResource('gateways', AdminGatewayController::class);
         Route::apiResource('video-platforms', AdminVideoPlatformController::class)->parameters(['video-platforms' => 'videoPlatform']);

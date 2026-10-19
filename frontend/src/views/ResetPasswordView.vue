@@ -67,9 +67,14 @@ async function submit() {
   loading.value = true;
 
   try {
-    await auth.resetPassword({ ...form });
+    await auth.resetPassword({ ...form }, route.query.company || null);
     toast.success('Senha redefinida! Redirecionando para o login...');
-    setTimeout(() => router.push('/login'), 1500);
+    setTimeout(() => {
+      const company = typeof route.query.company === 'string' ? route.query.company : null;
+      router.push(company
+        ? { name: 'public-login', params: { companySlug: company } }
+        : '/login');
+    }, 1500);
   } catch (e) {
     toast.error(e?.message || 'Não foi possível redefinir a senha.');
   } finally {
