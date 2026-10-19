@@ -32,6 +32,7 @@ class ReportService
         $companyId = (int) $this->context->id();
         $groupBy = $filters['group_by'];
         $perPage = (int) $filters['per_page'];
+        $page = (int) ($filters['page'] ?? 1);
         $status = $filters['student_status'] ?? null;
         $search = $filters['search'] ?? null;
         $userIds = $filters['userIds'] ?? [];
@@ -88,11 +89,11 @@ class ReportService
         $reach = $this->buildReach($enrollments, $coursesByTeam, $courseLessons, $lessonCourses, $locked);
 
         $paginator = match ($groupBy) {
-            'course' => $this->reports->paginateCourses($teamIds, $filters['course_id'] ?? null, $moduleId, $lessonId, $search, $perPage),
-            'module' => $this->reports->paginateModules($courseIds, $moduleId, $lessonId, $search, $perPage),
-            'lesson' => $this->reports->paginateLessons($courseIds, $moduleId, $lessonId, $search, $perPage),
-            'student' => $this->reports->paginateStudents($teamIds, $status, $search, $perPage, $userIds),
-            default => $this->reports->paginateTeams($filters['course_id'] ?? null, $search, $perPage, $restrictToStudents ? $teamIds : null),
+            'course' => $this->reports->paginateCourses($teamIds, $filters['course_id'] ?? null, $moduleId, $lessonId, $search, $perPage, $page),
+            'module' => $this->reports->paginateModules($courseIds, $moduleId, $lessonId, $search, $perPage, $page),
+            'lesson' => $this->reports->paginateLessons($courseIds, $moduleId, $lessonId, $search, $perPage, $page),
+            'student' => $this->reports->paginateStudents($teamIds, $status, $search, $perPage, $userIds, $page),
+            default => $this->reports->paginateTeams($filters['course_id'] ?? null, $search, $perPage, $restrictToStudents ? $teamIds : null, $page),
         };
 
         $ids = collect($paginator->items())->pluck('id')->map(fn ($id) => (int) $id)->all();
@@ -333,26 +334,100 @@ class ReportService
      * @param  array<string, mixed>  $filters
      * @return array{headers: array<int, string>, rows: array<int, array<int, mixed>>}
      */
-    public function export(array $filters): array
+    public function export(array $filters, int $perPage = 100): array
     {
-        $filters['per_page'] = 100;
-        $result = $this->progress($filters);
+        $groupBy = $filters['group_by'] ?? 'team';
+        $headers = $this->exportHeaders($groupBy);
+        $rows = [];
+        $page = 1;
 
-        $headers = ['Nome', 'Alunos', 'Aulas', 'Concluídas', 'Em andamento', 'Pendentes', 'Bloqueadas', 'Progresso (%)', 'Última atividade'];
+        do {
+            $filters['per_page'] = $perPage;
+            $filters['page'] = $page;
+            $result = $this->progress($filters);
 
-        $rows = array_map(fn (array $row) => [
-            $row['name'],
-            $row['students'],
-            $row['lessons'],
-            $row['completed'],
-            $row['in_progress'],
-            $row['pending'],
-            $row['blocked'],
-            $row['percentage'],
-            $row['last_activity_at'],
-        ], $result['data']);
+            foreach ($result['data'] as $row) {
+                $rows[] = $this->exportRow($groupBy, $row);
+            }
+
+            $lastPage = (int) ($result['meta']['last_page'] ?? 1);
+            $page++;
+        } while ($page <= $lastPage);
 
         return compact('headers', 'rows');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function exportHeaders(string $groupBy): array
+    {
+        $headers = [match ($groupBy) {
+            'course' => 'Curso',
+            'module' => 'Módulo',
+            'lesson' => 'Aula',
+            'student' => 'Aluno',
+            default => 'Turma',
+        }];
+
+        if ($groupBy === 'lesson') {
+            $headers[] = 'Módulo';
+        }
+
+        if ($groupBy === 'student') {
+            $headers[] = 'E-mail';
+        }
+
+        if ($this->exportShowsStudents($groupBy)) {
+            $headers[] = 'Alunos';
+        }
+
+        return array_merge($headers, [
+            'Aulas',
+            'Concluídas',
+            'Em andamento',
+            'Pendentes',
+            'Bloqueadas',
+            'Progresso (%)',
+            'Última atividade',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<int, mixed>
+     */
+    private function exportRow(string $groupBy, array $row): array
+    {
+        $values = [$row['name']];
+
+        if ($groupBy === 'lesson' || $groupBy === 'student') {
+            $values[] = $row['subtitle'];
+        }
+
+        if ($this->exportShowsStudents($groupBy)) {
+            $values[] = $row['students'];
+        }
+
+        $values[] = $row['lessons'];
+        $values[] = $row['completed'];
+        $values[] = $row['in_progress'];
+        $values[] = $row['pending'];
+        $values[] = $row['blocked'];
+        $values[] = number_format((float) $row['percentage'], 2, ',', '');
+        $values[] = $this->exportDate($row['last_activity_at']);
+
+        return $values;
+    }
+
+    private function exportShowsStudents(string $groupBy): bool
+    {
+        return in_array($groupBy, ['team', 'course', 'lesson'], true);
+    }
+
+    private function exportDate(mixed $value): string
+    {
+        return $value ? Carbon::parse($value)->format('d/m/Y H:i') : '';
     }
 
     /**

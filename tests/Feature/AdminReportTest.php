@@ -7,6 +7,8 @@ use App\Models\Company;
 use App\Models\Schedule;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\ReportService;
+use App\Support\CompanyContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -389,16 +391,46 @@ class AdminReportTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_report_export_returns_csv(): void
+    public function test_report_export_returns_excel_compatible_csv(): void
     {
         ['course' => $course] = $this->buildCourse($this->company->id);
-        $this->enroll($this->student, $course, $this->company->id);
+        $team = $this->enroll($this->student, $course, $this->company->id);
 
         $response = $this->withToken($this->apiLogin($this->admin))
             ->get('/api/v1/admin/reports/export?group_by=team')
             ->assertOk();
 
-        $this->assertStringContainsString('Concluídas', $response->streamedContent());
+        $content = $response->streamedContent();
+
+        $this->assertStringStartsWith("\xEF\xBB\xBF", $content);
+
+        $lines = preg_split('/\r\n|\n|\r/', trim(substr($content, 3)));
+        $headers = str_getcsv($lines[0], ';', '"', '\\');
+        $row = str_getcsv($lines[1], ';', '"', '\\');
+
+        $this->assertSame([
+            'Turma', 'Alunos', 'Aulas', 'Concluídas', 'Em andamento', 'Pendentes', 'Bloqueadas', 'Progresso (%)', 'Última atividade',
+        ], $headers);
+        $this->assertSame($team->name, $row[0]);
+        $this->assertSame('1', $row[1]);
+        $this->assertSame('1', $row[2]);
+        $this->assertSame('0', $row[3]);
+        $this->assertSame('0,00', $row[7]);
+    }
+
+    public function test_report_export_includes_all_pages(): void
+    {
+        ['course' => $course] = $this->buildCourse($this->company->id);
+
+        $this->enroll($this->student, $course, $this->company->id);
+        $this->enroll($this->student, $course, $this->company->id);
+        $this->enroll($this->student, $course, $this->company->id);
+
+        app(CompanyContext::class)->set($this->company->id);
+
+        $export = app(ReportService::class)->export(['group_by' => 'team'], 2);
+
+        $this->assertCount(3, $export['rows']);
     }
 
     public function test_snapshot_is_maintained_by_progress_events(): void

@@ -160,6 +160,7 @@ export const useReportsStore = defineStore('reports', () => {
     const { data } = await api.get('/admin/reports/export', {
       params: params(),
       responseType: 'blob',
+      headers: { Accept: 'text/csv' },
     });
 
     const url = URL.createObjectURL(new Blob([data], { type: 'text/csv;charset=utf-8' }));

@@ -25,7 +25,7 @@ class ReportRepository extends BaseRepository
     /**
      * @param  array<int, int>|null  $restrictTeamIds
      */
-    public function paginateTeams(?int $courseId, ?string $search, int $perPage, ?array $restrictTeamIds = null): LengthAwarePaginator
+    public function paginateTeams(?int $courseId, ?string $search, int $perPage, ?array $restrictTeamIds = null, int $page = 1): LengthAwarePaginator
     {
         return Team::query()
             ->where('status', GeneralStatus::Active->value)
@@ -37,13 +37,13 @@ class ReportRepository extends BaseRepository
             ))
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->paginate($perPage);
+            ->paginate($perPage, ['*'], 'page', $page);
     }
 
     /**
      * @param  array<int, int>  $teamIds
      */
-    public function paginateCourses(array $teamIds, ?int $courseId, ?int $moduleId, ?int $lessonId, ?string $search, int $perPage): LengthAwarePaginator
+    public function paginateCourses(array $teamIds, ?int $courseId, ?int $moduleId, ?int $lessonId, ?string $search, int $perPage, int $page = 1): LengthAwarePaginator
     {
         return Course::query()
             ->where('status', GeneralStatus::Active->value)
@@ -60,13 +60,13 @@ class ReportRepository extends BaseRepository
             ->when($search, fn ($q, $s) => $q->where('name', 'like', "%{$s}%"))
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->paginate($perPage);
+            ->paginate($perPage, ['*'], 'page', $page);
     }
 
     /**
      * @param  array<int, int>  $courseIds
      */
-    public function paginateModules(array $courseIds, ?int $moduleId, ?int $lessonId, ?string $search, int $perPage): LengthAwarePaginator
+    public function paginateModules(array $courseIds, ?int $moduleId, ?int $lessonId, ?string $search, int $perPage, int $page = 1): LengthAwarePaginator
     {
         return Module::query()
             ->where('status', GeneralStatus::Active->value)
@@ -78,13 +78,13 @@ class ReportRepository extends BaseRepository
             ->when($lessonId, fn ($q, $id) => $q->whereHas('lessons', fn ($inner) => $inner->where('lessons.id', $id)))
             ->when($search, fn ($q, $s) => $q->where('name', 'like', "%{$s}%"))
             ->orderBy('name')
-            ->paginate($perPage);
+            ->paginate($perPage, ['*'], 'page', $page);
     }
 
     /**
      * @param  array<int, int>  $courseIds
      */
-    public function paginateLessons(array $courseIds, ?int $moduleId, ?int $lessonId, ?string $search, int $perPage): LengthAwarePaginator
+    public function paginateLessons(array $courseIds, ?int $moduleId, ?int $lessonId, ?string $search, int $perPage, int $page = 1): LengthAwarePaginator
     {
         return Lesson::query()
             ->where('lessons.status', GeneralStatus::Active->value)
@@ -97,14 +97,14 @@ class ReportRepository extends BaseRepository
             ->when($search, fn ($q, $s) => $q->where('lessons.name', 'like', "%{$s}%"))
             ->with('module:id,name')
             ->orderBy('lessons.name')
-            ->paginate($perPage);
+            ->paginate($perPage, ['*'], 'page', $page);
     }
 
     /**
      * @param  array<int, int>  $teamIds
      * @param  array<int, int>  $userIds
      */
-    public function paginateStudents(array $teamIds, ?string $status, ?string $search, int $perPage, array $userIds = []): LengthAwarePaginator
+    public function paginateStudents(array $teamIds, ?string $status, ?string $search, int $perPage, array $userIds = [], int $page = 1): LengthAwarePaginator
     {
         return User::query()
             ->when($userIds, fn ($q, $ids) => $q->whereIn('id', $ids))
@@ -115,7 +115,7 @@ class ReportRepository extends BaseRepository
                 ->where('status', GeneralStatus::Active->value)
                 ->where(fn ($e) => $e->whereNull('expired_at')->orWhere('expired_at', '>', now())))
             ->orderBy('name')
-            ->paginate($perPage);
+            ->paginate($perPage, ['*'], 'page', $page);
     }
 
     /**

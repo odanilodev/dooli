@@ -52,17 +52,15 @@ class ReportController extends ApiController
     {
         $this->authorize('viewReports');
 
-        $filters = $request->filters();
-        $filters['page'] = (int) $request->integer('page', 1);
-
-        $export = $this->reports->export($filters);
+        $export = $this->reports->export($request->filters());
 
         return response()->streamDownload(function () use ($export) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, $export['headers']);
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, $export['headers'], ';', '"', '\\');
 
             foreach ($export['rows'] as $row) {
-                fputcsv($out, $row);
+                fputcsv($out, $row, ';', '"', '\\');
             }
 
             fclose($out);
