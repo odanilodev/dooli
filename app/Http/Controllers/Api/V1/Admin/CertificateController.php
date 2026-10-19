@@ -40,12 +40,26 @@ class CertificateController extends ApiController
         $this->authorize('create', Certificate::class);
 
         $data = $request->validated();
-        unset($data['background'], $data['signature']);
+        $removeBackground = $request->boolean('remove_background');
+        $removeSignature = $request->boolean('remove_signature');
+        $removeModulesBackground = $request->boolean('remove_modules_background');
+        unset(
+            $data['background'],
+            $data['signature'],
+            $data['modules_background'],
+            $data['remove_background'],
+            $data['remove_signature'],
+            $data['remove_modules_background'],
+        );
 
         $certificate = $this->service->createTemplate(
             $data,
             $request->file('background'),
             $request->file('signature'),
+            $request->file('modules_background'),
+            $removeModulesBackground,
+            $removeBackground,
+            $removeSignature,
         );
 
         $this->service->issuePendingForCourse((int) $certificate->course_id, (int) $certificate->company_id);
@@ -65,13 +79,27 @@ class CertificateController extends ApiController
         $this->authorize('update', $certificate);
 
         $data = $request->validated();
-        unset($data['background'], $data['signature']);
+        $removeBackground = $request->boolean('remove_background');
+        $removeSignature = $request->boolean('remove_signature');
+        $removeModulesBackground = $request->boolean('remove_modules_background');
+        unset(
+            $data['background'],
+            $data['signature'],
+            $data['modules_background'],
+            $data['remove_background'],
+            $data['remove_signature'],
+            $data['remove_modules_background'],
+        );
 
         $certificate = $this->service->updateTemplate(
             $certificate,
             $data,
             $request->file('background'),
             $request->file('signature'),
+            $request->file('modules_background'),
+            $removeModulesBackground,
+            $removeBackground,
+            $removeSignature,
         );
 
         $this->service->issuePendingForCourse((int) $certificate->course_id, (int) $certificate->company_id);

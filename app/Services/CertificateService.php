@@ -37,6 +37,31 @@ class CertificateService
      */
     private const LAYOUT_ALIGNMENTS = ['left', 'center', 'right'];
 
+    /**
+     * @var list<string>
+     */
+    private const MODULES_PLACEMENTS = ['none', 'front', 'extra', 'back'];
+
+    /**
+     * @var list<string>
+     */
+    private const MODULES_LAYOUT_FIELDS = ['heading', 'list'];
+
+    /**
+     * @var list<string>
+     */
+    private const MODULES_LIST_FIELDS = ['modules', 'list'];
+
+    /**
+     * @var list<string>
+     */
+    private const MODULES_FORMATS = ['numbered', 'bulleted', 'plain', 'inline'];
+
+    /**
+     * @var list<string>
+     */
+    private const MODULES_SEPARATORS = ['bullet', 'comma', 'pipe', 'dash'];
+
     public function __construct(
         private readonly CertificateRepository $certificates,
         private readonly CertificateUserRepository $certificateUsers,
@@ -54,8 +79,15 @@ class CertificateService
     /**
      * Creates a certificate template, storing any uploaded images.
      */
-    public function createTemplate(array $data, ?UploadedFile $background = null, ?UploadedFile $signature = null): Certificate
-    {
+    public function createTemplate(
+        array $data,
+        ?UploadedFile $background = null,
+        ?UploadedFile $signature = null,
+        ?UploadedFile $modulesBackground = null,
+        bool $removeModulesBackground = false,
+        bool $removeBackground = false,
+        bool $removeSignature = false,
+    ): Certificate {
         $companyId = (int) ($data['company_id'] ?? $this->context->id() ?? 0);
         $copyFrom = isset($data['copy_from']) ? (int) $data['copy_from'] : null;
         $source = $copyFrom ? $this->certificates->query()->find($copyFrom) : null;
@@ -64,20 +96,44 @@ class CertificateService
 
         if ($background) {
             $data['background'] = $this->images->store($background, 'certificates', $companyId);
-        } elseif ($source) {
+        } elseif ($source && ! $removeBackground) {
             $data['background'] = $this->images->copy($source->background, 'certificates', $companyId);
         }
 
         if ($signature) {
             $data['signature'] = $this->images->store($signature, 'certificates', $companyId);
-        } elseif ($source) {
+        } elseif ($source && ! $removeSignature) {
             $data['signature'] = $this->images->copy($source->signature, 'certificates', $companyId);
+        }
+
+        if ($modulesBackground) {
+            $data['modules_background'] = $this->images->store($modulesBackground, 'certificates', $companyId);
+        } elseif ($source && ! $removeModulesBackground) {
+            $data['modules_background'] = $this->images->copy($source->modules_background, 'certificates', $companyId);
         }
 
         if (array_key_exists('layout', $data)) {
             $data['layout'] = is_array($data['layout']) ? $this->normalizeLayout($data['layout']) : null;
         } elseif ($source?->layout) {
             $data['layout'] = $source->layout;
+        }
+
+        if (array_key_exists('modules_layout', $data)) {
+            $data['modules_layout'] = is_array($data['modules_layout'])
+                ? $this->normalizeModulesLayout($data['modules_layout'])
+                : null;
+        } elseif ($source?->modules_layout) {
+            $data['modules_layout'] = $source->modules_layout;
+        }
+
+        $data['modules_placement'] = $this->normalizeModulesPlacement(
+            $data['modules_placement'] ?? $source?->modules_placement,
+        );
+
+        if (array_key_exists('modules_title', $data)) {
+            $data['modules_title'] = $this->normalizeModulesTitle($data['modules_title']);
+        } elseif ($source) {
+            $data['modules_title'] = $source->modules_title;
         }
 
         $certificate = $this->certificates->create($data);
@@ -90,20 +146,56 @@ class CertificateService
     /**
      * Updates a certificate template, replacing any uploaded images.
      */
-    public function updateTemplate(Certificate $certificate, array $data, ?UploadedFile $background = null, ?UploadedFile $signature = null): Certificate
-    {
+    public function updateTemplate(
+        Certificate $certificate,
+        array $data,
+        ?UploadedFile $background = null,
+        ?UploadedFile $signature = null,
+        ?UploadedFile $modulesBackground = null,
+        bool $removeModulesBackground = false,
+        bool $removeBackground = false,
+        bool $removeSignature = false,
+    ): Certificate {
         if ($background) {
             $this->images->delete($certificate->background);
             $data['background'] = $this->images->store($background, 'certificates', (int) $certificate->company_id);
+        } elseif ($removeBackground) {
+            $this->images->delete($certificate->background);
+            $data['background'] = null;
         }
 
         if ($signature) {
             $this->images->delete($certificate->signature);
             $data['signature'] = $this->images->store($signature, 'certificates', (int) $certificate->company_id);
+        } elseif ($removeSignature) {
+            $this->images->delete($certificate->signature);
+            $data['signature'] = null;
+        }
+
+        if ($modulesBackground) {
+            $this->images->delete($certificate->modules_background);
+            $data['modules_background'] = $this->images->store($modulesBackground, 'certificates', (int) $certificate->company_id);
+        } elseif ($removeModulesBackground) {
+            $this->images->delete($certificate->modules_background);
+            $data['modules_background'] = null;
         }
 
         if (array_key_exists('layout', $data)) {
             $data['layout'] = is_array($data['layout']) ? $this->normalizeLayout($data['layout']) : null;
+        }
+
+        if (array_key_exists('modules_layout', $data)) {
+            $data['modules_layout'] = is_array($data['modules_layout'])
+                ? $this->normalizeModulesLayout($data['modules_layout'])
+                : null;
+        }
+
+        if (array_key_exists('modules_placement', $data)) {
+            $data['modules_placement'] = $this->normalizeModulesPlacement($data['modules_placement']);
+        }
+
+        if (array_key_exists('modules_title', $data)) {
+            $data['modules_title'] = $this->normalizeModulesTitle($data['modules_title']);
         }
 
         $certificate = $this->certificates->update($certificate, $data);
@@ -124,6 +216,7 @@ class CertificateService
 
         $this->images->delete($certificate->background);
         $this->images->delete($certificate->signature);
+        $this->images->delete($certificate->modules_background);
 
         $this->certificates->delete($certificate);
 
@@ -316,16 +409,55 @@ class CertificateService
     }
 
     /**
-     * Keeps only the known layout fields and clamps/sanitizes their values.
+     * Keeps only the known certificate layout fields and clamps/sanitizes their values.
      *
      * @param  array<string, mixed>  $layout
      * @return array<string, array<string, mixed>>
      */
     private function normalizeLayout(array $layout): array
     {
+        return $this->normalizeFields($layout, self::LAYOUT_FIELDS, [
+            'title' => [20, 90, 80.0],
+            'body' => [20, 90, 80.0],
+            'modules' => [20, 90, 80.0],
+            'signature_line' => [5, 90, 18.0],
+        ]);
+    }
+
+    /**
+     * Keeps only the known modules-page fields and clamps/sanitizes their values.
+     *
+     * @param  array<string, mixed>  $layout
+     * @return array<string, array<string, mixed>>
+     */
+    private function normalizeModulesLayout(array $layout): array
+    {
+        return $this->normalizeFields(
+            $layout,
+            self::MODULES_LAYOUT_FIELDS,
+            [
+                'heading' => [20, 90, 80.0],
+                'list' => [20, 90, 86.0],
+            ],
+            [
+                'heading' => 28.0,
+                'list' => 10.0,
+            ],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $layout
+     * @param  list<string>  $fields
+     * @param  array<string, array{0: int, 1: int, 2: float}>  $widths
+     * @param  array<string, float>  $sizeDefaults
+     * @return array<string, array<string, mixed>>
+     */
+    private function normalizeFields(array $layout, array $fields, array $widths, array $sizeDefaults = []): array
+    {
         $normalized = [];
 
-        foreach (self::LAYOUT_FIELDS as $field) {
+        foreach ($fields as $field) {
             $entry = $layout[$field] ?? null;
 
             if (! is_array($entry)) {
@@ -335,15 +467,19 @@ class CertificateService
             $x = is_numeric($entry['x'] ?? null) ? (float) $entry['x'] : 50.0;
             $y = is_numeric($entry['y'] ?? null) ? (float) $entry['y'] : 50.0;
             $width = is_numeric($entry['width'] ?? null) ? (float) $entry['width'] : null;
-            $size = is_numeric($entry['size'] ?? null) ? round((float) $entry['size'], 1) : 12.0;
+            $size = is_numeric($entry['size'] ?? null)
+                ? round((float) $entry['size'], 1)
+                : ($sizeDefaults[$field] ?? 12.0);
+            $widthRule = $widths[$field] ?? null;
 
-            if (in_array($field, ['title', 'body', 'modules'], true)) {
-                $width = $width === null ? 80.0 : max(20, min(90, $width));
-            } elseif ($field === 'signature_line') {
-                $width = $width === null ? 18.0 : max(5, min(90, $width));
+            if ($widthRule !== null) {
+                $width = $width === null
+                    ? $widthRule[2]
+                    : max($widthRule[0], min($widthRule[1], $width));
             } else {
                 $width = null;
             }
+
             $color = is_string($entry['color'] ?? null) && preg_match('/^#[0-9a-fA-F]{6}$/', $entry['color']) === 1
                 ? strtolower($entry['color'])
                 : null;
@@ -361,8 +497,44 @@ class CertificateService
                 'bold' => filter_var($entry['bold'] ?? false, FILTER_VALIDATE_BOOLEAN),
                 'italic' => filter_var($entry['italic'] ?? false, FILTER_VALIDATE_BOOLEAN),
             ];
+
+            if (in_array($field, self::MODULES_LIST_FIELDS, true)) {
+                $format = is_string($entry['format'] ?? null)
+                    && in_array($entry['format'], self::MODULES_FORMATS, true)
+                    ? $entry['format']
+                    : 'numbered';
+                $columns = is_numeric($entry['columns'] ?? null)
+                    ? (int) round((float) $entry['columns'])
+                    : 2;
+                $separator = is_string($entry['separator'] ?? null)
+                    && in_array($entry['separator'], self::MODULES_SEPARATORS, true)
+                    ? $entry['separator']
+                    : 'bullet';
+
+                $normalized[$field]['format'] = $format;
+                $normalized[$field]['columns'] = max(1, min(4, $columns));
+                $normalized[$field]['separator'] = $separator;
+            }
         }
 
         return $normalized;
+    }
+
+    private function normalizeModulesPlacement(mixed $placement): string
+    {
+        return is_string($placement) && in_array($placement, self::MODULES_PLACEMENTS, true)
+            ? $placement
+            : 'front';
+    }
+
+    private function normalizeModulesTitle(mixed $title): ?string
+    {
+        if (! is_string($title)) {
+            return null;
+        }
+
+        $title = trim($title);
+
+        return $title !== '' ? mb_substr($title, 0, 255) : null;
     }
 }

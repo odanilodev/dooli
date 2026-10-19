@@ -39,9 +39,15 @@
         <span class="certificate-signature-line"></span>
       </template>
       <template v-else-if="field.type === 'modules'">
-        <ol v-if="moduleList.length" class="certificate-modules">
+        <span v-if="moduleFormat(field) === 'inline' && moduleList.length" class="certificate-modules-inline">
+          <template v-for="(module, index) in moduleList" :key="module.id">
+            <span class="certificate-module-name">{{ module.name }}</span>
+            <span v-if="index < moduleList.length - 1" class="certificate-module-separator">{{ inlineModuleSeparator(field) }}</span>
+          </template>
+        </span>
+        <ol v-else-if="moduleList.length" class="certificate-modules">
           <li v-for="(module, index) in moduleList" :key="module.id">
-            <span class="certificate-module-index">{{ index + 1 }}.</span>
+            <span v-if="moduleMarker(field, index)" class="certificate-module-index">{{ moduleMarker(field, index) }}</span>
             <span class="certificate-module-name">{{ module.name }}</span>
           </li>
         </ol>
@@ -65,7 +71,13 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { LAYOUT_FIELDS, normalizeLayout } from '../utils/certificateLayout';
+import {
+  LAYOUT_FIELDS,
+  MODULES_PAGE_FIELDS,
+  modulesSeparatorText,
+  normalizeLayout,
+  normalizeModulesPageLayout,
+} from '../utils/certificateLayout';
 
 const DEFAULT_BODY = 'Certificamos que {aluno} concluiu com êxito o curso {curso}, '
   + 'com carga horária de {carga_horaria} horas, em {data}.';
@@ -77,21 +89,36 @@ const props = defineProps({
   layout: { type: Object, default: null },
   editable: { type: Boolean, default: false },
   selected: { type: String, default: null },
+  mode: { type: String, default: 'certificate' },
+  backgroundUrl: { type: String, default: null },
+  hiddenFields: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(['select', 'update:layout']);
 
-const fields = LAYOUT_FIELDS;
 const SIZE_HANDLES = ['nw', 'ne', 'sw', 'se'];
-const WRAP_FIELDS = ['title', 'body', 'modules'];
+const WRAP_FIELDS = ['title', 'body', 'modules', 'heading', 'list'];
 const canvasRef = ref(null);
 const canvasWidth = ref(1000);
 
 let observer = null;
 
-const layout = computed(() => normalizeLayout(props.layout));
+const isModulesPage = computed(() => props.mode === 'modules');
+const fields = computed(() => (isModulesPage.value ? MODULES_PAGE_FIELDS : LAYOUT_FIELDS));
+const layout = computed(() => (
+  isModulesPage.value ? normalizeModulesPageLayout(props.layout) : normalizeLayout(props.layout)
+));
 const scale = computed(() => canvasWidth.value / 1000);
-const hasBackground = computed(() => Boolean(props.certificate?.background_url));
+const background = computed(() => {
+  if (isModulesPage.value) {
+    return props.backgroundUrl;
+  }
+
+  return props.backgroundUrl !== null && props.backgroundUrl !== undefined
+    ? props.backgroundUrl
+    : props.certificate?.background_url;
+});
+const hasBackground = computed(() => Boolean(background.value));
 
 const moduleList = computed(() => {
   const source = Array.isArray(props.modules) ? props.modules : [];
@@ -104,9 +131,35 @@ const moduleList = computed(() => {
     .filter((module) => module.name !== '');
 });
 
+function moduleConfig(field) {
+  return layout.value[field.key] ?? {};
+}
+
+function moduleFormat(field) {
+  return moduleConfig(field).format ?? 'numbered';
+}
+
+function moduleMarker(field, index) {
+  const format = moduleFormat(field);
+
+  if (format === 'bulleted') {
+    return '•';
+  }
+
+  if (format === 'plain' || format === 'inline') {
+    return '';
+  }
+
+  return `${index + 1}.`;
+}
+
+function inlineModuleSeparator(field) {
+  return modulesSeparatorText(moduleConfig(field).separator);
+}
+
 const canvasStyle = computed(() => ({
   '--certificate-scale': scale.value,
-  ...(hasBackground.value ? { backgroundImage: `url('${props.certificate.background_url}')` } : {}),
+  ...(hasBackground.value ? { backgroundImage: `url('${background.value}')` } : {}),
 }));
 
 const renderedBody = computed(() => {
@@ -137,6 +190,8 @@ function textFor(key) {
       return 'Certificado';
     case 'title':
       return props.certificate?.title || 'Certificado de Conclusão';
+    case 'heading':
+      return props.certificate?.modules_title || 'Módulos do curso';
     case 'body':
       return renderedBody.value;
     case 'signatory_name':
@@ -151,12 +206,17 @@ function textFor(key) {
 }
 
 function isVisible(field) {
+  if (props.hiddenFields.includes(field.key)) {
+    return false;
+  }
+
   if (props.editable) {
     return true;
   }
 
   switch (field.key) {
     case 'modules':
+    case 'list':
       return moduleList.value.length > 0;
     case 'signature':
       return Boolean(props.certificate?.signature_url);
@@ -176,6 +236,7 @@ function isVisible(field) {
 function isPlaceholder(key) {
   switch (key) {
     case 'modules':
+    case 'list':
       return moduleList.value.length === 0;
     case 'signature':
       return !props.certificate?.signature_url;
@@ -230,6 +291,7 @@ function fieldStyle(field) {
     style['--module-justify'] = item.align === 'center'
       ? 'center'
       : (item.align === 'right' ? 'flex-end' : 'flex-start');
+    style['--module-columns'] = item.columns ?? 2;
   }
 
   if (field.type === 'image') {
@@ -245,6 +307,10 @@ function clamp(value) {
 
 function round(value) {
   return Math.round(value * 10) / 10;
+}
+
+function normalizeCurrentLayout(input) {
+  return isModulesPage.value ? normalizeModulesPageLayout(input) : normalizeLayout(input);
 }
 
 function startDrag(event, field) {
@@ -265,7 +331,7 @@ function startDrag(event, field) {
   event.preventDefault();
   emit('select', field.key);
 
-  const draft = normalizeLayout(props.layout);
+  const draft = normalizeCurrentLayout(props.layout);
   const item = draft[field.key];
   const pointerX = ((event.clientX - rect.left) / rect.width) * 100;
   const pointerY = ((event.clientY - rect.top) / rect.height) * 100;
@@ -361,7 +427,7 @@ function startResize(event, field, handle) {
   event.preventDefault();
   emit('select', field.key);
 
-  const draft = normalizeLayout(props.layout);
+  const draft = normalizeCurrentLayout(props.layout);
   const item = draft[field.key];
   const fieldRect = fieldEl.getBoundingClientRect();
   const side = handle === 'w' || handle === 'e';
@@ -445,7 +511,7 @@ function onKeydown(event, field) {
   event.preventDefault();
   emit('select', field.key);
 
-  const draft = normalizeLayout(props.layout);
+  const draft = normalizeCurrentLayout(props.layout);
   const item = draft[field.key];
 
   draft[field.key] = {
@@ -529,7 +595,7 @@ onBeforeUnmount(() => {
 
 .certificate-modules{
   margin:0;padding:0;list-style:none;
-  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  display:grid;grid-template-columns:repeat(var(--module-columns,2),minmax(0,1fr));
   gap:calc(2px * var(--certificate-scale)) calc(18px * var(--certificate-scale));
   text-align:inherit;
 }
@@ -538,7 +604,11 @@ onBeforeUnmount(() => {
   justify-content:var(--module-justify,flex-start);
   line-height:1.35;break-inside:avoid;
 }
+.certificate-modules-inline{
+  display:block;line-height:1.35;text-align:inherit;
+}
 .certificate-module-index{opacity:.6;font-variant-numeric:tabular-nums;}
+.certificate-module-separator{opacity:.6;white-space:pre;}
 .certificate-module-name{min-width:0;overflow-wrap:anywhere;}
 .certificate-modules-placeholder{
   display:inline-block;border:1px dashed currentColor;border-radius:8px;

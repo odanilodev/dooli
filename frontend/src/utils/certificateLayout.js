@@ -13,6 +13,42 @@ export const FONT_OPTIONS = [
 const DEFAULT_FONT = FONT_OPTIONS[0].value;
 const ALIGNMENTS = ['left', 'center', 'right'];
 
+export const MODULES_PLACEMENT_OPTIONS = [
+  { value: 'front', label: 'Na frente do certificado' },
+  { value: 'extra', label: 'Folha extra (página separada)' },
+  { value: 'back', label: 'Verso do certificado (página separada)' },
+  { value: 'none', label: 'Sem grade' },
+];
+
+export const MODULES_PLACEMENTS = MODULES_PLACEMENT_OPTIONS.map((option) => option.value);
+
+export const MODULES_FORMAT_OPTIONS = [
+  { value: 'numbered', label: 'Numerada (1., 2.)' },
+  { value: 'bulleted', label: 'Com marcadores (•)' },
+  { value: 'plain', label: 'Sem marcador' },
+  { value: 'inline', label: 'Em linha' },
+];
+
+export const MODULES_FORMAT_VALUES = MODULES_FORMAT_OPTIONS.map((option) => option.value);
+
+export const MODULES_COLUMN_OPTIONS = [1, 2, 3, 4].map((value) => ({
+  value,
+  label: value === 1 ? '1 coluna' : `${value} colunas`,
+}));
+
+export const MODULES_SEPARATOR_OPTIONS = [
+  { value: 'bullet', label: 'Bullet (•)', text: '\u00A0•\u00A0' },
+  { value: 'comma', label: 'Vírgula (,)', text: ',\u00A0' },
+  { value: 'pipe', label: 'Barra (|)', text: '\u00A0|\u00A0' },
+  { value: 'dash', label: 'Traço (–)', text: '\u00A0–\u00A0' },
+];
+
+export const MODULES_SEPARATOR_VALUES = MODULES_SEPARATOR_OPTIONS.map((option) => option.value);
+
+export function modulesSeparatorText(value) {
+  return MODULES_SEPARATOR_OPTIONS.find((option) => option.value === value)?.text ?? '\u00A0•\u00A0';
+}
+
 export const LAYOUT_FIELDS = [
   {
     key: 'eyebrow',
@@ -39,7 +75,10 @@ export const LAYOUT_FIELDS = [
     label: 'Módulos do curso',
     type: 'modules',
     widthRange: [20, 90],
-    defaults: { x: 50, y: 60, width: 80, size: 9, align: 'center', bold: false, italic: false, color: null, font: DEFAULT_FONT },
+    defaults: {
+      x: 50, y: 60, width: 80, size: 9, align: 'center', bold: false, italic: false,
+      color: null, font: DEFAULT_FONT, format: 'numbered', columns: 2, separator: 'bullet',
+    },
   },
   {
     key: 'signature',
@@ -74,8 +113,32 @@ export const LAYOUT_FIELDS = [
   },
 ];
 
+export const MODULES_PAGE_FIELDS = [
+  {
+    key: 'heading',
+    label: 'Título da grade',
+    type: 'text',
+    widthRange: [20, 90],
+    defaults: { x: 50, y: 22, width: 80, size: 28, align: 'center', bold: true, italic: false, color: null, font: DEFAULT_FONT },
+  },
+  {
+    key: 'list',
+    label: 'Lista de módulos',
+    type: 'modules',
+    widthRange: [20, 90],
+    defaults: {
+      x: 50, y: 34, width: 86, size: 10, align: 'center', bold: false, italic: false,
+      color: null, font: DEFAULT_FONT, format: 'numbered', columns: 2, separator: 'bullet',
+    },
+  },
+];
+
 export function layoutField(key) {
   return LAYOUT_FIELDS.find((field) => field.key === key) ?? null;
+}
+
+export function modulesPageField(key) {
+  return MODULES_PAGE_FIELDS.find((field) => field.key === key) ?? null;
 }
 
 function clamp(value, min, max) {
@@ -96,11 +159,11 @@ function isHex(value) {
   return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value);
 }
 
-export function normalizeLayout(input) {
+export function normalizeFields(fields, input) {
   const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
   const result = {};
 
-  for (const field of LAYOUT_FIELDS) {
+  for (const field of fields) {
     const saved = source[field.key] && typeof source[field.key] === 'object' ? source[field.key] : {};
     const base = field.defaults;
     const width = field.widthRange
@@ -120,9 +183,27 @@ export function normalizeLayout(input) {
       bold: typeof saved.bold === 'boolean' ? saved.bold : base.bold,
       italic: typeof saved.italic === 'boolean' ? saved.italic : base.italic,
     };
+
+    if (field.type === 'modules') {
+      result[field.key].format = MODULES_FORMAT_VALUES.includes(saved.format)
+        ? saved.format
+        : (base.format ?? 'numbered');
+      result[field.key].columns = Math.round(clamp(toNumber(saved.columns, base.columns ?? 2), 1, 4));
+      result[field.key].separator = MODULES_SEPARATOR_VALUES.includes(saved.separator)
+        ? saved.separator
+        : (base.separator ?? 'bullet');
+    }
   }
 
   return result;
+}
+
+export function normalizeLayout(input) {
+  return normalizeFields(LAYOUT_FIELDS, input);
+}
+
+export function normalizeModulesPageLayout(input) {
+  return normalizeFields(MODULES_PAGE_FIELDS, input);
 }
 
 export function cloneLayout(input) {

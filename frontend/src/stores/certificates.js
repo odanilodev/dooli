@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { api } from '../api/http';
 
 function toFormData(payload, files = {}) {
-  const hasFile = files.background || files.signature;
+  const hasFile = files.background || files.signature || files.modules_background;
 
   if (!hasFile) {
     return null;
@@ -23,6 +23,10 @@ function toFormData(payload, files = {}) {
 
   if (files.signature) {
     formData.append('signature', files.signature);
+  }
+
+  if (files.modules_background) {
+    formData.append('modules_background', files.modules_background);
   }
 
   return formData;

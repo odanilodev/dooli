@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Storage;
 #[Fillable([
     'company_id', 'name', 'grade', 'title', 'course_id', 'version', 'time',
     'background', 'signature', 'body', 'signatory_name', 'signatory_title',
-    'layout',
+    'layout', 'modules_placement', 'modules_title', 'modules_layout', 'modules_background',
 ])]
 class Certificate extends Model
 {
@@ -25,6 +25,7 @@ class Certificate extends Model
             'grade' => 'decimal:2',
             'time' => 'integer',
             'layout' => 'array',
+            'modules_layout' => 'array',
         ];
     }
 
@@ -54,6 +55,14 @@ class Certificate extends Model
     public function signatureUrl(): ?string
     {
         return $this->publicUrl($this->signature);
+    }
+
+    /**
+     * Public URL for the optional background of the course modules page.
+     */
+    public function modulesBackgroundUrl(): ?string
+    {
+        return $this->publicUrl($this->modules_background);
     }
 
     private function publicUrl(?string $path): ?string

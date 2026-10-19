@@ -178,7 +178,7 @@ Passo a passo:
 4. `GET /me/courses` lista os cursos em que o aluno tem turma ativa.
 5. `GET /me/courses/{course}` valida o acesso e retorna `modules → topics → lessons` mais as `modules.lessons` (aulas sem tópico).
 6. `POST /me/progress/complete` grava `timelines` (idempotente) e tenta emitir certificado.
-7. A conclusão é registrada em **`course_completions`** (user+team+course, `required_lessons`, `lesson_ids`, `completed_at`) — registro imutável, independente do certificado. O status `completed` vem dessa tabela (não da contagem atual de aulas); novas aulas só passam a contar para quem ainda **não** concluiu. O certificado emitido é **histórico e permanente**: adicionar/editar/excluir aulas depois **não** o revoga, e revogar o documento (admin) **não** remove a conclusão. A grade do certificado (`certificate_users.modules`) é uma fotografia dos módulos com aulas concluídas; módulos criados depois da conclusão não entram.
+7. A conclusão é registrada em **`course_completions`** (user+team+course, `required_lessons`, `lesson_ids`, `completed_at`) — registro imutável, independente do certificado. O status `completed` vem dessa tabela (não da contagem atual de aulas); novas aulas só passam a contar para quem ainda **não** concluiu. O certificado emitido é **histórico e permanente**: adicionar/editar/excluir aulas depois **não** o revoga, e revogar o documento (admin) **não** remove a conclusão. A grade do certificado (`certificate_users.modules`) é uma fotografia dos módulos com aulas concluídas; módulos criados depois da conclusão não entram. A apresentação da grade (`modules_placement`) e o layout da página separada (`modules_layout`, `modules_title`, `modules_background`) ficam no template e podem ser alterados sem mudar o snapshot.
 
 ---
 

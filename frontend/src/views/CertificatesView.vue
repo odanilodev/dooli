@@ -39,7 +39,27 @@
           <button class="admin-modal-close" @click="active = null">×</button>
         </div>
 
-        <CertificateCanvas :certificate="active.certificate || {}" :values="valuesFor(active)" :modules="active.modules || []" :layout="active.certificate?.layout" />
+        <div class="certificate-preview-stack">
+          <CertificateCanvas
+            :certificate="active.certificate || {}"
+            :values="valuesFor(active)"
+            :modules="active.modules || []"
+            :layout="active.certificate?.layout"
+            :hidden-fields="hiddenFields(active)"
+          />
+
+          <div v-if="hasModulesPage(active)" class="certificate-page-block">
+            <span class="certificate-page-label no-print">{{ modulesPageLabel(active) }}</span>
+            <CertificateCanvas
+              :certificate="active.certificate || {}"
+              :values="valuesFor(active)"
+              :modules="active.modules || []"
+              :layout="active.certificate?.modules_layout"
+              :background-url="modulesBackground(active)"
+              mode="modules"
+            />
+          </div>
+        </div>
 
         <div class="admin-modal-actions no-print">
           <button class="btn btn-outline" @click="active = null">Fechar</button>
@@ -74,6 +94,24 @@ function valuesFor(item) {
     carga_horaria: item.certificate?.time ?? 0,
     codigo: item.code,
   };
+}
+
+function hiddenFields(item) {
+  return item.certificate?.modules_placement === 'front' ? [] : ['modules'];
+}
+
+function hasModulesPage(item) {
+  return ['extra', 'back'].includes(item.certificate?.modules_placement)
+    && Array.isArray(item.modules)
+    && item.modules.length > 0;
+}
+
+function modulesPageLabel(item) {
+  return item.certificate?.modules_placement === 'back' ? 'Verso' : 'Folha extra';
+}
+
+function modulesBackground(item) {
+  return item.certificate?.modules_background_url || null;
 }
 
 function open(item) {
@@ -119,6 +157,11 @@ onMounted(load);
 
 .certificate-preview-modal{max-width:1000px;}
 .certificate-preview-modal .admin-modal-actions{margin-top:16px;}
+.certificate-preview-stack{display:flex;flex-direction:column;gap:18px;}
+.certificate-page-block{display:flex;flex-direction:column;gap:8px;}
+.certificate-page-label{
+  font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);
+}
 
 @page{size:A4 landscape;margin:0;}
 
@@ -137,6 +180,13 @@ onMounted(load);
   .admin-modal{
     max-width:none !important;max-height:none !important;overflow:visible !important;
     box-shadow:none !important;border:none !important;width:100% !important;padding:0 !important;background:none !important;
+  }
+  .certificate-preview-stack{display:block;gap:0;}
+  .certificate-page-block{display:block;break-before:page;page-break-before:always;}
+  :deep(.certificate-canvas){
+    border:none !important;border-radius:0 !important;
+    break-inside:avoid;page-break-inside:avoid;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
   }
 }
 </style>

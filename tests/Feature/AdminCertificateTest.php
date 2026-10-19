@@ -248,7 +248,8 @@ class AdminCertificateTest extends TestCase
             ])
             ->assertCreated()
             ->assertJsonPath('data.name', 'Modelo Padrão')
-            ->assertJsonPath('data.course_id', $course->id);
+            ->assertJsonPath('data.course_id', $course->id)
+            ->assertJsonPath('data.modules_placement', 'front');
 
         $this->assertDatabaseHas('certificates', [
             'name' => 'Modelo Padrão',
@@ -382,6 +383,48 @@ class AdminCertificateTest extends TestCase
         Storage::disk('public')->assertExists($clone['signature']);
     }
 
+    public function test_admin_can_create_a_new_version_without_copying_images(): void
+    {
+        Storage::fake('public');
+        $course = $this->buildCourse($this->company->id)['course'];
+
+        $source = $this->withToken($this->apiLogin($this->admin))
+            ->post('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'version' => '1.0',
+                'modules_placement' => 'back',
+                'background' => UploadedFile::fake()->image('bg.png', 1600, 900),
+                'signature' => UploadedFile::fake()->image('sign.png', 400, 150),
+                'modules_background' => UploadedFile::fake()->image('grid.png', 1600, 900),
+            ])
+            ->assertCreated()
+            ->json('data');
+
+        $clone = $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'version' => '2.0',
+                'copy_from' => $source['id'],
+                'remove_background' => true,
+                'remove_signature' => true,
+                'remove_modules_background' => true,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.version', '2.0')
+            ->assertJsonPath('data.background', null)
+            ->assertJsonPath('data.signature', null)
+            ->assertJsonPath('data.modules_background', null)
+            ->json('data');
+
+        Storage::disk('public')->assertExists($source['background']);
+        Storage::disk('public')->assertExists($source['signature']);
+        Storage::disk('public')->assertExists($source['modules_background']);
+    }
+
     public function test_copy_from_must_belong_to_company(): void
     {
         $course = $this->buildCourse($this->company->id)['course'];
@@ -429,6 +472,9 @@ class AdminCertificateTest extends TestCase
                         'x' => 50,
                         'y' => 60,
                         'width' => 70,
+                        'format' => 'bulleted',
+                        'columns' => 3,
+                        'separator' => 'pipe',
                     ],
                     'signature_line' => [
                         'x' => 50,
@@ -451,6 +497,9 @@ class AdminCertificateTest extends TestCase
         $this->assertSame('#112233', $certificate->layout['title']['color']);
         $this->assertSame('Lora', $certificate->layout['title']['font']);
         $this->assertEquals(70.0, $certificate->layout['modules']['width']);
+        $this->assertSame('bulleted', $certificate->layout['modules']['format']);
+        $this->assertSame(3, $certificate->layout['modules']['columns']);
+        $this->assertSame('pipe', $certificate->layout['modules']['separator']);
         $this->assertEquals(40.0, $certificate->layout['signature_line']['width']);
         $this->assertSame('right', $certificate->layout['code']['align']);
         $this->assertEquals(96.0, $certificate->layout['code']['x']);
@@ -543,6 +592,211 @@ class AdminCertificateTest extends TestCase
             ->json('data');
 
         $this->assertSame($source['layout'], $clone['layout']);
+    }
+
+    public function test_admin_can_create_certificate_with_modules_page(): void
+    {
+        Storage::fake('public');
+        $course = $this->buildCourse($this->company->id)['course'];
+
+        $response = $this->withToken($this->apiLogin($this->admin))
+            ->post('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'modules_placement' => 'extra',
+                'modules_title' => 'Conteúdo do curso',
+                'modules_layout' => json_encode([
+                    'heading' => [
+                        'x' => 48,
+                        'y' => 18,
+                        'width' => 70,
+                        'font' => 'Georgia',
+                        'size' => 26,
+                        'align' => 'center',
+                        'bold' => true,
+                    ],
+                    'list' => [
+                        'x' => 50,
+                        'y' => 36,
+                        'width' => 88,
+                        'size' => 11,
+                        'format' => 'inline',
+                        'columns' => 4,
+                        'separator' => 'comma',
+                    ],
+                ]),
+                'modules_background' => UploadedFile::fake()->image('grid.png', 1600, 900),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.modules_placement', 'extra')
+            ->assertJsonPath('data.modules_title', 'Conteúdo do curso');
+
+        $data = $response->json('data');
+        $certificate = Certificate::findOrFail((int) $data['id']);
+
+        $this->assertNotNull($data['modules_background_url']);
+        Storage::disk('public')->assertExists($data['modules_background']);
+        $this->assertEquals(70.0, $certificate->modules_layout['heading']['width']);
+        $this->assertSame('Georgia', $certificate->modules_layout['heading']['font']);
+        $this->assertEquals(88.0, $certificate->modules_layout['list']['width']);
+        $this->assertSame('inline', $certificate->modules_layout['list']['format']);
+        $this->assertSame(4, $certificate->modules_layout['list']['columns']);
+        $this->assertSame('comma', $certificate->modules_layout['list']['separator']);
+    }
+
+    public function test_module_list_layout_uses_defaults_when_missing(): void
+    {
+        $course = $this->buildCourse($this->company->id)['course'];
+
+        $response = $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'layout' => [
+                    'modules' => ['x' => 50, 'y' => 60],
+                ],
+                'modules_layout' => [
+                    'list' => ['x' => 50, 'y' => 34],
+                ],
+            ])
+            ->assertCreated();
+
+        $certificate = Certificate::findOrFail((int) $response->json('data.id'));
+
+        $this->assertSame('numbered', $certificate->layout['modules']['format']);
+        $this->assertSame(2, $certificate->layout['modules']['columns']);
+        $this->assertSame('bullet', $certificate->layout['modules']['separator']);
+        $this->assertSame('numbered', $certificate->modules_layout['list']['format']);
+        $this->assertSame(2, $certificate->modules_layout['list']['columns']);
+        $this->assertSame('bullet', $certificate->modules_layout['list']['separator']);
+    }
+
+    public function test_admin_can_remove_modules_background(): void
+    {
+        Storage::fake('public');
+        $course = $this->buildCourse($this->company->id)['course'];
+
+        $created = $this->withToken($this->apiLogin($this->admin))
+            ->post('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'modules_placement' => 'back',
+                'modules_background' => UploadedFile::fake()->image('grid.png', 1600, 900),
+            ])
+            ->assertCreated()
+            ->json('data');
+
+        Storage::disk('public')->assertExists($created['modules_background']);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/certificates/{$created['id']}", [
+                'remove_modules_background' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.modules_background', null);
+
+        Storage::disk('public')->assertMissing($created['modules_background']);
+    }
+
+    public function test_admin_can_remove_certificate_background_and_signature(): void
+    {
+        Storage::fake('public');
+        $course = $this->buildCourse($this->company->id)['course'];
+
+        $created = $this->withToken($this->apiLogin($this->admin))
+            ->post('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'background' => UploadedFile::fake()->image('bg.png', 1600, 900),
+                'signature' => UploadedFile::fake()->image('sign.png', 400, 150),
+            ])
+            ->assertCreated()
+            ->json('data');
+
+        Storage::disk('public')->assertExists($created['background']);
+        Storage::disk('public')->assertExists($created['signature']);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/certificates/{$created['id']}", [
+                'remove_background' => true,
+                'remove_signature' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.background', null)
+            ->assertJsonPath('data.signature', null)
+            ->assertJsonPath('data.background_url', null)
+            ->assertJsonPath('data.signature_url', null);
+
+        Storage::disk('public')->assertMissing($created['background']);
+        Storage::disk('public')->assertMissing($created['signature']);
+    }
+
+    public function test_clone_copies_modules_page_configuration(): void
+    {
+        Storage::fake('public');
+        $course = $this->buildCourse($this->company->id)['course'];
+
+        $source = $this->withToken($this->apiLogin($this->admin))
+            ->post('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'modules_placement' => 'back',
+                'modules_title' => 'Módulos concluídos',
+                'modules_layout' => [
+                    'heading' => ['x' => 44, 'y' => 18],
+                    'list' => ['x' => 46, 'y' => 34, 'width' => 84],
+                ],
+                'modules_background' => UploadedFile::fake()->image('grid.png', 1600, 900),
+            ])
+            ->assertCreated()
+            ->json('data');
+
+        $clone = $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'version' => '2.0',
+                'copy_from' => $source['id'],
+            ])
+            ->assertCreated()
+            ->json('data');
+
+        $this->assertSame('back', $clone['modules_placement']);
+        $this->assertSame('Módulos concluídos', $clone['modules_title']);
+        $this->assertSame($source['modules_layout'], $clone['modules_layout']);
+        $this->assertNotSame($source['modules_background'], $clone['modules_background']);
+        Storage::disk('public')->assertExists($clone['modules_background']);
+    }
+
+    public function test_modules_page_configuration_is_validated(): void
+    {
+        $course = $this->buildCourse($this->company->id)['course'];
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/certificates', [
+                'name' => 'Modelo',
+                'title' => 'Certificado',
+                'course_id' => $course->id,
+                'modules_placement' => 'later',
+                'modules_layout' => [
+                    'heading' => ['x' => 150, 'y' => 50],
+                    'list' => ['format' => 'grid', 'columns' => 5, 'separator' => 'space'],
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors([
+                'modules_placement',
+                'modules_layout.heading.x',
+                'modules_layout.list.format',
+                'modules_layout.list.columns',
+                'modules_layout.list.separator',
+            ]);
     }
 
     public function test_student_cannot_manage_certificate_templates(): void

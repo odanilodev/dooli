@@ -27,7 +27,7 @@ Route → Middleware → FormRequest → Controller → Service → Repository �
 | Tenant público/webhook | Header `X-Company` (id) com middleware `company.required` |
 | Perfis | `user_types.code` (`admin`/`instructor`/`student`) via middleware `role:` e Policies |
 | Modelo de aulas | Tabela `lessons` → model **`Lesson`** (rota `/lessons`); `Class` é reservado no PHP |
-| Certificados | `certificates` = template por curso; `certificate_users` = emissão por user+team com snapshots `lessons_count` e `modules` (grade congelada; unique parcial via `active_flag`: 1 válido por user+team+template) |
+| Certificados | `certificates` = template por curso (layout + `modules_placement`/`modules_layout`/fundo próprio da grade); `certificate_users` = emissão por user+team com snapshots `lessons_count` e `modules` (grade congelada; unique parcial via `active_flag`: 1 válido por user+team+template) |
 | Pagamentos | `PaymentGatewayContract` + `GatewayManager` (Strategy/Factory); adapter real MercadoPago + Manual |
 | Vídeo | `VideoPlatformContract` + `VideoPlatformManager` resolvido por `videos.player`; adapters reais: Panda (playback) e VdoCipher (playback OTP + upload/import via API); stubs para os demais |
 | Webhooks | Verificação de assinatura, idempotência por `external_id`, processamento via Job |
@@ -81,6 +81,8 @@ O padrão do projeto é **rota = tabela**: tabela plural snake_case, model singu
 
 ### Conclusão → certificado
 `ProgressService::completeLesson` grava `timelines` (unique de banco) + snapshot e, quando o aluno atinge o total exigido, registra a **conclusão histórica** em `course_completions`. Só então chama `CertificateService::issueIfEligible` (fora da transação) — a emissão é **histórica e definitiva**: uma vez emitido, o certificado permanece válido mesmo que novas aulas sejam adicionadas depois. A emissão grava em `certificate_users.modules` a grade de módulos com aulas concluídas, então módulos novos não entram no documento.
+
+O template decide a apresentação da grade (`modules_placement`: `none`, `front`, `extra` ou `back`). Em `front`, a grade usa `layout.modules`; em `extra`/`back`, o documento tem uma segunda página A4 desenhada por `modules_layout` (título + lista) e fundo próprio opcional (`modules_background`); sem esse fundo, a página fica branca. A lista aceita formato (numerada, com marcadores, sem marcador ou em linha), 1–4 colunas e separador configurável no modo em linha. A configuração é do template, não do certificado emitido; o snapshot de módulos continua sendo congelado por emissão.
 
 ### Alteração de curso vs. conclusão
 Adicionar, editar, publicar ou excluir aulas **não** revoga certificados já emitidos nem recalcula a conclusão de quem já concluiu. As novas aulas passam a contar apenas para alunos que **ainda não** concluíram (a elegibilidade usa o total atual de aulas ativas). O status `completed` vem de `course_completions` (não do certificado), então uma revogação manual do documento mantém o curso como concluído. `course_completions` guarda `required_lessons` e `lesson_ids` (fotografia do requisito); `certificate_users.modules` guarda a grade de módulos do certificado. Comandos: `completions:backfill` (recupera conclusões de certificados válidos e invalidados automaticamente), `certificates:backfill-modules` (preenche a grade de certificados antigos usando as aulas concluídas) e `certificates:restore-recalculated` (revalida certificados invalidados pelo recálculo antigo).

@@ -28,6 +28,9 @@
       <p class="panel-desc">
         {{ isScoped ? 'A versão mais recente do curso é usada nas próximas emissões.' : 'O modelo fica vinculado a um curso e é usado ao emitir o certificado do aluno.' }}
       </p>
+      <p v-if="isScoped && !editingId && currentTemplate" class="form-hint">
+        A nova versão copia textos e layout, mas não herda fundo do certificado, assinatura nem fundo da grade.
+      </p>
 
       <div class="certificate-form-grid">
         <div class="certificate-form-fields">
@@ -92,7 +95,44 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label>Imagem de fundo</label>
+              <label for="c-modules-placement">Exibição da grade</label>
+              <select id="c-modules-placement" class="form-control" v-model="form.modules_placement">
+                <option v-for="option in modulesPlacementOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="c-modules-title">Título da página da grade</label>
+              <input
+                id="c-modules-title"
+                class="form-control"
+                v-model="form.modules_title"
+                :disabled="!modulesOnSeparatePage"
+                placeholder="Módulos do curso"
+              >
+            </div>
+          </div>
+
+          <div v-if="modulesOnSeparatePage" class="form-group">
+            <label>Fundo da página da grade (opcional)</label>
+            <FilePicker
+              accept="image/png,image/jpeg,image/webp"
+              title="Escolher fundo da grade"
+              hint="Sem fundo próprio, a página fica branca · PNG/JPG/WebP · até 4 MB"
+              :file-name="form.modulesBackgroundFile?.name"
+              @change="onModulesBackgroundPicked"
+            />
+            <div v-if="form.modulesBackgroundPreview" class="certificate-inline-actions">
+              <button type="button" class="btn btn-outline btn-sm" @click="removeModulesBackground">
+                Remover fundo da grade
+              </button>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fundo do certificado</label>
               <FilePicker
                 accept="image/png,image/jpeg,image/webp"
                 title="Escolher fundo"
@@ -100,6 +140,11 @@
                 :file-name="form.backgroundFile?.name"
                 @change="onBackgroundPicked"
               />
+              <div v-if="form.backgroundPreview" class="certificate-inline-actions">
+                <button type="button" class="btn btn-outline btn-sm" @click="removeBackground">
+                  Remover fundo do certificado
+                </button>
+              </div>
             </div>
             <div class="form-group">
               <label>Assinatura</label>
@@ -110,6 +155,11 @@
                 :file-name="form.signatureFile?.name"
                 @change="onSignaturePicked"
               />
+              <div v-if="form.signaturePreview" class="certificate-inline-actions">
+                <button type="button" class="btn btn-outline btn-sm" @click="removeSignature">
+                  Remover assinatura
+                </button>
+              </div>
             </div>
           </div>
 
@@ -124,44 +174,96 @@
             <span class="certificate-drag-hint">Arraste os campos; use as alças para redimensionar</span>
           </div>
 
+          <div v-if="modulesOnSeparatePage" class="certificate-preview-tabs">
+            <button
+              type="button"
+              class="filter-tab"
+              :class="{ active: previewPage === 'certificate' }"
+              @click="setPreviewPage('certificate')"
+            >Certificado</button>
+            <button
+              type="button"
+              class="filter-tab"
+              :class="{ active: previewPage === 'modules' }"
+              @click="setPreviewPage('modules')"
+            >{{ modulesPageLabel }}</button>
+          </div>
+
           <CertificateCanvas
+            v-if="previewPage === 'certificate'"
             :certificate="previewCertificate"
             :values="previewValues"
             :modules="previewModules"
             :layout="layout"
+            :hidden-fields="certificateHiddenFields"
             editable
             :selected="selectedField"
             @select="selectedField = $event"
             @update:layout="layout = $event"
           />
 
+          <CertificateCanvas
+            v-else
+            :certificate="previewCertificate"
+            :values="previewValues"
+            :modules="previewModules"
+            :layout="modulesLayout"
+            :background-url="previewModulesBackground"
+            mode="modules"
+            editable
+            :selected="selectedField"
+            @select="selectedField = $event"
+            @update:layout="modulesLayout = $event"
+          />
+
           <div class="certificate-layout-panel">
             <div class="certificate-layout-head">
-              <span class="certificate-preview-label">Layout</span>
+              <span class="certificate-preview-label">{{ activeLayoutLabel }}</span>
               <button type="button" class="btn btn-outline btn-sm" @click="resetLayout">Redefinir layout</button>
             </div>
 
-            <p v-if="!selectedFieldMeta" class="form-hint">
+            <p v-if="!activeFieldMeta" class="form-hint">
               Clique em um campo na prévia para ajustar posição, fonte e cor.
             </p>
 
-            <div v-else-if="currentField" class="certificate-layout-body">
+            <div v-else-if="activeCurrentField" class="certificate-layout-body">
               <div class="certificate-layout-title">
-                <strong>{{ selectedFieldMeta.label }}</strong>
+                <strong>{{ activeFieldMeta.label }}</strong>
                 <button type="button" class="btn btn-outline btn-sm" @click="resetFieldPosition(selectedField)">
                   Restaurar posição
                 </button>
               </div>
 
               <div class="certificate-layout-grid">
-                <div v-if="['text', 'modules'].includes(selectedFieldMeta.type)" class="form-group">
+                <div v-if="activeFieldMeta.type === 'modules'" class="form-group">
+                  <label>Formato da lista</label>
+                  <select class="form-control" :value="activeCurrentField.format" @change="updateField('format', $event.target.value)">
+                    <option v-for="option in moduleFormatOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                  </select>
+                </div>
+
+                <div v-if="activeFieldMeta.type === 'modules' && activeCurrentField.format !== 'inline'" class="form-group">
+                  <label>Colunas</label>
+                  <select class="form-control" :value="activeCurrentField.columns" @change="updateField('columns', Number($event.target.value))">
+                    <option v-for="option in moduleColumnOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                  </select>
+                </div>
+
+                <div v-if="activeFieldMeta.type === 'modules' && activeCurrentField.format === 'inline'" class="form-group">
+                  <label>Separador</label>
+                  <select class="form-control" :value="activeCurrentField.separator" @change="updateField('separator', $event.target.value)">
+                    <option v-for="option in moduleSeparatorOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                  </select>
+                </div>
+
+                <div v-if="['text', 'modules'].includes(activeFieldMeta.type)" class="form-group">
                   <label>Fonte</label>
-                  <select class="form-control" :value="currentField.font" @change="updateField('font', $event.target.value)">
+                  <select class="form-control" :value="activeCurrentField.font" @change="updateField('font', $event.target.value)">
                     <option v-for="font in fontOptions" :key="font.value" :value="font.value">{{ font.label }}</option>
                   </select>
                 </div>
 
-                <div v-if="['text', 'modules'].includes(selectedFieldMeta.type)" class="form-group">
+                <div v-if="['text', 'modules'].includes(activeFieldMeta.type)" class="form-group">
                   <label>Tamanho (px)</label>
                   <input
                     type="number"
@@ -169,12 +271,12 @@
                     min="4"
                     max="160"
                     step="0.5"
-                    :value="currentField.size"
+                    :value="activeCurrentField.size"
                     @input="updateSize($event.target.value)"
                   >
                 </div>
 
-                <div v-if="selectedFieldMeta.type === 'image'" class="form-group">
+                <div v-if="activeFieldMeta.type === 'image'" class="form-group">
                   <label>Altura (px)</label>
                   <input
                     type="number"
@@ -182,31 +284,31 @@
                     min="10"
                     max="160"
                     step="1"
-                    :value="currentField.size"
+                    :value="activeCurrentField.size"
                     @input="updateSize($event.target.value)"
                   >
                 </div>
 
-                <div v-if="selectedFieldMeta.widthRange" class="form-group">
-                  <label>{{ selectedFieldMeta.type === 'line' ? 'Comprimento (%)' : 'Largura (%)' }}</label>
+                <div v-if="activeFieldMeta.widthRange" class="form-group">
+                  <label>{{ activeFieldMeta.type === 'line' ? 'Comprimento (%)' : 'Largura (%)' }}</label>
                   <input
                     type="number"
                     class="form-control"
-                    :min="selectedFieldMeta.widthRange[0]"
-                    :max="selectedFieldMeta.widthRange[1]"
+                    :min="activeFieldMeta.widthRange[0]"
+                    :max="activeFieldMeta.widthRange[1]"
                     step="0.5"
-                    :value="currentField.width"
+                    :value="activeCurrentField.width"
                     @input="updateWidth($event.target.value)"
                   >
                 </div>
 
-                <div v-if="selectedFieldMeta.type !== 'image'" class="form-group">
+                <div v-if="activeFieldMeta.type !== 'image'" class="form-group">
                   <label>Cor</label>
                   <div class="certificate-color-row">
                     <input
                       type="color"
                       class="certificate-color-input"
-                      :value="currentField.color || '#0a1e2a'"
+                      :value="activeCurrentField.color || '#0a1e2a'"
                       @input="updateField('color', $event.target.value)"
                     >
                     <button type="button" class="btn btn-outline btn-sm" @click="updateField('color', null)">Padrão</button>
@@ -215,27 +317,27 @@
 
                 <div class="form-group">
                   <label>Alinhamento</label>
-                  <select class="form-control" :value="currentField.align" @change="updateField('align', $event.target.value)">
+                  <select class="form-control" :value="activeCurrentField.align" @change="updateField('align', $event.target.value)">
                     <option value="left">Esquerda</option>
                     <option value="center">Centro</option>
                     <option value="right">Direita</option>
                   </select>
                 </div>
 
-                <div v-if="['text', 'modules'].includes(selectedFieldMeta.type)" class="form-group">
+                <div v-if="['text', 'modules'].includes(activeFieldMeta.type)" class="form-group">
                   <label>Estilo</label>
                   <div class="certificate-style-toggles">
                     <button
                       type="button"
                       class="btn btn-outline btn-sm"
-                      :class="{ active: currentField.bold }"
-                      @click="updateField('bold', !currentField.bold)"
+                      :class="{ active: activeCurrentField.bold }"
+                      @click="updateField('bold', !activeCurrentField.bold)"
                     ><strong>B</strong></button>
                     <button
                       type="button"
                       class="btn btn-outline btn-sm"
-                      :class="{ active: currentField.italic }"
-                      @click="updateField('italic', !currentField.italic)"
+                      :class="{ active: activeCurrentField.italic }"
+                      @click="updateField('italic', !activeCurrentField.italic)"
                     ><em>I</em></button>
                   </div>
                 </div>
@@ -407,7 +509,17 @@ import SearchSelect from '../components/admin/SearchSelect.vue';
 import ConfirmModal from '../components/admin/ConfirmModal.vue';
 import ImageCropper from '../components/admin/ImageCropper.vue';
 import CertificateCanvas from '../components/CertificateCanvas.vue';
-import { FONT_OPTIONS, layoutField, normalizeLayout } from '../utils/certificateLayout';
+import {
+  FONT_OPTIONS,
+  MODULES_COLUMN_OPTIONS,
+  MODULES_FORMAT_OPTIONS,
+  MODULES_PLACEMENT_OPTIONS,
+  MODULES_SEPARATOR_OPTIONS,
+  layoutField,
+  modulesPageField,
+  normalizeLayout,
+  normalizeModulesPageLayout,
+} from '../utils/certificateLayout';
 
 const store = useCertificatesStore();
 const toast = useToast();
@@ -440,21 +552,51 @@ const showForm = ref(false);
 const editingId = ref(null);
 const copyFromId = ref(null);
 const layout = ref(normalizeLayout(null));
+const modulesLayout = ref(normalizeModulesPageLayout(null));
+const previewPage = ref('certificate');
 const selectedField = ref(null);
 const fontOptions = FONT_OPTIONS;
-const selectedFieldMeta = computed(() => (selectedField.value ? layoutField(selectedField.value) : null));
-const currentField = computed(() => (selectedField.value ? layout.value[selectedField.value] : null));
+const modulesPlacementOptions = MODULES_PLACEMENT_OPTIONS;
+const moduleFormatOptions = MODULES_FORMAT_OPTIONS;
+const moduleColumnOptions = MODULES_COLUMN_OPTIONS;
+const moduleSeparatorOptions = MODULES_SEPARATOR_OPTIONS;
+const modulesOnSeparatePage = computed(() => ['extra', 'back'].includes(form.modules_placement));
+const modulesPageLabel = computed(() => (form.modules_placement === 'back' ? 'Verso' : 'Folha extra'));
+const certificateHiddenFields = computed(() => (form.modules_placement === 'front' ? [] : ['modules']));
+const activeLayout = computed(() => (previewPage.value === 'modules' ? modulesLayout.value : layout.value));
+const activeFieldMeta = computed(() => {
+  if (!selectedField.value) {
+    return null;
+  }
+
+  return previewPage.value === 'modules'
+    ? modulesPageField(selectedField.value)
+    : layoutField(selectedField.value);
+});
+const activeCurrentField = computed(() => (
+  selectedField.value ? activeLayout.value[selectedField.value] : null
+));
+const activeLayoutLabel = computed(() => (
+  previewPage.value === 'modules' ? 'Layout da página da grade' : 'Layout do certificado'
+));
 const previewModules = ref([]);
 let previewModulesRequest = 0;
 
 const cropFile = ref(null);
 const cropTarget = ref(null);
-const cropTitle = computed(() => (cropTarget.value === 'signature' ? 'Recortar assinatura' : 'Recortar fundo'));
-const cropAspect = computed(() => (cropTarget.value === 'background' ? 297 / 210 : null));
-const cropOutputWidth = computed(() => (cropTarget.value === 'background' ? 2400 : 1200));
-const cropOutputHeight = computed(() => (cropTarget.value === 'background' ? 1697 : 600));
-const cropFormat = computed(() => (cropTarget.value === 'background' ? 'jpeg' : 'png'));
-const cropFillColor = computed(() => (cropTarget.value === 'background' ? '#ffffff' : null));
+const cropTitle = computed(() => {
+  if (cropTarget.value === 'signature') {
+    return 'Recortar assinatura';
+  }
+
+  return cropTarget.value === 'modules_background' ? 'Recortar fundo da grade' : 'Recortar fundo';
+});
+const cropIsA4 = computed(() => ['background', 'modules_background'].includes(cropTarget.value));
+const cropAspect = computed(() => (cropIsA4.value ? 297 / 210 : null));
+const cropOutputWidth = computed(() => (cropIsA4.value ? 2400 : 1200));
+const cropOutputHeight = computed(() => (cropIsA4.value ? 1697 : 600));
+const cropFormat = computed(() => (cropIsA4.value ? 'jpeg' : 'png'));
+const cropFillColor = computed(() => (cropIsA4.value ? '#ffffff' : null));
 const cropCheckerboard = computed(() => cropTarget.value === 'signature');
 
 const courseOptions = ref([]);
@@ -476,10 +618,17 @@ const form = reactive({
   body: '',
   signatory_name: '',
   signatory_title: '',
+  modules_placement: 'front',
+  modules_title: '',
   backgroundFile: null,
   signatureFile: null,
+  modulesBackgroundFile: null,
   backgroundPreview: '',
   signaturePreview: '',
+  modulesBackgroundPreview: '',
+  removeBackground: false,
+  removeSignature: false,
+  removeModulesBackground: false,
 });
 
 const previewValues = reactive({
@@ -495,9 +644,12 @@ const previewCertificate = computed(() => ({
   body: form.body,
   signatory_name: form.signatory_name,
   signatory_title: form.signatory_title,
+  modules_title: form.modules_title,
   background_url: form.backgroundPreview,
   signature_url: form.signaturePreview,
 }));
+
+const previewModulesBackground = computed(() => form.modulesBackgroundPreview || null);
 
 function revokeBlob(url) {
   if (url && url.startsWith('blob:')) {
@@ -515,19 +667,39 @@ function resetForm() {
   form.body = '';
   form.signatory_name = '';
   form.signatory_title = '';
+  form.modules_placement = 'front';
+  form.modules_title = '';
   form.backgroundFile = null;
   form.signatureFile = null;
+  form.modulesBackgroundFile = null;
   revokeBlob(form.backgroundPreview);
   revokeBlob(form.signaturePreview);
+  revokeBlob(form.modulesBackgroundPreview);
   form.backgroundPreview = '';
   form.signaturePreview = '';
+  form.modulesBackgroundPreview = '';
+  form.removeBackground = false;
+  form.removeSignature = false;
+  form.removeModulesBackground = false;
   courseOptions.value = [];
   copyFromId.value = null;
   layout.value = normalizeLayout(null);
+  modulesLayout.value = normalizeModulesPageLayout(null);
+  previewPage.value = 'certificate';
   selectedField.value = null;
   previewModulesRequest++;
   previewModules.value = [];
   closeCrop();
+}
+
+function setActiveLayout(next) {
+  if (previewPage.value === 'modules') {
+    modulesLayout.value = next;
+
+    return;
+  }
+
+  layout.value = next;
 }
 
 function updateField(key, value) {
@@ -535,13 +707,18 @@ function updateField(key, value) {
     return;
   }
 
-  layout.value = {
-    ...layout.value,
+  setActiveLayout({
+    ...activeLayout.value,
     [selectedField.value]: {
-      ...layout.value[selectedField.value],
+      ...activeLayout.value[selectedField.value],
       [key]: value,
     },
-  };
+  });
+}
+
+function setPreviewPage(page) {
+  previewPage.value = page;
+  selectedField.value = null;
 }
 
 function updateSize(value) {
@@ -555,7 +732,7 @@ function updateSize(value) {
     return;
   }
 
-  const min = selectedFieldMeta.value?.type === 'image' ? 10 : 4;
+  const min = activeFieldMeta.value?.type === 'image' ? 10 : 4;
 
   updateField('size', Math.min(160, Math.max(min, number)));
 }
@@ -566,7 +743,7 @@ function updateWidth(value) {
   }
 
   const number = Number(value);
-  const range = selectedFieldMeta.value?.widthRange;
+  const range = activeFieldMeta.value?.widthRange;
 
   if (!range || !Number.isFinite(number)) {
     return;
@@ -576,28 +753,33 @@ function updateWidth(value) {
 }
 
 function resetFieldPosition(key) {
-  const meta = layoutField(key);
+  const meta = activeFieldMeta.value;
 
   if (!meta) {
     return;
   }
 
-  layout.value = {
-    ...layout.value,
+  setActiveLayout({
+    ...activeLayout.value,
     [key]: {
-      ...layout.value[key],
+      ...activeLayout.value[key],
       x: meta.defaults.x,
       y: meta.defaults.y,
     },
-  };
+  });
 }
 
 function resetLayout() {
-  if (!window.confirm('Redefinir o layout e voltar as posições padrão?')) {
+  if (!window.confirm('Redefinir o layout desta página e voltar as posições padrão?')) {
     return;
   }
 
-  layout.value = normalizeLayout(null);
+  if (previewPage.value === 'modules') {
+    modulesLayout.value = normalizeModulesPageLayout(null);
+  } else {
+    layout.value = normalizeLayout(null);
+  }
+
   selectedField.value = null;
 }
 
@@ -721,12 +903,23 @@ function cloneTemplate(source) {
   form.body = source.body ?? '';
   form.signatory_name = source.signatory_name ?? '';
   form.signatory_title = source.signatory_title ?? '';
+  form.modules_placement = source.modules_placement || 'front';
+  form.modules_title = source.modules_title ?? '';
   form.backgroundFile = null;
   form.signatureFile = null;
+  form.modulesBackgroundFile = null;
   revokeBlob(form.backgroundPreview);
   revokeBlob(form.signaturePreview);
-  form.backgroundPreview = source.background_url ?? '';
-  form.signaturePreview = source.signature_url ?? '';
+  revokeBlob(form.modulesBackgroundPreview);
+  form.backgroundPreview = '';
+  form.signaturePreview = '';
+  form.modulesBackgroundPreview = '';
+  form.removeBackground = true;
+  form.removeSignature = true;
+  form.removeModulesBackground = true;
+  modulesLayout.value = normalizeModulesPageLayout(source.modules_layout);
+  previewPage.value = modulesOnSeparatePage.value ? 'modules' : 'certificate';
+  selectedField.value = null;
   form.version = nextVersion(source.version);
   copyFromId.value = source.id;
 }
@@ -829,16 +1022,26 @@ function openEdit(certificate) {
   form.body = certificate.body ?? '';
   form.signatory_name = certificate.signatory_name ?? '';
   form.signatory_title = certificate.signatory_title ?? '';
+  form.modules_placement = certificate.modules_placement || 'front';
+  form.modules_title = certificate.modules_title ?? '';
   form.backgroundFile = null;
   form.signatureFile = null;
+  form.modulesBackgroundFile = null;
   revokeBlob(form.backgroundPreview);
   revokeBlob(form.signaturePreview);
+  revokeBlob(form.modulesBackgroundPreview);
   form.backgroundPreview = certificate.background_url ?? '';
   form.signaturePreview = certificate.signature_url ?? '';
+  form.modulesBackgroundPreview = certificate.modules_background_url ?? '';
+  form.removeBackground = false;
+  form.removeSignature = false;
+  form.removeModulesBackground = false;
   courseOptions.value = certificate.course
     ? [{ value: certificate.course_id, label: certificate.course.name }]
     : [];
   layout.value = normalizeLayout(certificate.layout);
+  modulesLayout.value = normalizeModulesPageLayout(certificate.modules_layout);
+  previewPage.value = modulesOnSeparatePage.value ? 'modules' : 'certificate';
   selectedField.value = null;
   showForm.value = true;
 }
@@ -862,12 +1065,21 @@ function applyImage(target, file) {
     revokeBlob(form.backgroundPreview);
     form.backgroundFile = file;
     form.backgroundPreview = file ? URL.createObjectURL(file) : '';
+    form.removeBackground = false;
   }
 
   if (target === 'signature') {
     revokeBlob(form.signaturePreview);
     form.signatureFile = file;
     form.signaturePreview = file ? URL.createObjectURL(file) : '';
+    form.removeSignature = false;
+  }
+
+  if (target === 'modules_background') {
+    revokeBlob(form.modulesBackgroundPreview);
+    form.modulesBackgroundFile = file;
+    form.modulesBackgroundPreview = file ? URL.createObjectURL(file) : '';
+    form.removeModulesBackground = false;
   }
 }
 
@@ -893,6 +1105,31 @@ function onSignaturePicked(file) {
   openCrop(file, 'signature');
 }
 
+function onModulesBackgroundPicked(file) {
+  openCrop(file, 'modules_background');
+}
+
+function removeBackground() {
+  revokeBlob(form.backgroundPreview);
+  form.backgroundPreview = '';
+  form.backgroundFile = null;
+  form.removeBackground = true;
+}
+
+function removeSignature() {
+  revokeBlob(form.signaturePreview);
+  form.signaturePreview = '';
+  form.signatureFile = null;
+  form.removeSignature = true;
+}
+
+function removeModulesBackground() {
+  revokeBlob(form.modulesBackgroundPreview);
+  form.modulesBackgroundPreview = '';
+  form.modulesBackgroundFile = null;
+  form.removeModulesBackground = true;
+}
+
 async function save() {
   if (!form.course_id) {
     toast.error('Selecione o curso vinculado.');
@@ -910,6 +1147,12 @@ async function save() {
     signatory_name: form.signatory_name || null,
     signatory_title: form.signatory_title || null,
     layout: layout.value,
+    modules_placement: form.modules_placement,
+    modules_title: form.modules_title || null,
+    modules_layout: modulesLayout.value,
+    remove_background: form.removeBackground ? 1 : 0,
+    remove_signature: form.removeSignature ? 1 : 0,
+    remove_modules_background: form.removeModulesBackground ? 1 : 0,
   };
 
   if (!editingId.value && copyFromId.value) {
@@ -919,6 +1162,7 @@ async function save() {
   const files = {
     background: form.backgroundFile,
     signature: form.signatureFile,
+    modules_background: modulesOnSeparatePage.value ? form.modulesBackgroundFile : null,
   };
 
   try {
@@ -985,6 +1229,23 @@ async function confirmRevoke() {
   }
 }
 
+watch(() => form.modules_placement, (placement, previous) => {
+  const separate = ['extra', 'back'].includes(placement);
+  const wasSeparate = ['extra', 'back'].includes(previous);
+
+  if (!separate) {
+    previewPage.value = 'certificate';
+    selectedField.value = null;
+
+    return;
+  }
+
+  if (!wasSeparate) {
+    previewPage.value = 'modules';
+    selectedField.value = null;
+  }
+});
+
 watch(() => form.course_id, (courseId) => {
   loadPreviewModules(courseId);
 });
@@ -1043,8 +1304,10 @@ watch(scopedCourseId, async (id) => {
   max-height:calc(100vh - 36px);overflow:auto;padding-right:4px;
 }
 .certificate-preview-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.certificate-preview-tabs{display:flex;gap:6px;flex-wrap:wrap;}
 .certificate-preview-label{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);}
 .certificate-drag-hint{font-size:11.5px;color:var(--text-muted);}
+.certificate-inline-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
 .certificate-placeholder-hint{font-size:12px;color:var(--text-muted);margin-top:6px;}
 .certificate-placeholder-hint code{
   background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:1px 5px;font-size:11.5px;
