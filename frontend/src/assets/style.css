@@ -339,6 +339,50 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 @media (max-width:720px){.product-detail{grid-template-columns:1fr;}}
 
 /* ==========================================================================
+   Vitrine pública
+   ========================================================================== */
+.public-content{
+  width:100%;max-width:1220px;margin:0 auto;
+  padding:32px clamp(18px,5vw,64px) 76px;
+  display:flex;flex-direction:column;gap:32px;
+}
+.public-eyebrow{
+  margin:0;font-size:11px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent);
+}
+.public-breadcrumb{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  color:var(--text-muted);font-size:12px;font-weight:700;
+}
+.public-breadcrumb a{color:var(--text-secondary);}
+.public-breadcrumb a:hover{color:var(--accent);}
+.public-breadcrumb .current{color:var(--text-primary);}
+.public-empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  padding:54px 22px;text-align:center;color:var(--text-muted);
+  border:1px dashed var(--border);border-radius:18px;background:var(--bg-card);
+}
+.public-empty strong{color:var(--text-primary);font-size:15px;}
+.public-empty span{max-width:430px;font-size:12.5px;line-height:1.55;}
+.public-empty .btn{margin-top:6px;}
+.public-warning{
+  margin:0;padding:11px 13px;border:1px solid rgba(234,179,8,.28);border-radius:10px;
+  background:rgba(234,179,8,.08);color:#d9a514;font-size:12px;line-height:1.5;
+}
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
+.public-content a:focus-visible,
+.public-content button:focus-visible,
+.public-content input:focus-visible,
+.public-header a:focus-visible,
+.public-header button:focus-visible,
+.public-footer a:focus-visible{
+  outline:2px solid var(--accent);outline-offset:3px;
+}
+
+/* ==========================================================================
    Lesson (aula) page
    ========================================================================== */
 .lesson-content{flex:1;padding:26px 32px 36px;display:flex;gap:28px;align-items:flex-start;}
