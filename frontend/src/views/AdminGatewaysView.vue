@@ -53,27 +53,29 @@
       <button class="btn btn-primary" :disabled="saving">{{ saving ? 'Salvando...' : 'Salvar gateway' }}</button>
     </form>
 
-    <div v-if="loading" class="empty-state"><strong>Carregando...</strong></div>
-    <div v-else-if="!gateways.length" class="empty-state">
-      <strong>Nenhum gateway configurado</strong>
-      <span>Cadastre o Mercado Pago para vender na loja.</span>
-    </div>
-    <div v-else class="admin-table-wrap">
-      <table class="admin-table">
-        <thead><tr><th>Gateway</th><th>Código</th><th>Credenciais</th><th>Status</th><th></th></tr></thead>
-        <tbody>
-          <tr v-for="gateway in gateways" :key="gateway.id">
-            <td><strong>{{ gateway.name }}</strong></td>
-            <td class="admin-muted">{{ gateway.code }}</td>
-            <td class="admin-muted">{{ gateway.has_credentials ? 'Configuradas' : 'Pendentes' }}</td>
-            <td><span class="status-pill" :class="gateway.status">{{ gateway.status === 'active' ? 'Ativo' : 'Inativo' }}</span></td>
-            <td class="admin-actions">
-              <button class="btn btn-outline btn-sm" @click="edit(gateway)">Editar</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <template v-if="!showForm">
+      <div v-if="loading" class="empty-state"><strong>Carregando...</strong></div>
+      <div v-else-if="!gateways.length" class="empty-state">
+        <strong>Nenhum gateway configurado</strong>
+        <span>Cadastre o Mercado Pago para vender na loja.</span>
+      </div>
+      <div v-else class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Gateway</th><th>Código</th><th>Credenciais</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="gateway in gateways" :key="gateway.id">
+              <td><strong>{{ gateway.name }}</strong></td>
+              <td class="admin-muted">{{ gateway.code }}</td>
+              <td class="admin-muted">{{ gateway.has_credentials ? 'Configuradas' : 'Pendentes' }}</td>
+              <td><span class="status-pill" :class="gateway.status">{{ gateway.status === 'active' ? 'Ativo' : 'Inativo' }}</span></td>
+              <td class="admin-actions">
+                <button class="btn btn-outline btn-sm" @click="edit(gateway)">Editar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
   </main>
 </template>
 
