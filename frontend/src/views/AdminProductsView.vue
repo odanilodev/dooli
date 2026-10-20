@@ -7,9 +7,6 @@
         <p class="page-subtitle">{{ meta.total ?? products.length }} produto(s) — cada compra libera o curso nas turmas selecionadas.</p>
       </div>
       <div class="admin-head-actions">
-        <router-link :to="{ name: 'admin-gateways' }" class="btn btn-outline">Gateways</router-link>
-        <router-link :to="{ name: 'admin-pedidos' }" class="btn btn-outline">Pedidos</router-link>
-        <router-link :to="{ name: 'admin-assinaturas' }" class="btn btn-outline">Assinaturas</router-link>
         <button v-if="publicStoreUrl" class="btn btn-outline" type="button" @click="copyStoreLink">Copiar link da loja</button>
         <button class="btn btn-primary" @click="toggleForm">{{ showForm ? 'Cancelar' : '+ Novo produto' }}</button>
       </div>

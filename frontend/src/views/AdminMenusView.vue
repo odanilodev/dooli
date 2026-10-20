@@ -129,6 +129,7 @@ const menus = useMenusStore();
 const iconOptions = [
   'dashboard', 'content', 'modules', 'live', 'teams', 'report', 'videos', 'documents', 'attachments',
   'banners', 'video-platforms', 'menu', 'users', 'user-types', 'profile', 'settings', 'home',
+  'gateway', 'orders', 'subscriptions',
 ];
 
 const showForm = ref(false);

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Menu;
 use App\Models\User;
 use App\Models\UserType;
+use Database\Seeders\MenuSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
@@ -81,6 +82,43 @@ class MyMenuTest extends TestCase
             ->getJson('/api/v1/me/menus')
             ->assertOk()
             ->assertJsonCount(2, 'data');
+    }
+
+    public function test_admin_sees_payment_menus_from_seeder(): void
+    {
+        $this->seed(MenuSeeder::class);
+
+        $adminSection = Menu::query()
+            ->where('name', 'Administração')
+            ->where('type', 'section')
+            ->firstOrFail();
+
+        $links = Menu::query()
+            ->where('sub', (string) $adminSection->id)
+            ->orderBy('sort_order')
+            ->pluck('link')
+            ->all();
+
+        $products = array_search('/admin/produtos', $links, true);
+
+        $this->assertSame([
+            '/admin/produtos',
+            '/admin/gateways',
+            '/admin/pedidos',
+            '/admin/assinaturas',
+            '/admin/certificados',
+        ], array_slice($links, $products, 5));
+
+        $names = collect(
+            $this->withToken($this->apiLogin($this->admin))
+                ->getJson('/api/v1/me/menus')
+                ->assertOk()
+                ->json('data'),
+        )->pluck('name');
+
+        $this->assertTrue($names->contains('Gateways'));
+        $this->assertTrue($names->contains('Pedidos'));
+        $this->assertTrue($names->contains('Assinaturas'));
     }
 
     public function test_guest_cannot_list_my_menus(): void
