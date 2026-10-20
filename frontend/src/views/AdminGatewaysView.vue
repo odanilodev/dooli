@@ -50,6 +50,39 @@
         <span class="form-hint">Use esta URL para notificações de assinatura/preapproval.</span>
       </div>
 
+      <details v-if="form.code === 'mercadopago'" class="gateway-help">
+        <summary>Como encontrar as credenciais do Mercado Pago</summary>
+        <div class="gateway-help-body">
+          <div>
+            <strong>Access Token</strong>
+            <ol>
+              <li>Acesse <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" rel="noopener noreferrer">Suas integrações</a> e selecione a aplicação da loja.</li>
+              <li>No menu lateral, abra <strong>Credenciais de teste</strong> ou <strong>Credenciais de produção</strong>.</li>
+              <li>Copie o <strong>Access Token</strong>. Use o de teste durante a validação e o de produção somente após publicar a loja.</li>
+            </ol>
+          </div>
+
+          <div>
+            <strong>Segredo do webhook</strong>
+            <ol>
+              <li>Na mesma aplicação, abra <strong>Webhooks → Configurar notificações</strong>.</li>
+              <li>Cadastre as URLs de pagamentos e assinaturas exibidas acima.</li>
+              <li>Salve e revele a <strong>assinatura secreta</strong> gerada.</li>
+            </ol>
+          </div>
+
+          <p class="gateway-help-note">
+            O Access Token é uma credencial secreta. Não compartilhe esse valor fora do painel de integrações.
+          </p>
+
+          <div class="gateway-help-links">
+            <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" rel="noopener noreferrer">Abrir painel</a>
+            <a href="https://www.mercadopago.com.br/developers/pt/docs/your-integrations/credentials" target="_blank" rel="noopener noreferrer">Documentação de credenciais</a>
+            <a href="https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks" target="_blank" rel="noopener noreferrer">Documentação de webhooks</a>
+          </div>
+        </div>
+      </details>
+
       <button class="btn btn-primary" :disabled="saving">{{ saving ? 'Salvando...' : 'Salvar gateway' }}</button>
     </form>
 
@@ -194,3 +227,28 @@ async function save() {
   }
 }
 </script>
+
+<style scoped>
+.gateway-help{
+  margin:4px 0 18px;padding:0 14px;
+  border:1px solid var(--border);border-radius:12px;
+  background:var(--bg-card-alt);
+}
+.gateway-help summary{
+  padding:12px 0;cursor:pointer;
+  color:var(--text-primary);font-size:13px;font-weight:800;
+}
+.gateway-help-body{
+  display:flex;flex-direction:column;gap:12px;
+  padding:0 0 14px;color:var(--text-secondary);font-size:12.5px;line-height:1.5;
+}
+.gateway-help-body strong{color:var(--text-primary);}
+.gateway-help-body ol{
+  display:flex;flex-direction:column;gap:4px;
+  margin:6px 0 0;padding-left:18px;
+}
+.gateway-help-note{color:var(--text-muted);font-size:11.5px;}
+.gateway-help-links{display:flex;flex-wrap:wrap;gap:8px 14px;font-weight:700;}
+.gateway-help-links a{color:var(--accent);}
+.gateway-help-links a:hover{text-decoration:underline;}
+</style>
