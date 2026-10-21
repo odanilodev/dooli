@@ -20,6 +20,14 @@ class CommentResource extends JsonResource
             'image' => $this->image,
             'is_admin' => (bool) $this->user?->isAdmin(),
             'user' => new UserSummaryResource($this->whenLoaded('user')),
+            'course' => $this->whenLoaded('course', fn () => [
+                'id' => $this->course->id,
+                'name' => $this->course->name,
+            ]),
+            'module' => $this->whenLoaded('module', fn () => [
+                'id' => $this->module->id,
+                'name' => $this->module->name,
+            ]),
             'lesson' => $this->whenLoaded('lesson', fn () => [
                 'id' => $this->lesson->id,
                 'name' => $this->lesson->name,
@@ -27,6 +35,8 @@ class CommentResource extends JsonResource
                 'student_replies_enabled' => (bool) $this->lesson->student_replies_enabled,
             ]),
             'replies' => self::collection($this->whenLoaded('replies')),
+            'replies_count' => $this->whenCounted('replies'),
+            'awaiting_reply' => $this->whenCounted('admin_replies', fn ($count) => (int) $count === 0),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

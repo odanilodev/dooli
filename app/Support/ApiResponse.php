@@ -50,21 +50,24 @@ class ApiResponse
         return response()->json($payload, $status);
     }
 
-    public static function paginated(LengthAwarePaginator $paginator, string|JsonResource $resource): JsonResponse
-    {
+    public static function paginated(
+        LengthAwarePaginator $paginator,
+        string|JsonResource $resource,
+        array $meta = [],
+    ): JsonResponse {
         $collection = $resource::collection($paginator->items());
 
         return response()->json([
             'success' => true,
             'data' => $collection,
-            'meta' => [
+            'meta' => array_merge([
                 'current_page' => $paginator->currentPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
                 'last_page' => $paginator->lastPage(),
                 'from' => $paginator->firstItem(),
                 'to' => $paginator->lastItem(),
-            ],
+            ], $meta),
         ]);
     }
 

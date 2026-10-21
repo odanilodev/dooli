@@ -310,7 +310,7 @@ Lista notificações do aluno. `POST /api/v1/me/notifications/{notification}/rea
 - `DELETE /api/v1/comments/{comment}` — exclui um comentário ou resposta **do próprio aluno**. Ao excluir um comentário principal, todas as respostas da thread são removidas em cascata (inclusive respostas de outros autores). Não permite excluir conteúdo de terceiros (403)
 - `GET /api/v1/ratings?lesson_id=10` — apenas de cursos em que o aluno está matriculado
 - `POST /api/v1/ratings` — `{ rating (0-10), lesson_id, module_id, course_id, team_id, image? }`; exige matrícula ativa; **uma avaliação por aluno/aula** (`409 duplicate_resource` se repetir)
-> As listagens retornam apenas `id`, `name`, `username` e `image` do autor (sem e-mail/telefone/endereço). Respostas trazem `parent_id` e `is_admin` (true quando o autor é administrador).
+> As listagens retornam apenas `id`, `name`, `username`, `image` e `image_url` do autor (sem e-mail/telefone/endereço). Respostas trazem `parent_id` e `is_admin` (true quando o autor é administrador).
 
 ---
 
@@ -385,9 +385,12 @@ CRUD. Campos: `course_id`, `title`, `slug`, `description`, `tags[]`, `price`, `s
 > Comando `php artisan certificates:backfill-modules [--dry-run]` preenche `certificate_users.modules` nos certificados antigos usando as aulas concluídas da conclusão/timeline; módulos criados depois da conclusão não entram.
 
 ### Moderação
-- `GET /comments` — moderação; `roots_only=1` retorna comentários principais com `replies[]`
+- `GET /comments` — moderação; `roots_only=1` retorna comentários principais com `replies[]`, `course`, `module`, `lesson`, `replies_count` e `awaiting_reply`
+  - filtros: `course_id`, `lesson_id`, `user_id` e `status` (`awaiting` = sem resposta de administrador; `answered` = com resposta de administrador)
+  - quando `roots_only=1` ou `status` é informado, `meta.stats` traz `{ total, awaiting, answered }` no escopo de curso/aula
 - `POST /comments` — `{ parent_id, content }`; resposta do administrador a um comentário principal (permitida mesmo com `student_replies_enabled = false`)
 - `DELETE /comments/{comment}` — exclui o comentário (respostas são removidas em cascata)
+- `DELETE /comments/bulk` — `{ "ids": [1, 2] }`; exclui até 100 comentários/respostas da empresa. Comentários principais removem suas respostas em cascata. Retorna `{ "deleted": 2 }`
 - `GET /ratings`, `DELETE /ratings/{rating}` — moderação de avaliações
 
 ### Auditoria (`datalogs`)

@@ -18,6 +18,7 @@ class UserSummaryResource extends JsonResource
             'name' => $this->name,
             'username' => $this->username,
             'image' => $this->image,
+            'image_url' => $this->imageUrl(),
         ];
     }
 }

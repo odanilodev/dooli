@@ -275,6 +275,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::get('certificate-users', [AdminCertificateController::class, 'issued']);
         Route::post('certificate-users/{certificateUser}/revoke', [AdminCertificateController::class, 'revoke']);
 
+        Route::delete('comments/bulk', [AdminCommentController::class, 'destroyMany']);
         Route::apiResource('comments', AdminCommentController::class)->only(['index', 'store', 'destroy']);
         Route::apiResource('ratings', AdminRatingController::class)->only(['index', 'destroy']);
         Route::get('datalogs', [AdminDatalogController::class, 'index']);
