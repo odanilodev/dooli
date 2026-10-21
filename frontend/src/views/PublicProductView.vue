@@ -6,8 +6,8 @@
       <span class="current">{{ product?.title || 'Produto' }}</span>
     </nav>
 
-    <div v-if="loading" class="product-view" aria-label="Carregando produto">
-      <div class="product-media-card product-skeleton-media"></div>
+    <div v-if="loading" class="product-top" aria-label="Carregando produto">
+      <div class="product-media product-skeleton-media"></div>
       <div class="product-skeleton-info">
         <span class="product-skeleton-line"></span>
         <span class="product-skeleton-line product-skeleton-title"></span>
@@ -23,103 +23,172 @@
       <router-link :to="{ name: 'public-loja', params: { companySlug } }" class="btn btn-outline btn-sm">Voltar para a loja</router-link>
     </div>
 
-    <section v-else-if="product" class="product-view">
-      <div class="product-media-card" :style="{ background: grad }">
-        <img
-          v-if="product.image_url || product.image"
-          :src="product.image_url || product.image"
-          :alt="product.title"
-        />
-        <svg v-else class="icon" width="58" height="58" viewBox="0 0 24 24"><path :d="icon" /></svg>
-        <span class="product-media-glow"></span>
-        <span v-if="onSale" class="product-media-sale">Oferta especial</span>
-        <span class="product-media-access">{{ product.access_label }}</span>
-      </div>
-
-      <div class="product-info">
-        <div class="product-heading">
-          <p class="public-eyebrow">{{ storefront.company?.name }}</p>
-          <div v-if="tags.length" class="product-tags">
-            <span v-for="tag in tags" :key="tag">{{ tag }}</span>
-          </div>
-          <h1>{{ product.title }}</h1>
-          <p v-if="product.description" class="product-description">{{ product.description }}</p>
+    <template v-else-if="product">
+      <section class="product-top">
+        <div class="product-media" :style="{ background: grad }">
+          <img
+            v-if="product.image_url || product.image"
+            :src="product.image_url || product.image"
+            :alt="product.title"
+          />
+          <svg v-else class="icon" width="58" height="58" viewBox="0 0 24 24"><path :d="icon" /></svg>
+          <span class="product-media-shade" aria-hidden="true"></span>
+          <span v-if="onSale" class="product-media-sale">Oferta especial</span>
         </div>
 
-        <div class="product-buy-box">
-          <div class="product-buy-price">
-            <span class="product-buy-label">Investimento</span>
-            <span class="product-price product-price-lg">
-              <span v-if="onSale" class="price-old">{{ formatCurrency(product.price) }}</span>
-              <span class="price-now">{{ formatCurrency(currentPrice) }}<small v-if="product.is_subscription">/mês</small></span>
-            </span>
+        <div class="product-info">
+          <div class="product-heading">
+            <p class="public-eyebrow">{{ storefront.company?.name }}</p>
+            <h1>{{ product.title }}</h1>
+            <p v-if="product.description" class="product-description">{{ product.description }}</p>
           </div>
 
-          <button type="button" class="btn btn-primary btn-block" :disabled="!storefront.gateways.length" @click="buy">
-            {{ product.is_subscription ? 'Assinar agora' : 'Comprar agora' }}
-            <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </button>
-
-          <p v-if="!storefront.gateways.length" class="public-warning">
-            Pagamento indisponível no momento. A empresa ainda não configurou um gateway.
-          </p>
-
-          <div class="product-assurance">
+          <div class="product-meta">
+            <span>
+              <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l2.5 2.5L16 9"/></svg>
+              {{ product.access_label }}
+            </span>
             <span>
               <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
               Pagamento seguro
-            </span>
-            <span>
-              <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l2.5 2.5L16 9"/></svg>
-              {{ accessNote }}
             </span>
             <span v-if="product.is_subscription">
               <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><path d="M20 7h-6a4 4 0 0 0 0 8h2a4 4 0 0 1 0 8H9"/><path d="M16 3l4 4-4 4M8 21l-4-4 4-4"/></svg>
               Cancele quando quiser
             </span>
           </div>
+
+          <div class="product-buy">
+            <div class="product-price-row">
+              <span class="product-buy-label">Investimento</span>
+              <span class="product-price product-price-lg">
+                <span v-if="onSale" class="price-old">{{ formatCurrency(product.price) }}</span>
+                <span class="price-now">{{ formatCurrency(currentPrice) }}<small v-if="product.is_subscription">/mês</small></span>
+              </span>
+            </div>
+
+            <button type="button" class="btn btn-primary btn-block product-buy-btn" :disabled="!storefront.gateways.length" @click="buy">
+              {{ product.is_subscription ? 'Assinar agora' : 'Comprar agora' }}
+              <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+
+            <p v-if="!storefront.gateways.length" class="public-warning">
+              Pagamento indisponível no momento. A empresa ainda não configurou um gateway.
+            </p>
+
+            <p class="product-payment-note">Pague com PIX ou cartão em ambiente protegido.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="product-detail">
+        <div class="product-tabs" role="tablist" aria-label="Detalhes do produto">
+          <button
+            type="button"
+            class="product-tab"
+            :class="{ active: activeTab === 'about' }"
+            role="tab"
+            :aria-selected="activeTab === 'about'"
+            @click="activeTab = 'about'"
+          >
+            Sobre
+          </button>
+          <button
+            v-if="includedCourses.length"
+            type="button"
+            class="product-tab"
+            :class="{ active: activeTab === 'content' }"
+            role="tab"
+            :aria-selected="activeTab === 'content'"
+            @click="activeTab = 'content'"
+          >
+            Conteúdo
+          </button>
+          <button
+            type="button"
+            class="product-tab"
+            :class="{ active: activeTab === 'how' }"
+            role="tab"
+            :aria-selected="activeTab === 'how'"
+            @click="activeTab = 'how'"
+          >
+            Como funciona
+          </button>
         </div>
 
-        <section v-if="includedCourses.length" class="product-included">
-          <div class="product-included-head">
-            <p class="public-eyebrow">Conteúdo do produto</p>
-            <h2>O que está incluído</h2>
-          </div>
-          <ul>
-            <li v-for="course in includedCourses" :key="course.id">
-              <span class="product-included-check">
-                <svg class="icon" width="13" height="13" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
-              </span>
-              {{ course.name }}
-            </li>
-          </ul>
-        </section>
+        <div class="product-detail-grid">
+          <div class="product-tab-panel">
+            <template v-if="activeTab === 'about'">
+              <h2>Sobre o curso</h2>
+              <p class="product-about">
+                {{ product.description || 'Conteúdo digital com acesso liberado após a confirmação do pagamento.' }}
+              </p>
+            </template>
 
-        <section class="product-how">
-          <div class="product-included-head">
-            <p class="public-eyebrow">Simples e rápido</p>
-            <h2>Como funciona</h2>
+            <template v-else-if="activeTab === 'content'">
+              <h2>Conteúdo do produto</h2>
+              <ul class="product-included-list">
+                <li v-for="course in includedCourses" :key="course.id">
+                  <span class="product-included-check">
+                    <svg class="icon" width="13" height="13" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+                  </span>
+                  {{ course.name }}
+                </li>
+              </ul>
+            </template>
+
+            <template v-else>
+              <h2>Como funciona</h2>
+              <div class="product-how-grid">
+                <div class="product-how-step">
+                  <span>01</span>
+                  <div>
+                    <strong>Escolha</strong>
+                    <p>Selecione este produto e confira os detalhes do acesso.</p>
+                  </div>
+                </div>
+                <div class="product-how-step">
+                  <span>02</span>
+                  <div>
+                    <strong>Pague</strong>
+                    <p>Finalize com PIX ou cartão em um ambiente protegido.</p>
+                  </div>
+                </div>
+                <div class="product-how-step">
+                  <span>03</span>
+                  <div>
+                    <strong>Acesse</strong>
+                    <p>O conteúdo é liberado após a confirmação do pagamento.</p>
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
-          <div class="product-how-grid">
-            <div class="product-how-step">
-              <span>1</span>
-              <strong>Escolha</strong>
-              <p>Selecione este produto e confira os detalhes do acesso.</p>
-            </div>
-            <div class="product-how-step">
-              <span>2</span>
-              <strong>Pague</strong>
-              <p>Finalize com PIX ou cartão em um ambiente protegido.</p>
-            </div>
-            <div class="product-how-step">
-              <span>3</span>
-              <strong>Acesse</strong>
-              <p>O conteúdo é liberado após a confirmação do pagamento.</p>
-            </div>
-          </div>
-        </section>
-      </div>
-    </section>
+
+          <aside class="product-include-card">
+            <h2>Este curso inclui</h2>
+            <ul>
+              <li v-for="course in includedCourses" :key="course.id">
+                <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
+                {{ course.name }}
+              </li>
+              <li v-if="!includedCourses.length">
+                <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+                {{ product.access_label }}
+              </li>
+              <li>
+                <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l2.5 2.5L16 9"/></svg>
+                Acesso online
+              </li>
+              <li>
+                <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+                Compra segura
+              </li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+    </template>
   </main>
 </template>
 
@@ -139,6 +208,7 @@ const storefront = useStorefrontStore();
 const product = ref(null);
 const loading = ref(false);
 const error = ref(null);
+const activeTab = ref('about');
 
 const companySlug = computed(() => String(route.params.companySlug || ''));
 const productSlug = computed(() => String(route.params.productSlug || ''));
@@ -147,6 +217,7 @@ function load() {
   loading.value = true;
   error.value = null;
   product.value = null;
+  activeTab.value = 'about';
 
   storefront
     .fetchProduct(companySlug.value, productSlug.value)
@@ -169,15 +240,7 @@ const grad = computed(() => palette.value.grad);
 
 const onSale = computed(() => Number(product.value?.sale) > 0);
 const currentPrice = computed(() => (onSale.value ? product.value.sale : product.value?.price));
-const tags = computed(() => product.value?.tags ?? []);
 const includedCourses = computed(() => product.value?.included_courses ?? []);
-const accessNote = computed(() => {
-  if (product.value?.is_subscription) {
-    return 'Acesso enquanto a assinatura estiver ativa';
-  }
-
-  return product.value?.access_label || 'Acesso após confirmação';
-});
 
 async function buy() {
   const checkout = {
@@ -200,97 +263,115 @@ async function buy() {
 </script>
 
 <style scoped>
-.product-view{
-  display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr);
-  gap:clamp(24px,4vw,48px);align-items:start;
+.product-top{
+  display:grid;grid-template-columns:minmax(0,1.35fr) minmax(340px,.65fr);
+  gap:clamp(32px,4vw,54px);align-items:start;
 }
-.product-media-card{
-  position:sticky;top:102px;display:flex;align-items:center;justify-content:center;overflow:hidden;
-  min-height:320px;aspect-ratio:16/9;border:1px solid var(--border);border-radius:22px;
-  box-shadow:var(--shadow-sm);
+.product-media{
+  position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  min-width:0;aspect-ratio:16/9;border:1px solid var(--border);border-radius:12px;background:#101b2a;
 }
-.product-media-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-.product-media-card > .icon{position:relative;z-index:1;color:#fff;opacity:.65;}
-.product-media-glow{
-  position:absolute;width:70%;aspect-ratio:1;border-radius:50%;
-  background:radial-gradient(circle,rgba(255,255,255,.13),transparent 68%);
+.product-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.product-media-shade{
+  position:absolute;inset:0;z-index:1;
+  background:linear-gradient(180deg,rgba(3,9,16,0) 58%,rgba(3,9,16,.42) 100%);
 }
-.product-media-sale,.product-media-access{
-  position:absolute;z-index:2;padding:6px 10px;border-radius:999px;
-  font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+.product-media > .icon{position:relative;z-index:2;color:#fff;opacity:.65;}
+.product-media-sale{
+  position:absolute;z-index:3;top:12px;left:12px;padding:5px 9px;border-radius:5px;
+  background:var(--accent-grad);color:var(--accent-ink);
+  font-size:9.5px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;
 }
-.product-media-sale{top:16px;left:16px;background:var(--accent-grad);color:var(--accent-ink);}
-.product-media-access{
-  left:16px;bottom:16px;background:rgba(5,14,23,.72);border:1px solid rgba(255,255,255,.18);
-  color:#fff;backdrop-filter:blur(6px);
+.product-info{display:flex;flex-direction:column;gap:20px;min-width:0;padding-top:4px;}
+.product-heading{display:flex;flex-direction:column;gap:10px;}
+.product-heading h1{
+  font-size:clamp(28px,2.7vw,38px);font-weight:800;line-height:1.12;letter-spacing:-.035em;
 }
-.product-info{display:flex;flex-direction:column;gap:22px;min-width:0;}
-.product-heading{display:flex;flex-direction:column;gap:12px;}
-.product-heading h1{font-size:clamp(28px,3.8vw,42px);font-weight:800;line-height:1.1;letter-spacing:-.025em;}
-.product-tags{display:flex;flex-wrap:wrap;gap:6px;}
-.product-tags span{
-  padding:4px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);
-  font-size:10.5px;font-weight:800;
+.product-description{
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;
+  color:var(--text-secondary);font-size:13.5px;line-height:1.65;white-space:pre-line;
 }
-.product-description{color:var(--text-secondary);font-size:14px;line-height:1.7;white-space:pre-line;}
-.product-buy-box{
-  display:flex;flex-direction:column;gap:14px;padding:20px;
-  border:1px solid var(--border);border-radius:20px;background:var(--bg-card);
-  box-shadow:var(--shadow-sm);
+.product-meta{display:flex;flex-wrap:wrap;gap:8px 16px;}
+.product-meta span{display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:10.5px;font-weight:600;}
+.product-meta svg{color:var(--accent);flex-shrink:0;}
+.product-buy{display:flex;flex-direction:column;gap:13px;padding-top:18px;border-top:1px solid var(--border);}
+.product-price-row{display:flex;flex-direction:column;gap:3px;}
+.product-buy-label{color:var(--text-muted);font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;}
+.product-buy .product-price{margin:0;}
+.product-buy .price-now{font-size:clamp(30px,3vw,38px);line-height:1.1;letter-spacing:-.035em;}
+.product-buy .price-now small{font-size:11px;font-weight:700;color:var(--text-muted);}
+.product-buy .price-old{font-size:12px;}
+.product-buy-btn{width:100%;padding:13px 18px;border-radius:8px;font-size:13px;}
+.product-payment-note{color:var(--text-muted);font-size:10.5px;line-height:1.45;text-align:center;}
+.product-detail{display:flex;flex-direction:column;gap:26px;padding-top:clamp(32px,4vw,48px);border-top:1px solid var(--border);}
+.product-tabs{display:flex;gap:26px;overflow-x:auto;border-bottom:1px solid var(--border);scrollbar-width:none;}
+.product-tabs::-webkit-scrollbar{display:none;}
+.product-tab{
+  flex-shrink:0;padding:0 0 11px;border:0;border-bottom:2px solid transparent;background:none;
+  color:var(--text-muted);font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;
+  transition:color .15s ease,border-color .15s ease;
 }
-.product-buy-price{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-.product-buy-label{color:var(--text-muted);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;}
-.product-buy-price .product-price{margin:0;}
-.product-buy-price .price-now{font-size:32px;line-height:1;}
-.product-buy-price .price-now small{font-size:12px;font-weight:700;color:var(--text-muted);}
-.product-buy-box .btn{width:100%;padding:14px 20px;}
-.product-assurance{display:flex;flex-direction:column;gap:8px;padding-top:3px;}
-.product-assurance span{display:flex;align-items:center;gap:8px;color:var(--text-secondary);font-size:11.5px;line-height:1.4;}
-.product-assurance svg{flex-shrink:0;color:var(--accent);}
-.product-included{display:flex;flex-direction:column;gap:13px;padding-top:4px;}
-.product-included-head h2{margin-top:4px;font-size:19px;font-weight:800;}
-.product-included ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px;margin:0;padding:0;list-style:none;}
-.product-included li{
-  display:flex;align-items:flex-start;gap:9px;padding:11px 12px;
-  border:1px solid var(--border);border-radius:12px;background:var(--bg-card);
-  color:var(--text-secondary);font-size:12.5px;line-height:1.45;
+.product-tab:hover{color:var(--text-primary);}
+.product-tab.active{border-bottom-color:var(--accent);color:var(--text-primary);}
+.product-detail-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr);gap:clamp(30px,4vw,54px);align-items:start;}
+.product-tab-panel{min-width:0;}
+.product-tab-panel h2{margin:0 0 13px;font-size:21px;font-weight:800;letter-spacing:-.02em;}
+.product-about{color:var(--text-secondary);font-size:13.5px;line-height:1.75;white-space:pre-line;}
+.product-included-list{display:flex;flex-direction:column;margin:0;padding:0;}
+.product-included-list li{
+  display:flex;align-items:flex-start;gap:10px;padding:11px 0;
+  border-bottom:1px solid var(--border);color:var(--text-secondary);font-size:13px;line-height:1.5;
 }
+.product-included-list li:first-child{padding-top:0;}
 .product-included-check{
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
+  width:21px;height:21px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
 }
-.product-how{display:flex;flex-direction:column;gap:12px;padding-top:8px;}
-.product-how-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px;}
-.product-how-step{
-  display:flex;flex-direction:column;gap:4px;padding:12px;
-  border:1px solid var(--border);border-radius:12px;background:var(--bg-card-alt);
+.product-how-grid{display:flex;flex-direction:column;gap:0;}
+.product-how-step{display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border);}
+.product-how-step:first-child{padding-top:0;}
+.product-how-step:last-child{border-bottom:0;}
+.product-how-step > span{color:var(--accent);font-size:22px;font-weight:800;line-height:1;letter-spacing:-.04em;flex-shrink:0;}
+.product-how-step > div{display:flex;flex-direction:column;gap:3px;}
+.product-how-step strong{font-size:12.5px;}
+.product-how-step p{margin:0;color:var(--text-muted);font-size:11.5px;line-height:1.5;}
+.product-include-card{
+  padding:20px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card);
 }
-.product-how-step > span{
-  display:flex;align-items:center;justify-content:center;width:22px;height:22px;margin-bottom:2px;
-  border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:10.5px;font-weight:900;
+.product-include-card h2{margin:0 0 12px;font-size:14px;font-weight:800;}
+.product-include-card ul{display:flex;flex-direction:column;gap:0;margin:0;padding:0;}
+.product-include-card li{
+  display:flex;align-items:flex-start;gap:9px;padding:9px 0;
+  border-bottom:1px solid var(--border);color:var(--text-secondary);font-size:11.5px;line-height:1.45;
 }
-.product-how-step strong{font-size:12px;}
-.product-how-step p{margin:0;color:var(--text-muted);font-size:10.5px;line-height:1.45;}
-.product-skeleton-media{background:var(--bg-card-alt);border-style:solid;animation:product-pulse 1.4s ease-in-out infinite;}
-.product-skeleton-info{display:flex;flex-direction:column;gap:12px;padding-top:10px;}
+.product-include-card li:last-child{border-bottom:0;padding-bottom:0;}
+.product-include-card li:first-child{padding-top:0;}
+.product-include-card svg{flex-shrink:0;color:var(--accent);margin-top:1px;}
+.product-skeleton-media{background:var(--bg-card-alt);animation:product-pulse 1.4s ease-in-out infinite;}
+.product-skeleton-info{display:flex;flex-direction:column;gap:13px;padding-top:10px;}
 .product-skeleton-line{
   display:block;height:16px;border-radius:8px;background:var(--bg-card-alt);
   animation:product-pulse 1.4s ease-in-out infinite;
 }
-.product-skeleton-title{height:42px;width:78%;}
-.product-skeleton-line-sm{width:52%;}
+.product-skeleton-title{height:44px;width:82%;}
+.product-skeleton-line-sm{width:54%;}
 @keyframes product-pulse{0%,100%{opacity:.55;}50%{opacity:1;}}
-@media(max-width:900px){
-  .product-view{grid-template-columns:minmax(0,1fr);}
-  .product-media-card{
-    position:relative;top:0;width:100%;min-width:0;min-height:0;max-height:none;
-  }
+@media(max-width:1000px){
+  .product-top{grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:32px;}
+  .product-detail-grid{grid-template-columns:minmax(0,1fr) minmax(260px,.7fr);gap:30px;}
 }
-@media(max-width:560px){
-  .product-media-card{aspect-ratio:16/9;border-radius:18px;}
-  .product-buy-box{padding:16px;border-radius:16px;}
-  .product-buy-price .price-now{font-size:28px;}
-  .product-included ul{grid-template-columns:1fr;}
+@media(max-width:820px){
+  .product-top{grid-template-columns:1fr;}
+  .product-info{padding-top:0;}
+  .product-description{-webkit-line-clamp:6;}
+  .product-detail-grid{grid-template-columns:1fr;}
+}
+@media(max-width:600px){
+  .product-media{border-radius:10px;}
+  .product-heading h1{font-size:clamp(28px,8vw,36px);}
+  .product-buy .price-now{font-size:30px;}
+  .product-tabs{gap:20px;}
+  .product-include-card{padding:17px;}
 }
 @media(prefers-reduced-motion:reduce){
   .product-skeleton-media,.product-skeleton-line{animation:none;}

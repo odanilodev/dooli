@@ -24,21 +24,48 @@
       <button class="btn btn-primary" type="button" @click="switchCompanyAccount">Trocar de conta</button>
     </div>
 
-    <section v-else-if="product && !pix" class="checkout-shell">
+    <header v-if="product && !pix" class="checkout-page-head">
+      <p class="public-eyebrow">Checkout</p>
+      <h1>Finalizar compra</h1>
+    </header>
+
+    <section v-if="product && !pix" class="checkout-shell">
       <div class="checkout-main">
         <div class="checkout-steps" aria-label="Etapas do checkout">
-          <span class="checkout-step done">1. Produto</span>
+          <span class="checkout-step done"><b>1</b> Produto</span>
           <i></i>
-          <span class="checkout-step active">2. Pagamento</span>
+          <span class="checkout-step active"><b>2</b> Pagamento</span>
           <i></i>
-          <span class="checkout-step">3. Confirmação</span>
+          <span class="checkout-step"><b>3</b> Confirmação</span>
+        </div>
+
+        <div class="checkout-card checkout-account-card">
+          <div class="checkout-card-head">
+            <div>
+              <h2>Seus dados</h2>
+              <p>Conta usada nesta compra.</p>
+            </div>
+            <span class="checkout-account-badge">Logado</span>
+          </div>
+
+          <div class="checkout-account-grid">
+            <div>
+              <span>Nome</span>
+              <strong>{{ auth.user?.name || 'Conta da loja' }}</strong>
+            </div>
+            <div>
+              <span>E-mail</span>
+              <strong>{{ auth.user?.email || '—' }}</strong>
+            </div>
+          </div>
         </div>
 
         <div class="checkout-card">
-          <div class="checkout-heading">
-            <p class="public-eyebrow">Pagamento</p>
-            <h1>Finalize sua compra</h1>
-            <p>Escolha a forma de pagamento para liberar seu acesso.</p>
+          <div class="checkout-card-head">
+            <div>
+              <h2>Pagamento</h2>
+              <p>Escolha a forma de pagamento para liberar seu acesso.</p>
+            </div>
           </div>
 
           <div class="checkout-product">
@@ -85,15 +112,7 @@
 
           <p v-if="!gateway" class="public-warning">Pagamento indisponível: a empresa ainda não configurou um gateway.</p>
 
-          <button class="btn btn-primary btn-block checkout-submit" type="button" :disabled="submitting || !gateway" @click="submit">
-            {{ submitting ? 'Processando...' : product.is_subscription ? 'Assinar agora' : 'Finalizar compra' }}
-            <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </button>
 
-          <p class="checkout-secure">
-            <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-            Seus dados são processados pelo gateway de pagamento da loja.
-          </p>
         </div>
       </div>
 
@@ -114,6 +133,21 @@
           </div>
         </div>
 
+        <ul class="summary-includes">
+          <li>
+            <svg class="icon" width="14" height="14" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+            {{ product.access_label }}
+          </li>
+          <li>
+            <svg class="icon" width="14" height="14" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+            Acesso online
+          </li>
+          <li>
+            <svg class="icon" width="14" height="14" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+            Compra segura
+          </li>
+        </ul>
+
         <div class="summary-line">
           <span>Subtotal</span>
           <strong>{{ formatCurrency(currentPrice) }}</strong>
@@ -128,6 +162,11 @@
         <p v-else-if="product.access_duration_days" class="summary-note">Acesso por {{ product.access_duration_days }} dias após a confirmação do pagamento.</p>
         <p v-else class="summary-note">Acesso permanente após a confirmação do pagamento.</p>
 
+        <button class="btn btn-primary btn-block checkout-submit" type="button" :disabled="submitting || !gateway" @click="submit">
+          {{ submitting ? 'Processando...' : product.is_subscription ? 'Assinar agora' : 'Finalizar compra' }}
+          <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+
         <div class="summary-security">
           <svg class="icon" width="17" height="17" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
           <span>Ambiente de pagamento protegido.</span>
@@ -139,11 +178,11 @@
       <div class="pix-card">
         <div class="pix-copy">
           <div class="checkout-steps" aria-label="Etapas do checkout">
-            <span class="checkout-step done">1. Produto</span>
+            <span class="checkout-step done"><b>1</b> Produto</span>
             <i></i>
-            <span class="checkout-step done">2. Pagamento</span>
+            <span class="checkout-step done"><b>2</b> Pagamento</span>
             <i></i>
-            <span class="checkout-step active">3. Confirmação</span>
+            <span class="checkout-step active"><b>3</b> Confirmação</span>
           </div>
 
           <p class="public-eyebrow">Pagamento via PIX</p>
@@ -351,131 +390,161 @@ onBeforeUnmount(stopPolling);
 </script>
 
 <style scoped>
+.checkout-page-head{display:flex;flex-direction:column;gap:5px;}
+.checkout-page-head h1{
+  font-size:clamp(34px,3.6vw,48px);font-weight:800;line-height:1.04;letter-spacing:-.04em;
+}
 .checkout-shell{
-  display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);
-  gap:24px;align-items:start;
+  display:grid;grid-template-columns:minmax(0,1.5fr) minmax(340px,.5fr);
+  gap:clamp(24px,3vw,40px);align-items:start;
 }
-.checkout-main{display:flex;flex-direction:column;gap:16px;min-width:0;}
-.checkout-steps{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.checkout-main{display:flex;flex-direction:column;gap:20px;min-width:0;}
+.checkout-steps{display:flex;align-items:center;gap:0;flex-wrap:wrap;}
 .checkout-step{
-  padding:6px 10px;border:1px solid var(--border);border-radius:999px;
-  color:var(--text-muted);font-size:10.5px;font-weight:800;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:7px;border:0;background:none;
+  color:var(--text-muted);font-size:11.5px;font-weight:700;white-space:nowrap;
 }
-.checkout-step.done{border-color:color-mix(in srgb,var(--accent) 34%,var(--border));color:var(--accent);background:var(--accent-soft);}
-.checkout-step.active{border-color:transparent;background:var(--accent-grad);color:var(--accent-ink);}
-.checkout-steps i{width:18px;height:1px;background:var(--border);}
+.checkout-step b{
+  display:flex;align-items:center;justify-content:center;width:20px;height:20px;
+  border-radius:50%;background:var(--bg-card-alt);color:var(--text-muted);
+  font-size:9.5px;font-weight:900;
+}
+.checkout-step.done{color:var(--text-secondary);}
+.checkout-step.done b{background:var(--accent-soft);color:var(--accent);}
+.checkout-step.active{color:var(--text-primary);}
+.checkout-step.active b{background:var(--accent);color:var(--accent-ink);}
+.checkout-steps i{flex:1;min-width:16px;max-width:70px;height:1px;margin:0 14px;background:var(--border);}
 .checkout-card,.checkout-summary{
-  padding:24px;border:1px solid var(--border);border-radius:20px;background:var(--bg-card);box-shadow:var(--shadow-sm);
+  padding:clamp(24px,3vw,38px);border:1px solid var(--border);border-radius:14px;background:var(--bg-card);
 }
-.checkout-card{display:flex;flex-direction:column;gap:20px;}
-.checkout-heading{display:flex;flex-direction:column;gap:6px;}
-.checkout-heading h1{font-size:clamp(24px,3vw,32px);font-weight:800;letter-spacing:-.02em;}
-.checkout-heading > p:last-child{color:var(--text-secondary);font-size:13px;line-height:1.5;}
+.checkout-card{display:flex;flex-direction:column;gap:22px;}
+.checkout-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;}
+.checkout-card-head h2{font-size:18px;font-weight:800;letter-spacing:-.02em;}
+.checkout-card-head p{margin-top:4px;color:var(--text-secondary);font-size:12px;line-height:1.5;}
+.checkout-account-badge{
+  padding:4px 9px;border-radius:5px;background:var(--accent-soft);color:var(--accent);
+  font-size:9.5px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;
+}
+.checkout-account-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;
+  padding:16px;border-radius:10px;background:var(--bg-card-alt);
+}
+.checkout-account-grid > div{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.checkout-account-grid span{color:var(--text-muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+.checkout-account-grid strong{overflow:hidden;text-overflow:ellipsis;font-size:13px;font-weight:700;}
 .checkout-product{
-  display:grid;grid-template-columns:68px minmax(0,1fr) auto;gap:13px;align-items:center;
-  padding:13px;border:1px solid var(--border);border-radius:14px;background:var(--bg-card-alt);
+  display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:16px;align-items:center;
+  padding:16px;border-radius:18px;background:var(--bg-card-alt);
 }
 .checkout-product-media,.summary-product-media{
   position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;
-  border-radius:10px;color:#fff;
+  border-radius:12px;color:#fff;
 }
-.checkout-product-media{width:68px;height:58px;}
+.checkout-product-media{width:86px;height:68px;}
 .checkout-product-media img,.summary-product-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-.checkout-product-copy{display:flex;flex-direction:column;gap:3px;min-width:0;}
-.checkout-product-copy strong{font-size:13px;line-height:1.35;}
-.checkout-product-copy span{color:var(--text-muted);font-size:11px;}
-.checkout-product-price{font-size:15px;font-weight:800;color:var(--accent);white-space:nowrap;}
-.checkout-product-price small{font-size:10px;color:var(--text-muted);}
-.payment-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.checkout-product-copy{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.checkout-product-copy strong{font-size:14.5px;line-height:1.35;}
+.checkout-product-copy span{color:var(--text-muted);font-size:12px;}
+.checkout-product-price{font-size:18px;font-weight:800;color:var(--accent);white-space:nowrap;letter-spacing:-.02em;}
+.checkout-product-price small{font-size:10.5px;color:var(--text-muted);}
+.payment-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
 .payment-option{
-  display:flex;align-items:flex-start;gap:10px;padding:13px;
-  border:1px solid var(--border);border-radius:13px;background:var(--bg-card-alt);cursor:pointer;
-  transition:border-color .15s ease,box-shadow .15s ease;
+  display:flex;align-items:flex-start;gap:12px;padding:17px;
+  border:1px solid var(--border);border-radius:17px;background:var(--bg-card-alt);cursor:pointer;
+  transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;
 }
 .payment-option:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--border));}
-.payment-option.active{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
-.payment-option input{width:15px;height:15px;margin:2px 0 0;accent-color:var(--accent);flex-shrink:0;}
+.payment-option.active{
+  border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--bg-card-alt));
+  box-shadow:0 0 0 4px var(--accent-soft);
+}
+.payment-option input{width:16px;height:16px;margin:4px 0 0;accent-color:var(--accent);flex-shrink:0;}
 .payment-mark{
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  width:35px;height:35px;border-radius:9px;background:var(--bg-card);
+  width:42px;height:42px;border-radius:12px;background:var(--bg-card);
   border:1px solid var(--border);color:var(--accent);
 }
-.payment-mark-pix{font-size:9px;font-weight:900;letter-spacing:.03em;}
-.payment-copy{display:flex;flex-direction:column;gap:2px;min-width:0;}
-.payment-copy strong{font-size:12.5px;color:var(--text-primary);}
-.payment-copy small{color:var(--text-muted);font-size:10.5px;line-height:1.35;}
-.checkout-submit{margin-top:2px;padding:14px 20px;}
+.payment-mark-pix{font-size:10px;font-weight:900;letter-spacing:.03em;}
+.payment-copy{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.payment-copy strong{font-size:14px;color:var(--text-primary);}
+.payment-copy small{color:var(--text-muted);font-size:11.5px;line-height:1.4;}
+.checkout-submit{margin-top:2px;padding:16px 22px;border-radius:14px;font-size:14px;}
 .checkout-secure{
-  display:flex;align-items:center;justify-content:center;gap:7px;
-  color:var(--text-muted);font-size:10.5px;text-align:center;line-height:1.4;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  color:var(--text-muted);font-size:11.5px;text-align:center;line-height:1.5;
 }
 .checkout-secure svg{flex-shrink:0;color:var(--accent);}
-.checkout-summary{position:sticky;top:102px;display:flex;flex-direction:column;gap:14px;}
-.checkout-summary-head h2{margin-top:4px;font-size:19px;font-weight:800;}
-.summary-product{display:flex;align-items:center;gap:11px;padding-bottom:14px;border-bottom:1px solid var(--border);}
-.summary-product-media{width:49px;height:45px;flex-shrink:0;}
-.summary-product > div:last-child{display:flex;flex-direction:column;gap:3px;min-width:0;}
-.summary-product strong{font-size:12.5px;line-height:1.35;}
-.summary-product span{color:var(--text-muted);font-size:10.5px;}
+.checkout-summary{position:sticky;top:108px;display:flex;flex-direction:column;gap:16px;}
+.checkout-summary-head h2{margin-top:5px;font-size:24px;font-weight:800;letter-spacing:-.025em;}
+.summary-product{display:flex;align-items:center;gap:13px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+.summary-product-media{width:60px;height:52px;flex-shrink:0;}
+.summary-product > div:last-child{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.summary-product strong{font-size:13.5px;line-height:1.35;}
+.summary-product span{color:var(--text-muted);font-size:11.5px;}
+.summary-includes{display:flex;flex-direction:column;gap:7px;margin:0;padding:0 0 14px;border-bottom:1px solid var(--border);}
+.summary-includes li{display:flex;align-items:center;gap:8px;color:var(--text-secondary);font-size:11.5px;line-height:1.4;}
+.summary-includes svg{flex-shrink:0;color:var(--accent);}
 .summary-line,.summary-total{display:flex;align-items:center;justify-content:space-between;gap:16px;}
-.summary-line{color:var(--text-secondary);font-size:12px;}
-.summary-line strong{font-size:13px;color:var(--text-primary);}
-.summary-total{padding-top:13px;border-top:1px solid var(--border);font-size:13px;font-weight:800;}
-.summary-total strong{font-size:21px;color:var(--accent);}
-.summary-total small{font-size:10.5px;color:var(--text-muted);}
-.summary-note{margin:0;color:var(--text-muted);font-size:11px;line-height:1.5;}
+.summary-line{color:var(--text-secondary);font-size:13px;}
+.summary-line strong{font-size:14px;color:var(--text-primary);}
+.summary-total{padding-top:16px;border-top:1px solid var(--border);font-size:14px;font-weight:800;}
+.summary-total strong{font-size:27px;color:var(--accent);letter-spacing:-.035em;}
+.summary-total small{font-size:11px;color:var(--text-muted);}
+.summary-note{margin:0;color:var(--text-muted);font-size:12px;line-height:1.6;}
 .summary-security{
-  display:flex;align-items:flex-start;gap:8px;padding:11px;border-radius:10px;
-  background:var(--accent-soft);color:var(--accent);font-size:10.5px;line-height:1.4;font-weight:700;
+  display:flex;align-items:flex-start;gap:9px;padding:13px;border-radius:12px;
+  background:var(--accent-soft);color:var(--accent);font-size:11.5px;line-height:1.45;font-weight:700;
 }
 .summary-security svg{flex-shrink:0;}
 .pix-wrap{display:flex;justify-content:center;}
 .pix-card{
-  display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,.65fr);gap:clamp(22px,4vw,40px);
-  width:100%;max-width:880px;padding:clamp(22px,4vw,34px);
-  border:1px solid var(--border);border-radius:22px;background:var(--bg-card);box-shadow:var(--shadow-sm);
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.65fr);gap:clamp(32px,5vw,70px);
+  width:100%;max-width:1200px;padding:clamp(26px,4vw,48px);
+  border:0;border-radius:28px;background:var(--bg-card);box-shadow:0 22px 60px rgba(15,23,42,.09);
 }
-.pix-copy{display:flex;flex-direction:column;align-items:flex-start;gap:14px;min-width:0;}
-.pix-copy h1{font-size:clamp(25px,3.5vw,34px);font-weight:800;line-height:1.12;letter-spacing:-.02em;}
-.pix-desc{color:var(--text-secondary);font-size:13px;line-height:1.6;}
+.pix-copy{display:flex;flex-direction:column;align-items:flex-start;gap:16px;min-width:0;}
+.pix-copy h1{font-size:clamp(34px,4vw,52px);font-weight:800;line-height:1.03;letter-spacing:-.04em;}
+.pix-desc{color:var(--text-secondary);font-size:14.5px;line-height:1.65;}
 .pix-status{
   display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
-  padding:11px 13px;border:1px solid var(--border);border-radius:11px;
-  color:var(--text-secondary);font-size:11.5px;background:var(--bg-card-alt);
+  padding:13px 15px;border-radius:12px;
+  color:var(--text-secondary);font-size:12.5px;background:var(--bg-card-alt);
 }
-.pix-status strong{font-size:11px;text-transform:uppercase;letter-spacing:.03em;}
+.pix-status strong{font-size:11px;text-transform:uppercase;letter-spacing:.05em;}
 .pix-status.pending strong{color:#d9a514;}
 .pix-status.paid strong{color:#22c55e;}
 .pix-status.canceled strong,.pix-status.refunded strong{color:#ff6b6b;}
-.pix-code{height:88px;font-size:11px;resize:none;}
-.pix-copy .btn-primary{width:100%;}
+.pix-code{height:102px;font-size:11.5px;resize:none;}
+.pix-copy .btn-primary{width:100%;padding:15px 22px;}
 .pix-qr{
   display:flex;align-items:center;justify-content:center;align-self:start;
-  padding:16px;border:1px solid var(--border);border-radius:17px;background:#fff;
+  padding:20px;border-radius:22px;background:#fff;
 }
-.pix-qr img{display:block;width:100%;max-width:260px;height:auto;}
+.pix-qr img{display:block;width:100%;max-width:300px;height:auto;}
 .pix-qr-placeholder{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
-  width:100%;min-height:220px;color:#52627a;text-align:center;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+  width:100%;min-height:250px;color:#52627a;text-align:center;
 }
-.pix-qr-placeholder span{font-size:15px;font-weight:800;}
-.pix-qr-placeholder small{font-size:11px;}
-@media(max-width:900px){
-  .checkout-shell{grid-template-columns:1fr;}
+.pix-qr-placeholder span{font-size:16px;font-weight:800;}
+.pix-qr-placeholder small{font-size:12px;}
+@media(max-width:1000px){
+  .checkout-shell{grid-template-columns:minmax(0,1fr);}
   .checkout-summary{position:relative;top:0;}
 }
 @media(max-width:760px){
   .pix-card{grid-template-columns:1fr;}
-  .pix-qr{order:-1;max-width:320px;width:100%;justify-self:center;}
+  .pix-qr{order:-1;max-width:340px;width:100%;justify-self:center;}
 }
 @media(max-width:560px){
-  .checkout-card,.checkout-summary{padding:18px;border-radius:17px;}
-  .checkout-product{grid-template-columns:56px minmax(0,1fr);}
-  .checkout-product-media{width:56px;height:50px;}
+  .checkout-page-head h1{font-size:32px;}
+  .checkout-card,.checkout-summary{padding:20px;border-radius:14px;}
+  .checkout-account-grid{grid-template-columns:1fr;}
+  .checkout-product{grid-template-columns:64px minmax(0,1fr);padding:13px;}
+  .checkout-product-media{width:64px;height:56px;}
   .checkout-product-price{grid-column:1/-1;padding-top:2px;}
   .payment-options{grid-template-columns:1fr;}
-  .checkout-steps{gap:5px;}
-  .checkout-steps i{width:9px;}
-  .checkout-step{font-size:9.5px;padding:5px 8px;}
+  .checkout-steps i{min-width:9px;margin:0 8px;}
+  .checkout-step{font-size:10px;}
+  .checkout-step b{width:18px;height:18px;font-size:9px;}
 }
 </style>

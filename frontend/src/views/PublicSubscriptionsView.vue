@@ -153,15 +153,17 @@ async function cancel(subscription) {
 </script>
 
 <style scoped>
-.subscriptions-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;}
-.subscriptions-head h1{margin-top:4px;font-size:clamp(26px,3.3vw,36px);font-weight:800;letter-spacing:-.02em;}
-.subscriptions-head p:last-child{margin-top:5px;color:var(--text-muted);font-size:12.5px;}
-.subscription-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;}
+.subscriptions-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;}
+.subscriptions-head h1{margin-top:7px;font-size:clamp(40px,4.6vw,62px);font-weight:800;line-height:1.01;letter-spacing:-.04em;}
+.subscriptions-head p:last-child{margin-top:9px;color:var(--text-muted);font-size:14px;line-height:1.5;}
+.subscription-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px 24px;}
 .subscription-card{
   display:flex;flex-direction:column;overflow:hidden;
-  border:1px solid var(--border);border-radius:18px;background:var(--bg-card);box-shadow:var(--shadow-sm);
+  border:0;border-radius:24px;background:var(--bg-card);box-shadow:0 14px 40px rgba(15,23,42,.06);
+  transition:transform .22s ease,box-shadow .22s ease;
 }
-.subscription-card.active{border-color:color-mix(in srgb,var(--accent) 30%,var(--border));}
+.subscription-card:hover{transform:translateY(-4px);box-shadow:0 24px 56px rgba(15,23,42,.11);}
+.subscription-card.active{box-shadow:0 18px 48px color-mix(in srgb,var(--accent) 13%,transparent);}
 .subscription-media{
   position:relative;display:flex;align-items:center;justify-content:center;
   aspect-ratio:16/9;overflow:hidden;color:#fff;
@@ -169,21 +171,26 @@ async function cancel(subscription) {
 .subscription-media::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(4,10,18,.36));}
 .subscription-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .subscription-media > .icon{position:relative;z-index:1;opacity:.65;}
-.subscription-status{position:absolute;top:12px;right:12px;z-index:2;background:rgba(5,14,23,.74);color:#fff;backdrop-filter:blur(5px);}
+.subscription-status{position:absolute;top:14px;right:14px;z-index:2;background:rgba(5,14,23,.74);color:#fff;backdrop-filter:blur(7px);}
 .subscription-status.active{background:rgba(34,197,94,.92);color:#fff;}
 .subscription-status.pending{background:rgba(234,179,8,.92);color:#2a2104;}
 .subscription-status.past_due{background:rgba(255,107,107,.92);color:#fff;}
 .subscription-status.canceled,.subscription-status.expired{background:rgba(148,163,184,.9);color:#fff;}
-.subscription-body{display:flex;flex:1;flex-direction:column;gap:13px;padding:17px;}
-.subscription-title{display:flex;flex-direction:column;gap:3px;}
-.subscription-title h2{margin:2px 0 0;font-size:17px;font-weight:800;line-height:1.3;}
-.subscription-title > span{color:var(--text-muted);font-size:11px;}
-.subscription-price{display:flex;align-items:baseline;gap:3px;}
-.subscription-price strong{font-size:23px;color:var(--accent);letter-spacing:-.02em;}
-.subscription-price span{color:var(--text-muted);font-size:10.5px;font-weight:700;}
-.subscription-note{margin:0;color:var(--text-secondary);font-size:11.5px;line-height:1.5;}
+.subscription-body{display:flex;flex:1;flex-direction:column;gap:16px;padding:24px;}
+.subscription-title{display:flex;flex-direction:column;gap:4px;}
+.subscription-title h2{margin:3px 0 0;font-size:22px;font-weight:800;line-height:1.22;letter-spacing:-.025em;}
+.subscription-title > span{color:var(--text-muted);font-size:12.5px;}
+.subscription-price{display:flex;align-items:baseline;gap:4px;}
+.subscription-price strong{font-size:31px;color:var(--accent);letter-spacing:-.04em;}
+.subscription-price span{color:var(--text-muted);font-size:11.5px;font-weight:700;}
+.subscription-note{margin:0;color:var(--text-secondary);font-size:13px;line-height:1.6;}
 .subscription-body .btn{margin-top:auto;}
-@media(max-width:560px){
-  .subscription-grid{grid-template-columns:1fr;}
+@media(max-width:1100px){
+  .subscription-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:680px){
+  .subscription-grid{grid-template-columns:1fr;gap:24px;}
+  .subscription-body{padding:20px;}
+  .subscription-title h2{font-size:20px;}
 }
 </style>

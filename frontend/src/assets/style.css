@@ -342,12 +342,12 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
    Vitrine pública
    ========================================================================== */
 .public-content{
-  width:100%;max-width:1220px;margin:0 auto;
-  padding:32px clamp(18px,5vw,64px) 76px;
-  display:flex;flex-direction:column;gap:32px;
+  width:100%;max-width:var(--public-max,1800px);margin:0 auto;
+  padding:40px var(--public-gutter,clamp(20px,3.6vw,64px)) 96px;
+  display:flex;flex-direction:column;gap:44px;
 }
 .public-eyebrow{
-  margin:0;font-size:11px;font-weight:800;letter-spacing:.1em;
+  margin:0;font-size:11.5px;font-weight:800;letter-spacing:.08em;
   text-transform:uppercase;color:var(--accent);
 }
 .public-breadcrumb{
@@ -358,12 +358,12 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 .public-breadcrumb a:hover{color:var(--accent);}
 .public-breadcrumb .current{color:var(--text-primary);}
 .public-empty{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
-  padding:54px 22px;text-align:center;color:var(--text-muted);
-  border:1px dashed var(--border);border-radius:18px;background:var(--bg-card);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  padding:72px 24px;text-align:center;color:var(--text-muted);
+  border:1px dashed var(--border);border-radius:26px;background:var(--bg-card);
 }
-.public-empty strong{color:var(--text-primary);font-size:15px;}
-.public-empty span{max-width:430px;font-size:12.5px;line-height:1.55;}
+.public-empty strong{color:var(--text-primary);font-size:17px;}
+.public-empty span{max-width:480px;font-size:13.5px;line-height:1.6;}
 .public-empty .btn{margin-top:6px;}
 .public-warning{
   margin:0;padding:11px 13px;border:1px solid rgba(234,179,8,.28);border-radius:10px;
