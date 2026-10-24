@@ -178,7 +178,10 @@ Lista produtos de loja **ativos e já lançados** (`release_at` nulo ou no passa
 Detalhe de um produto de loja ativo e já lançado (404 caso contrário).
 
 ### GET /api/v1/banners
-Lista os banners **ativos** da empresa (ordenados por `sort_order`), que alimentam o hero da home. Cada item traz o conteúdo do destaque (`eyebrow`, `title`, `title_highlight`, `description`, `quote`, `cta_*`, `secondary_*`) e `image_url` (URL pública da imagem enviada, ou `null`).
+Lista os banners **ativos** da empresa com `placement=home` (ordenados por `sort_order`), que alimentam o hero da home logada. Cada item traz o conteúdo do destaque (`eyebrow`, `title`, `title_highlight`, `description`, `quote`, `cta_*`, `secondary_*`) e `image_url` (URL pública da imagem enviada, ou `null`). Banners da loja usam `placement=store` e não aparecem aqui.
+
+### GET /api/v1/storefront
+Retorna `company` (`id`, `name`, `slug`, `public_store_url` e `gateways` ativos), `settings` e `banners` ativos da loja para a empresa atual via `X-Company`. É usado pela loja interna do aluno, inclusive para iniciar a compra no checkout existente. Os textos incluem catálogo, benefícios, loja interna e rodapé; os banners são os de `placement=store`.
 
 ### GET /api/v1/certificates/{code}/verify
 Verifica a autenticidade de um certificado pelo código público (UUID). Retorna 404 se inválido/invalidado.
@@ -362,7 +365,7 @@ CRUD. Campos: `code`, `type` (`fixed`/`percent`), `value`, `status`, `starts_at`
 A validação/recalculo é sempre no backend.
 
 ### Produtos de loja (`store-products`)
-CRUD. Campos: `course_id`, `title`, `slug`, `description`, `tags[]`, `price`, `sale`, `status`, `release_at`, `team_ids[]` (turmas que a compra libera), `image` (URL/caminho) e `image_file` (upload JPG/PNG/WEBP até 4 MB). A resposta expõe `image_url` e, no detalhe, `teams[]`.
+CRUD. Campos: `title`, `slug`, `description`, `tags[]`, `price`, `sale`, `status`, `release_at`, `team_ids[]` (turmas que a compra libera), `image` (URL/caminho) e `image_file` (upload JPG/PNG/WEBP até 4 MB). A resposta expõe `image_url`, `course_id` (derivado do primeiro curso ativo das turmas, usado em relatórios) e, no detalhe, `teams[]`. Ao menos uma turma selecionada precisa ter curso ativo.
 
 ### Pagamentos (`payments`)
 - `GET /payments`, `GET /payments/{payment}`
@@ -417,10 +420,17 @@ CRUD. Configura o provedor de vídeo **por empresa** (any-platform): `code` ∈ 
 `documents`, `attachments` — CRUD. Um documento tem **duas origens**: arquivo enviado (`file`, multipart; grava `path` no disco privado `materials`) ou **link externo** (`url`). Informe `file`, `path` ou `url` (ao menos um). Tipos aceitos no upload: `pdf, doc, docx, ppt, pptx, xls, xlsx, txt, csv, zip` (máx. 20 MB). A aula referencia o documento por `document_id`.
 
 ### Banners (`banners`)
-CRUD. Controlam o **hero da home**: `name`, `link`, `sort_order`, `status` e o conteúdo do destaque (`eyebrow`, `title`, `title_highlight`, `description`, `quote`, `cta_label`, `cta_link`, `secondary_label`, `secondary_link`).
-- **Imagem:** envie como `multipart/form-data` no campo `image` (`jpg/jpeg/png/webp`, máx. 4 MB). O arquivo é salvo no disco `public` em `banners/{company_id}/…` e a resposta expõe `image` (caminho) e `image_url` (URL pública). Ao substituir/excluir o banner, o arquivo antigo é removido.
+CRUD. O campo `placement` separa os banners de `home` (hero da home logada) e `store` (carrossel das lojas). Campos: `name`, `link`, `sort_order`, `status` e o conteúdo do destaque (`eyebrow`, `title`, `title_highlight`, `description`, `quote`, `cta_label`, `cta_link`, `secondary_label`, `secondary_link`).
+- **Imagem:** envie como `multipart/form-data` no campo `image` (`jpg/jpeg/png/webp`, máx. 4 MB). O arquivo é salvo no disco `public` em `banners/{company_id}/.` e a resposta expõe `image` (caminho) e `image_url` (URL pública). Ao substituir/excluir o banner, o arquivo antigo é removido.
 - Requer `php artisan storage:link` para servir as imagens em `/storage/...`.
-- Endpoint público correspondente: `GET /api/v1/banners` (apenas ativos).
+- Endpoint público da home: `GET /api/v1/banners` (apenas `placement=home` e ativos).
+- A listagem admin aceita `placement` como filtro.
+
+### Loja (`storefront`)
+- `GET /api/v1/admin/storefront` - textos atuais da loja.
+- `PUT /api/v1/admin/storefront` - salva `catalog` (`eyebrow`, `title`, `description`), `benefits` (até três itens com `title`/`description`), `internal` (`eyebrow`, `title`, `description`) e `footer.note`.
+- Restrito ao admin da empresa; o tenant vem do usuário autenticado, nunca do payload.
+- A loja pública recebe os mesmos dados em `storefront` no endpoint da empresa por slug.
 
 ### Certificados (modelos) (`certificates`)
 CRUD dos templates por curso (`name`, `title`, `course_id`, `grade`, `version`, `time`). A listagem expõe `issued_certificates_count` (todos os emitidos) e `valid_certificates_count` (válidos).
@@ -452,8 +462,8 @@ Recursos restritos a super admin (middleware `super.admin` + policies; um admin 
 - **Tema (identidade visual, por empresa)**: `GET/PUT /admin/companies/{company}/settings` — cor primária e logos para **tema claro** (`logo_light`) e **tema escuro** (`logo_dark`) de uma empresa específica, editáveis na página Empresas. Se apenas um logo for enviado, ele é usado nos dois temas. `logo`/`logo_url` continuam como aliases legados do logo claro.
 - **Empresas**:
   - `GET /admin/companies` — lista/pagina empresas (busca por `name`, filtro `status`).
-  - `POST /admin/companies` — cria a empresa e faz o bootstrap: tipos de usuário padrão (`admin`, `instructor`, `student`) + o primeiro admin. Campos: `name`, `status?`, `admin_name`, `admin_username`, `admin_email`, `admin_password`.
-  - `GET /admin/companies/{company}`, `PUT /admin/companies/{company}` (`name`, `status`).
+  - `POST /admin/companies` — cria a empresa e faz o bootstrap: tipos de usuário padrão (`admin`, `instructor`, `student`) + o primeiro admin. Campos: `name`, `domain?`, `status?`, `admin_name`, `admin_username`, `admin_email`, `admin_password`. O `domain` é opcional, único, salvo apenas como host (sem protocolo, `www.` ou caminho) e normalizado em minúsculas.
+  - `GET /admin/companies/{company}`, `PUT /admin/companies/{company}` (`name`, `slug?`, `domain?`, `status`).
 
 > Um admin comum continua gerenciando o resto (cursos, módulos, aulas, turmas, usuários, tipos de usuário, vídeos, documentos, banners, relatórios...).
 
@@ -505,6 +515,8 @@ Cada empresa possui um `slug` unico. A loja publica resolve o tenant pela URL, s
 - `POST /api/v1/public/companies/{companySlug}/auth/reset-password`
 
 O cadastro cria sempre um aluno da empresa do slug. O mesmo e-mail pode existir em empresas diferentes; a unicidade e `(company_id, email)` e `(company_id, username)`.
+
+`GET /api/v1/public/companies/{companySlug}` inclui `storefront.settings` e `storefront.banners` com os banners ativos de `placement=store`, permitindo que a loja pública renderize o carrossel e os textos configurados pelo admin sem requisições adicionais.
 
 ### Produto
 

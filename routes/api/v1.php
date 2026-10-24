@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\V1\Admin\RatingController as AdminRatingController;
 use App\Http\Controllers\Api\V1\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Api\V1\Admin\ScheduleController as AdminScheduleController;
 use App\Http\Controllers\Api\V1\Admin\StoreProductController as AdminStoreProductController;
+use App\Http\Controllers\Api\V1\Admin\StorefrontSettingController as AdminStorefrontSettingController;
 use App\Http\Controllers\Api\V1\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Api\V1\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Api\V1\Admin\TopicController as AdminTopicController;
@@ -40,6 +41,7 @@ use App\Http\Controllers\Api\V1\Public\BrandingController as PublicBrandingContr
 use App\Http\Controllers\Api\V1\Public\CertificateVerifyController;
 use App\Http\Controllers\Api\V1\Public\CompanyController as PublicCompanyController;
 use App\Http\Controllers\Api\V1\Public\StoreController;
+use App\Http\Controllers\Api\V1\Public\StorefrontController as PublicStorefrontController;
 use App\Http\Controllers\Api\V1\Student\CertificateController as StudentCertificateController;
 use App\Http\Controllers\Api\V1\Student\CommentController;
 use App\Http\Controllers\Api\V1\Student\HomeController as StudentHomeController;
@@ -93,6 +95,7 @@ Route::middleware(['company', 'company.required', 'throttle:public'])->group(fun
     Route::get('store/products', [StoreController::class, 'index']);
     Route::get('store/products/{slug}', [StoreController::class, 'show']);
     Route::get('banners', [PublicBannerController::class, 'index']);
+    Route::get('storefront', [PublicStorefrontController::class, 'show']);
     Route::get('branding', [PublicBrandingController::class, 'show']);
     Route::get('certificates/{code}/verify', [CertificateVerifyController::class, 'verify']);
 });
@@ -269,6 +272,8 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::post('videos/{video}/sync', [AdminVideoController::class, 'sync'])->whereNumber('video');
         Route::apiResource('documents', AdminDocumentController::class);
         Route::apiResource('attachments', AdminAttachmentController::class);
+        Route::get('storefront', [AdminStorefrontSettingController::class, 'show']);
+        Route::put('storefront', [AdminStorefrontSettingController::class, 'update']);
         Route::apiResource('banners', AdminBannerController::class);
         Route::apiResource('certificates', AdminCertificateController::class);
         Route::post('certificates/{certificate}/transfer-issued', [AdminCertificateController::class, 'transferIssued']);

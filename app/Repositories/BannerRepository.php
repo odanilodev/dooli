@@ -8,7 +8,7 @@ class BannerRepository extends BaseRepository
 {
     protected array $searchable = ['name', 'title', 'eyebrow'];
 
-    protected array $filterable = ['status', 'company_id'];
+    protected array $filterable = ['placement', 'status', 'company_id'];
 
     protected string $defaultSort = 'sort_order';
 

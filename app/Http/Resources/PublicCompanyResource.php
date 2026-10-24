@@ -15,6 +15,10 @@ class PublicCompanyResource extends JsonResource
             'slug' => $this->slug,
             'public_store_url' => $this->publicStoreUrl(),
             'branding' => $this->branding ?? null,
+            'storefront' => ($this->storefront ?? null) ? [
+                'settings' => $this->storefront['settings'] ?? null,
+                'banners' => BannerResource::collection($this->storefront['banners'] ?? []),
+            ] : null,
             'gateways' => $this->whenLoaded('gateways', fn () => $this->gateways->map(fn ($gateway) => [
                 'id' => $gateway->id,
                 'name' => $gateway->name,

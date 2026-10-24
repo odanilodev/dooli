@@ -21,7 +21,6 @@ class StoreStoreProductRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'course_id' => ['required', 'integer', $this->companyExists('courses')],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'image' => ['nullable', 'string', 'max:255'],

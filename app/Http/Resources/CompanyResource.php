@@ -13,6 +13,7 @@ class CompanyResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
+            'domain' => $this->domain,
             'public_store_url' => $this->publicStoreUrl(),
             'status' => $this->status,
             'created_at' => $this->created_at?->toIso8601String(),

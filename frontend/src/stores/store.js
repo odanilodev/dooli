@@ -5,6 +5,7 @@ import { useAuthStore } from './auth';
 
 export const useShopStore = defineStore('shop', () => {
   const products = ref([]);
+  const storefront = ref(null);
   const meta = ref({});
   const loading = ref(false);
   const error = ref(null);
@@ -40,6 +41,19 @@ export const useShopStore = defineStore('shop', () => {
     }
   }
 
+  async function fetchStorefront() {
+    try {
+      const { data } = await api.get('/storefront', { headers: companyHeaders() });
+      storefront.value = data.data ?? null;
+
+      return storefront.value;
+    } catch (e) {
+      storefront.value = null;
+
+      return null;
+    }
+  }
+
   async function fetchProduct(slug) {
     const { data } = await api.get(`/store/products/${slug}`, { headers: companyHeaders() });
 
@@ -48,9 +62,20 @@ export const useShopStore = defineStore('shop', () => {
 
   function reset() {
     products.value = [];
+    storefront.value = null;
     meta.value = {};
     error.value = null;
   }
 
-  return { products, meta, loading, error, fetchProducts, fetchProduct, reset };
+  return {
+    products,
+    storefront,
+    meta,
+    loading,
+    error,
+    fetchProducts,
+    fetchStorefront,
+    fetchProduct,
+    reset,
+  };
 });

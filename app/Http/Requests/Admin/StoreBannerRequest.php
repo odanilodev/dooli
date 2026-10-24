@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\BannerPlacement;
 use App\Enums\GeneralStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -16,6 +17,7 @@ class StoreBannerRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'placement' => ['sometimes', Rule::in(BannerPlacement::values())],
             'name' => ['required', 'string', 'max:255'],
             'path' => ['nullable', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\GeneralStatus;
 use App\Models\StoreProduct;
+use App\Models\TeamCourse;
 use App\Repositories\StoreProductRepository;
 use App\Support\CompanyContext;
 use App\Support\ImageStorage;
@@ -11,6 +12,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class StoreProductService
 {
@@ -39,6 +41,10 @@ class StoreProductService
 
     public function create(array $data, ?UploadedFile $image = null): StoreProduct
     {
+        $teamIds = $data['team_ids'] ?? [];
+        unset($data['team_ids']);
+
+        $data['course_id'] = $this->resolveCourseId($teamIds);
         $data['slug'] = $data['slug'] ?? Str::slug($data['title']);
         $data['image'] = $data['image'] ?? null;
 
@@ -98,5 +104,23 @@ class StoreProductService
         ])->all();
 
         $storeProduct->teams()->sync($sync);
+    }
+
+    private function resolveCourseId(array $teamIds): int
+    {
+        $courseId = TeamCourse::query()
+            ->whereIn('team_id', $teamIds)
+            ->where('status', GeneralStatus::Active->value)
+            ->orderBy('team_id')
+            ->orderBy('course_id')
+            ->value('course_id');
+
+        if (! $courseId) {
+            throw ValidationException::withMessages([
+                'team_ids' => 'Vincule ao menos um curso ativo às turmas selecionadas.',
+            ]);
+        }
+
+        return (int) $courseId;
     }
 }

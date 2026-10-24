@@ -24,7 +24,7 @@
         class="hero-slide"
         :aria-hidden="isClone(index) || undefined"
       >
-        <div class="hero-bg" :style="{ backgroundImage: `url(${item.image_url})` }"></div>
+        <div class="hero-bg" :style="item.image_url ? { backgroundImage: `url(${item.image_url})` } : { background: item.gradient }"></div>
         <div class="hero-mask" aria-hidden="true"></div>
 
         <span class="hero-eyebrow">{{ item.eyebrow }}</span>
@@ -64,7 +64,7 @@ const props = defineProps({
   banners: { type: Array, default: () => [] },
 });
 
-const slides = computed(() => (props.banners ?? []).filter((banner) => banner.image_url));
+const slides = computed(() => (props.banners ?? []).filter((banner) => banner.image_url || banner.gradient));
 const count = computed(() => slides.value.length);
 
 const loopSlides = computed(() => {

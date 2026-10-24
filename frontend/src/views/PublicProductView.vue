@@ -166,25 +166,62 @@
           </div>
 
           <aside class="product-include-card">
-            <h2>Este curso inclui</h2>
-            <ul>
-              <li v-for="course in includedCourses" :key="course.id">
-                <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
-                {{ course.name }}
-              </li>
-              <li v-if="!includedCourses.length">
-                <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
-                {{ product.access_label }}
+            <header class="include-head">
+              <div>
+                <p class="public-eyebrow">Incluso</p>
+                <h2>Este curso inclui</h2>
+              </div>
+              <span v-if="includedCourses.length" class="include-count">
+                {{ includedCourses.length }} {{ includedCourses.length === 1 ? 'curso' : 'cursos' }}
+              </span>
+            </header>
+
+            <section v-if="includedCourses.length" class="include-section">
+              <p class="include-label">Cursos liberados</p>
+              <ul class="include-courses">
+                <li v-for="course in visibleCourses" :key="course.id">
+                  <span class="include-tile" aria-hidden="true">
+                    <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
+                  </span>
+                  <div class="include-course-copy">
+                    <strong>{{ course.name }}</strong>
+                    <span v-if="course.description">{{ course.description }}</span>
+                  </div>
+                </li>
+              </ul>
+              <button
+                v-if="hiddenCoursesCount"
+                type="button"
+                class="include-more"
+                @click="openContentTab"
+              >
+                +{{ hiddenCoursesCount }} {{ hiddenCoursesCount === 1 ? 'curso' : 'cursos' }} · ver conteúdo
+                <svg class="icon" width="13" height="13" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </button>
+            </section>
+
+            <ul class="include-benefits">
+              <li>
+                <span class="include-tile" aria-hidden="true">
+                  <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l2.5 2.5L16 9"/></svg>
+                </span>
+                <span>{{ product.access_label }}</span>
               </li>
               <li>
-                <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l2.5 2.5L16 9"/></svg>
-                Acesso online
-              </li>
-              <li>
-                <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
-                Compra segura
+                <span class="include-tile" aria-hidden="true">
+                  <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M2 6h20"/><path d="M12 18v2M8 22h8"/></svg>
+                </span>
+                <span>Acesso online</span>
               </li>
             </ul>
+
+            <div class="trust-note include-trust">
+              <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+              <div>
+                <strong>Compra 100% segura</strong>
+                <span>Pagamento processado em ambiente protegido.</span>
+              </div>
+            </div>
           </aside>
         </div>
       </section>
@@ -241,6 +278,16 @@ const grad = computed(() => palette.value.grad);
 const onSale = computed(() => Number(product.value?.sale) > 0);
 const currentPrice = computed(() => (onSale.value ? product.value.sale : product.value?.price));
 const includedCourses = computed(() => product.value?.included_courses ?? []);
+const visibleCourses = computed(() => includedCourses.value.slice(0, 4));
+const hiddenCoursesCount = computed(() => Math.max(0, includedCourses.value.length - visibleCourses.value.length));
+
+function openContentTab() {
+  activeTab.value = 'content';
+
+  requestAnimationFrame(() => {
+    document.querySelector('.product-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
 
 async function buy() {
   const checkout = {
@@ -303,7 +350,7 @@ async function buy() {
 .product-buy .price-old{font-size:12px;}
 .product-buy-btn{width:100%;padding:13px 18px;border-radius:8px;font-size:13px;}
 .product-payment-note{color:var(--text-muted);font-size:10.5px;line-height:1.45;text-align:center;}
-.product-detail{display:flex;flex-direction:column;gap:26px;padding-top:clamp(32px,4vw,48px);border-top:1px solid var(--border);}
+.product-detail{display:flex;flex-direction:column;gap:26px;padding-top:clamp(32px,4vw,48px);border-top:1px solid var(--border);scroll-margin-top:96px;}
 .product-tabs{display:flex;gap:26px;overflow-x:auto;border-bottom:1px solid var(--border);scrollbar-width:none;}
 .product-tabs::-webkit-scrollbar{display:none;}
 .product-tab{
@@ -336,17 +383,53 @@ async function buy() {
 .product-how-step strong{font-size:12.5px;}
 .product-how-step p{margin:0;color:var(--text-muted);font-size:11.5px;line-height:1.5;}
 .product-include-card{
-  padding:20px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card);
+  position:sticky;top:108px;display:flex;flex-direction:column;gap:18px;
+  padding:22px;border:1px solid var(--border);border-radius:14px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 6%,var(--bg-card)),var(--bg-card));
+  box-shadow:var(--shadow-sm);
 }
-.product-include-card h2{margin:0 0 12px;font-size:14px;font-weight:800;}
-.product-include-card ul{display:flex;flex-direction:column;gap:0;margin:0;padding:0;}
-.product-include-card li{
-  display:flex;align-items:flex-start;gap:9px;padding:9px 0;
-  border-bottom:1px solid var(--border);color:var(--text-secondary);font-size:11.5px;line-height:1.45;
+.include-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.include-head h2{margin:4px 0 0;font-size:16px;font-weight:800;letter-spacing:-.02em;}
+.include-count{
+  flex-shrink:0;padding:4px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);
+  font-size:10px;font-weight:800;letter-spacing:.02em;white-space:nowrap;
 }
-.product-include-card li:last-child{border-bottom:0;padding-bottom:0;}
-.product-include-card li:first-child{padding-top:0;}
-.product-include-card svg{flex-shrink:0;color:var(--accent);margin-top:1px;}
+.include-section{display:flex;flex-direction:column;gap:8px;}
+.include-label{
+  margin:0;color:var(--text-muted);font-size:10px;font-weight:800;
+  letter-spacing:.07em;text-transform:uppercase;
+}
+.include-courses{display:flex;flex-direction:column;margin:0;padding:0;}
+.include-courses li{
+  display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);
+}
+.include-courses li:first-child{padding-top:0;}
+.include-courses li:last-child{border-bottom:0;padding-bottom:0;}
+.include-tile{
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  width:30px;height:30px;border-radius:9px;background:var(--accent-soft);color:var(--accent);
+}
+.include-course-copy{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.include-course-copy strong{color:var(--text-primary);font-size:12.5px;font-weight:700;line-height:1.4;}
+.include-course-copy span{
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  color:var(--text-muted);font-size:10.5px;line-height:1.45;
+}
+.include-more{
+  display:inline-flex;align-items:center;gap:5px;align-self:flex-start;margin-top:2px;
+  padding:0;border:0;background:none;color:var(--accent);font:inherit;
+  font-size:11px;font-weight:800;cursor:pointer;
+}
+.include-more:hover{text-decoration:underline;}
+.include-benefits{
+  display:flex;flex-direction:column;gap:8px;margin:0;padding:16px 0 0;border-top:1px solid var(--border);
+}
+.include-benefits li{
+  display:flex;align-items:center;gap:10px;color:var(--text-secondary);
+  font-size:11.5px;font-weight:600;line-height:1.4;
+}
+.include-benefits .include-tile{width:26px;height:26px;border-radius:8px;}
+.include-trust{margin-top:0;}
 .product-skeleton-media{background:var(--bg-card-alt);animation:product-pulse 1.4s ease-in-out infinite;}
 .product-skeleton-info{display:flex;flex-direction:column;gap:13px;padding-top:10px;}
 .product-skeleton-line{
@@ -365,6 +448,7 @@ async function buy() {
   .product-info{padding-top:0;}
   .product-description{-webkit-line-clamp:6;}
   .product-detail-grid{grid-template-columns:1fr;}
+  .product-include-card{position:static;}
 }
 @media(max-width:600px){
   .product-media{border-radius:10px;}

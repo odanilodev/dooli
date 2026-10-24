@@ -143,6 +143,14 @@ class BannerManagementTest extends TestCase
             'sort_order' => 0,
             'status' => GeneralStatus::Inactive->value,
         ]);
+        Banner::query()->create([
+            'company_id' => $this->company->id,
+            'placement' => 'store',
+            'name' => 'Loja',
+            'title' => 'D',
+            'sort_order' => 0,
+            'status' => GeneralStatus::Active->value,
+        ]);
 
         $other = Company::factory()->create();
         Banner::query()->create([

@@ -29,10 +29,17 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="co-slug">Slug da loja</label>
-        <input id="co-slug" class="form-control" v-model="form.slug" placeholder="minha-escola">
-        <span class="form-hint">Usado no link /#/e/{slug}/loja. Alterar o slug quebra links antigos.</span>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="co-slug">Slug da loja</label>
+          <input id="co-slug" class="form-control" v-model="form.slug" placeholder="minha-escola">
+          <span class="form-hint">Usado no link /#/e/{slug}/loja. Alterar o slug quebra links antigos.</span>
+        </div>
+        <div class="form-group">
+          <label for="co-domain">Domínio</label>
+          <input id="co-domain" class="form-control" v-model="form.domain" placeholder="minhaescola.com.br">
+          <span class="form-hint">Opcional. Informe apenas o domínio, sem https://, www. ou caminhos.</span>
+        </div>
       </div>
 
       <template v-if="!editingId">
@@ -120,11 +127,12 @@
       <div v-else class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr><th>Nome</th><th>Status</th><th>Criada em</th><th></th></tr>
+            <tr><th>Nome</th><th>Domínio</th><th>Status</th><th>Criada em</th><th></th></tr>
           </thead>
           <tbody>
             <tr v-for="company in companies.items" :key="company.id">
               <td><strong>{{ company.name }}</strong></td>
+              <td class="admin-muted">{{ company.domain || '—' }}</td>
               <td><span class="status-pill" :class="company.status">{{ statusLabel(company.status) }}</span></td>
               <td class="admin-muted">{{ formatDate(company.created_at) }}</td>
               <td class="admin-actions">
@@ -162,6 +170,7 @@ const logoDarkFile = ref(null);
 const form = reactive({
   name: '',
   slug: '',
+  domain: '',
   status: 'active',
   admin_name: '',
   admin_username: '',
@@ -212,6 +221,7 @@ function formatDate(value) {
 function resetForm() {
   form.name = '';
   form.slug = '';
+  form.domain = '';
   form.status = 'active';
   form.admin_name = '';
   form.admin_username = '';
@@ -241,6 +251,7 @@ async function openEdit(company) {
   editingId.value = company.id;
   form.name = company.name ?? '';
   form.slug = company.slug ?? '';
+  form.domain = company.domain ?? '';
   form.status = company.status ?? 'active';
   form.primary_color = DEFAULT_PRIMARY_COLOR;
   revokePreview(logoLightPreview.value);
@@ -271,12 +282,14 @@ async function save() {
       await companies.updateCompany(editingId.value, {
         name: form.name,
         slug: form.slug.trim(),
+        domain: form.domain.trim() || null,
         status: form.status,
       });
     } else {
       const created = await companies.createCompany({
         name: form.name,
         ...(form.slug.trim() ? { slug: form.slug.trim() } : {}),
+        domain: form.domain.trim() || null,
         status: form.status,
         admin_name: form.admin_name,
         admin_username: form.admin_username,

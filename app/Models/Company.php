@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'slug', 'status'])]
+#[Fillable(['name', 'slug', 'domain', 'status'])]
 class Company extends Model
 {
     use HasFactory;
@@ -39,6 +40,27 @@ class Company extends Model
     {
         return rtrim((string) config('app.frontend_url'), '/')
             .'/#/e/'.rawurlencode((string) $this->slug).'/loja';
+    }
+
+    public static function normalizeDomain(?string $value): ?string
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        $domain = strtolower(trim($value));
+        $domain = (string) preg_replace('#^https?://#i', '', $domain);
+        $domain = (string) preg_replace('#^www\.#i', '', $domain);
+        $domain = rtrim($domain, '/');
+
+        return $domain === '' ? null : $domain;
+    }
+
+    protected function domain(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value) => self::normalizeDomain($value),
+        );
     }
 
     public function users(): HasMany

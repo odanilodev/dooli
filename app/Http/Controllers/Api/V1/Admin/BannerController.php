@@ -25,7 +25,7 @@ class BannerController extends ApiController
         $this->authorize('viewAny', Banner::class);
 
         return ApiResponse::paginated(
-            $this->banners->paginate($this->perPage($request), $request->only(['search', 'status'])),
+            $this->banners->paginate($this->perPage($request), $request->only(['search', 'status', 'placement'])),
             BannerResource::class,
         );
     }

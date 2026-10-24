@@ -33,6 +33,7 @@ import AdminBannersView from '../views/AdminBannersView.vue';
 import AdminCertificatesView from '../views/AdminCertificatesView.vue';
 import AdminCommentsView from '../views/AdminCommentsView.vue';
 import AdminProductsView from '../views/AdminProductsView.vue';
+import AdminStoreView from '../views/AdminStoreView.vue';
 import AdminLiveClassesView from '../views/AdminLiveClassesView.vue';
 import AdminReportsView from '../views/AdminReportsView.vue';
 import AdminUsersView from '../views/AdminUsersView.vue';
@@ -80,6 +81,7 @@ const routes = [
       { path: 'admin/certificados', name: 'admin-certificados', component: AdminCertificatesView, meta: { title: 'Certificados (admin)', requiresAdminMenu: true } },
       { path: 'admin/comentarios', name: 'admin-comentarios', component: AdminCommentsView, meta: { title: 'Comentários (admin)', requiresAdminMenu: true } },
       { path: 'admin/produtos', name: 'admin-produtos', component: AdminProductsView, meta: { title: 'Produtos da loja (admin)', requiresAdminMenu: true } },
+      { path: 'admin/loja', name: 'admin-loja', component: AdminStoreView, meta: { title: 'Loja (admin)', requiresAdminMenu: true } },
       { path: 'admin/gateways', name: 'admin-gateways', component: AdminGatewaysView, meta: { title: 'Gateways (admin)', requiresAdminMenu: true } },
       { path: 'admin/pedidos', name: 'admin-pedidos', component: AdminOrdersView, meta: { title: 'Pedidos (admin)', requiresAdminMenu: true } },
       { path: 'admin/assinaturas', name: 'admin-assinaturas', component: AdminSubscriptionsView, meta: { title: 'Assinaturas (admin)', requiresAdminMenu: true } },

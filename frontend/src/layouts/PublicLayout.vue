@@ -6,10 +6,9 @@
           <BrandLogo />
         </router-link>
 
-        <nav class="public-nav" aria-label="Navegação da loja">
-          <router-link :to="{ name: 'public-loja', params: { companySlug } }">Loja</router-link>
-          <router-link v-if="auth.isAuthenticated" :to="{ name: 'public-assinaturas', params: { companySlug } }">Minhas assinaturas</router-link>
-          <router-link v-if="auth.isAuthenticated" to="/">Meus cursos</router-link>
+        <nav v-if="auth.isAuthenticated" class="public-nav" aria-label="Navegação da loja">
+          <router-link :to="{ name: 'public-assinaturas', params: { companySlug } }">Minhas assinaturas</router-link>
+          <router-link to="/">Meus cursos</router-link>
         </nav>
 
         <div class="public-actions">
@@ -23,10 +22,46 @@
             <span class="knob"></span>
           </button>
 
-          <router-link v-if="!auth.isAuthenticated" :to="{ name: 'public-login', params: { companySlug } }" class="public-signin">Entrar</router-link>
-          <button v-else type="button" class="public-link-btn" @click="logout">Sair</button>
+          <template v-if="!auth.isAuthenticated">
+            <router-link :to="{ name: 'public-login', params: { companySlug } }" class="public-signin">Entrar</router-link>
+            <button class="public-header-cta" type="button" @click="focusSearch">Explorar cursos</button>
+          </template>
 
-          <button class="public-header-cta" type="button" @click="focusSearch">Explorar cursos</button>
+          <div v-else ref="userMenuRef" class="user-menu public-user-menu" :class="{ open: userMenuOpen }">
+            <button
+              type="button"
+              class="user-trigger"
+              aria-haspopup="true"
+              :aria-expanded="userMenuOpen"
+              aria-label="Menu do usuário"
+              @click="userMenuOpen = !userMenuOpen"
+            >
+              <span class="avatar">{{ auth.initials }}</span>
+              <span class="user-text">
+                <span class="user-name">{{ auth.user?.name || 'Visitante' }}</span>
+                <span class="user-role">{{ auth.role || 'Aluno' }}</span>
+              </span>
+              <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="user-dropdown">
+              <router-link :to="{ name: 'perfil' }" @click="userMenuOpen = false">
+                <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
+                Meu perfil
+              </router-link>
+              <router-link to="/" @click="userMenuOpen = false">
+                <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
+                Meus cursos
+              </router-link>
+              <router-link :to="{ name: 'public-assinaturas', params: { companySlug } }" @click="userMenuOpen = false">
+                <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+                Minhas assinaturas
+              </router-link>
+              <a href="#" @click.prevent="logout">
+                <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+                Sair
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </header>
@@ -42,18 +77,19 @@
     <footer v-if="storefront.company" class="public-footer">
       <div class="public-footer-inner">
         <span>{{ storefront.company.name }}</span>
-        <span>Pagamento processado com segurança.</span>
+        <span>{{ footerNote }}</span>
       </div>
     </footer>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BrandLogo from '../components/BrandLogo.vue';
 import { useTheme } from '../composables/useTheme';
 import { useAuthStore } from '../stores/auth';
+import { resetUserStores } from '../stores/resetUserStores';
 import { useStorefrontStore } from '../stores/storefront';
 
 const route = useRoute();
@@ -62,7 +98,13 @@ const auth = useAuthStore();
 const storefront = useStorefrontStore();
 const { toggleTheme } = useTheme();
 
+const userMenuOpen = ref(false);
+const userMenuRef = ref(null);
+
 const companySlug = computed(() => String(route.params.companySlug || ''));
+const footerNote = computed(
+  () => storefront.company?.storefront?.settings?.footer?.note || 'Pagamento processado com segurança.',
+);
 
 watch(
   companySlug,
@@ -91,9 +133,20 @@ async function focusSearch() {
 }
 
 async function logout() {
+  userMenuOpen.value = false;
   await auth.logout();
+  resetUserStores();
   await router.push({ name: 'public-loja', params: { companySlug: companySlug.value } });
 }
+
+function onClickOutside(event) {
+  if (userMenuRef.value && !userMenuRef.value.contains(event.target)) {
+    userMenuOpen.value = false;
+  }
+}
+
+onMounted(() => document.addEventListener('click', onClickOutside));
+onUnmounted(() => document.removeEventListener('click', onClickOutside));
 </script>
 
 <style scoped>
@@ -119,15 +172,14 @@ async function logout() {
   display:flex;align-items:center;gap:6px;margin-right:auto;
   font-size:12.5px;font-weight:700;flex-wrap:wrap;justify-content:flex-start;
 }
-.public-nav > a,.public-link-btn{
+.public-nav > a{
   padding:8px 11px;border-radius:8px;color:var(--text-secondary);
   text-decoration:none;transition:color .15s ease,background .15s ease;
 }
 .public-nav > a.router-link-active{color:var(--text-primary);}
 .public-nav > a:hover{color:var(--text-primary);background:var(--bg-card-alt);}
-.public-link-btn{border:0;background:none;font:inherit;font-weight:700;cursor:pointer;}
-.public-link-btn:hover{background:var(--bg-card-alt);color:var(--text-primary);}
 .public-actions{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.public-user-menu{flex-shrink:0;}
 .public-icon-btn{
   display:flex;align-items:center;justify-content:center;width:36px;height:36px;
   border:0;border-radius:8px;background:transparent;color:var(--text-muted);cursor:pointer;
@@ -158,8 +210,11 @@ async function logout() {
     order:3;width:100%;justify-content:flex-start;gap:2px;
     padding-top:6px;border-top:1px solid color-mix(in srgb,var(--border) 68%,transparent);
   }
-  .public-nav > a,.public-link-btn{padding:7px 9px;font-size:12px;}
+  .public-nav > a{padding:7px 9px;font-size:12px;}
   .public-footer-inner{padding-top:22px;padding-bottom:22px;}
+}
+@media(max-width:760px){
+  .public-user-menu .user-text{display:none;}
 }
 @media(max-width:560px){
   .public-header-cta{display:none;}
@@ -167,8 +222,10 @@ async function logout() {
   .public-nav::-webkit-scrollbar{display:none;}
   .public-actions{gap:4px;}
   .public-icon-btn{width:32px;height:32px;}
+  .public-user-menu .user-trigger{padding:2px;gap:6px;}
+  .public-user-menu .user-dropdown{right:-4px;}
 }
 @media(max-width:480px){
-  .public-nav > a,.public-link-btn{padding:7px 8px;font-size:12.5px;}
+  .public-nav > a{padding:7px 8px;font-size:12.5px;}
 }
 </style>

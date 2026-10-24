@@ -120,9 +120,10 @@ flowchart LR
     EN --> TE
 ```
 
-- O produto aponta para **um curso** (`store_products.course_id`) e para **uma ou mais turmas** (`store_product_teams`).
+- O produto é definido por **uma ou mais turmas** (`store_product_teams`). O formulário não escolhe curso.
+- `store_products.course_id` é um **curso principal derivado** do primeiro curso ativo das turmas selecionadas. Ele é usado apenas em relatórios (ex.: top cursos) e continua presente na resposta da API.
 - Ao confirmar o pagamento, `EnrollmentService::grantAccess` percorre as turmas ativas do produto e faz:
-  - `team_courses` → garante o **curso na turma**;
+  - `team_courses` → garante o curso principal na turma (redundante quando o vínculo já existe);
   - `team_users` → garante o **aluno na turma** (ativo, sem expiração).
 - Ou seja: **comprar é só um atalho para entrar na turma.** O admin também pode cadastrar o aluno na turma diretamente.
 

@@ -26,10 +26,13 @@ class AdminStoreProductTest extends TestCase
     {
         $course = Course::factory()->create(['company_id' => $this->company->id]);
         $team = Team::factory()->create(['company_id' => $this->company->id]);
+        $team->courses()->attach($course->id, [
+            'company_id' => $this->company->id,
+            'status' => 'active',
+        ]);
 
         $response = $this->withToken($this->apiLogin($this->admin))
             ->post('/api/v1/admin/store-products', [
-                'course_id' => $course->id,
                 'title' => 'Curso de PHP',
                 'description' => 'Acesso completo.',
                 'price' => 199.90,
@@ -54,6 +57,20 @@ class AdminStoreProductTest extends TestCase
             'store_product_id' => $product->id,
             'team_id' => $team->id,
         ]);
+    }
+
+    public function test_admin_cannot_create_store_product_when_selected_team_has_no_active_course(): void
+    {
+        $team = Team::factory()->create(['company_id' => $this->company->id]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/store-products', [
+                'title' => 'Sem curso na turma',
+                'price' => 99.90,
+                'team_ids' => [$team->id],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('team_ids');
     }
 
     public function test_admin_can_update_product_replace_image_and_sync_teams(): void

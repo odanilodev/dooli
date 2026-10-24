@@ -34,6 +34,7 @@ Route → Middleware → FormRequest → Controller → Service → Repository �
 | Progresso | `timelines` + `actions.code` (unique de banco `user+course+lesson+action+team` garante idempotência) |
 | Conclusão | `course_completions` = **marco mais recente** da conquista (user+team+course, `required_lessons`, `lesson_ids`, `completed_at`), independente do certificado |
 | Curso alterado vs. conclusão | Novas aulas mantêm o certificado atual válido; ao concluir todas, o marco avança e o certificado é substituído por um novo com a grade atual |
+| Loja | Banners usam `placement` (`home`/`store`); textos da vitrine ficam em `company_settings` na chave JSON `storefront` e são expostos por `/admin/storefront`, `/storefront` e pelo payload público da empresa |
 | Respostas | Envelope `success/data/meta/errors` + exceções centralizadas em `bootstrap/app.php` |
 | Erros | `ApiException` e filhas; handler mapeia validação/auth/404/429 |
 

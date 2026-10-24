@@ -4,7 +4,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Produtos da loja</h1>
-        <p class="page-subtitle">{{ meta.total ?? products.length }} produto(s) — cada compra libera o curso nas turmas selecionadas.</p>
+        <p class="page-subtitle">{{ meta.total ?? products.length }} produto(s) — cada compra libera os cursos das turmas selecionadas.</p>
       </div>
       <div class="admin-head-actions">
         <button v-if="publicStoreUrl" class="btn btn-outline" type="button" @click="copyStoreLink">Copiar link da loja</button>
@@ -14,7 +14,7 @@
 
     <form v-if="showForm" class="panel" @submit.prevent="save">
       <h2 class="panel-title">{{ editingId ? `Editar produto #${editingId}` : 'Novo produto' }}</h2>
-      <p class="panel-desc">Defina o curso, as turmas liberadas na compra e as condições de venda.</p>
+      <p class="panel-desc">Defina as turmas liberadas na compra e as condições de venda.</p>
 
       <div class="form-row">
         <div class="form-group">
@@ -36,13 +36,9 @@
           <input id="p-slug" class="form-control" v-model="form.slug" placeholder="gerado pelo título quando vazio">
         </div>
         <div class="form-group">
-          <label for="p-course">Curso liberado</label>
-          <SearchSelect
-            id="p-course"
-            v-model="form.course_id"
-            :options="courseOptions"
-            placeholder="Buscar curso..."
-          />
+          <label>Turmas que a compra libera</label>
+          <TeamPicker v-model="selectedTeams" />
+          <span class="form-hint">Obrigatório. A compra libera todos os cursos ativos das turmas selecionadas. A turma precisa ter ao menos um curso vinculado.</span>
         </div>
       </div>
 
@@ -53,13 +49,13 @@
 
       <div class="form-row">
         <div class="form-group">
-          <label for="p-price">Preço (R$)</label>
-          <input id="p-price" type="number" min="0" step="0.01" class="form-control" v-model="form.price" required>
+          <label for="p-price">Preço</label>
+          <CurrencyInput id="p-price" v-model="form.price" required />
         </div>
         <div class="form-group">
-          <label for="p-sale">Promoção (R$)</label>
-          <input id="p-sale" type="number" min="0" step="0.01" class="form-control" v-model="form.sale">
-          <span class="form-hint">Use 0 para vender pelo preço normal.</span>
+          <label for="p-sale">Promoção</label>
+          <CurrencyInput id="p-sale" v-model="form.sale" />
+          <span class="form-hint">Deixe vazio ou use R$ 0,00 para vender pelo preço normal.</span>
         </div>
       </div>
 
@@ -105,12 +101,6 @@
 
       <div v-if="form.billing_type === 'subscription'" class="form-hint" style="margin-bottom:14px;">
         A primeira cobrança ocorre na autorização. O acesso fica ativo enquanto a assinatura estiver paga.
-      </div>
-
-      <div class="form-group">
-        <label>Turmas que a compra libera</label>
-        <TeamPicker v-model="selectedTeams" />
-        <span class="form-hint">Obrigatório. A compra libera todos os cursos ativos das turmas selecionadas.</span>
       </div>
 
       <div class="form-group">
@@ -161,7 +151,7 @@
       <div v-else class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr><th>Produto</th><th>Curso</th><th>Turmas</th><th>Preço</th><th>Cobrança</th><th>Lançamento</th><th>Status</th><th></th></tr>
+            <tr><th>Produto</th><th>Turmas</th><th>Preço</th><th>Cobrança</th><th>Lançamento</th><th>Status</th><th></th></tr>
           </thead>
           <tbody>
             <tr v-for="product in products" :key="product.id">
@@ -180,7 +170,6 @@
                   </span>
                 </div>
               </td>
-              <td class="admin-muted">{{ product.course?.name || '—' }}</td>
               <td class="admin-muted">{{ product.teams?.length ?? 0 }} turma(s)</td>
               <td>
                 <span class="product-price">
@@ -223,9 +212,9 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
 import { formatCurrency, formatDateTime, toDateTimeInput } from '../utils/format';
+import CurrencyInput from '../components/admin/CurrencyInput.vue';
 import FilePicker from '../components/admin/FilePicker.vue';
 import ImageCropper from '../components/admin/ImageCropper.vue';
-import SearchSelect from '../components/admin/SearchSelect.vue';
 import TeamPicker from '../components/admin/TeamPicker.vue';
 
 const toast = useToast();
@@ -237,7 +226,6 @@ const statusFilters = [
 ];
 
 const products = ref([]);
-const courses = ref([]);
 const meta = ref({ current_page: 1, last_page: 1, total: 0 });
 const loading = ref(true);
 const saving = ref(false);
@@ -256,7 +244,6 @@ const publicStoreUrl = ref('');
 const form = reactive({
   title: '',
   slug: '',
-  course_id: '',
   description: '',
   price: '',
   sale: 0,
@@ -272,12 +259,6 @@ const form = reactive({
 });
 
 let searchTimer = null;
-
-const courseOptions = computed(() => courses.value.map((course) => ({
-  value: course.id,
-  label: course.name,
-  sub: course.status === 'active' ? 'Ativo' : 'Inativo',
-})));
 
 const imagePreviewUrl = computed(() => imagePreview.value || form.image || '');
 
@@ -300,15 +281,6 @@ async function load() {
     toast.error(e?.message || 'Não foi possível carregar os produtos.');
   } finally {
     loading.value = false;
-  }
-}
-
-async function loadCourses() {
-  try {
-    const { data } = await api.get('/admin/courses', { params: { per_page: 100 } });
-    courses.value = data.data ?? [];
-  } catch (e) {
-    toast.error(e?.message || 'Nǜo foi poss��vel carregar os cursos.');
   }
 }
 
@@ -356,7 +328,6 @@ function goPage(page) {
 function resetForm() {
   form.title = '';
   form.slug = '';
-  form.course_id = '';
   form.description = '';
   form.price = '';
   form.sale = 0;
@@ -405,7 +376,6 @@ async function openEdit(product) {
     editingId.value = item.id;
     form.title = item.title ?? '';
     form.slug = item.slug ?? '';
-    form.course_id = item.course_id ?? '';
     form.description = item.description ?? '';
     form.price = item.price ?? '';
     form.sale = item.sale ?? 0;
@@ -483,7 +453,6 @@ function parseTags(value) {
 
 function payload() {
   const data = {
-    course_id: Number(form.course_id),
     title: form.title.trim(),
     description: form.description || null,
     price: Number(form.price) || 0,
@@ -508,8 +477,8 @@ function payload() {
 }
 
 async function save() {
-  if (!form.title.trim() || !form.course_id) {
-    toast.error('Informe o título e o curso.');
+  if (!form.title.trim()) {
+    toast.error('Informe o título do produto.');
     return;
   }
 
@@ -588,7 +557,6 @@ async function remove(product) {
 }
 
 onMounted(() => {
-  loadCourses();
   loadPublicLink();
   load();
 });

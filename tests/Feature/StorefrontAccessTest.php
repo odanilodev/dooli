@@ -26,11 +26,8 @@ class StorefrontAccessTest extends TestCase
 
     public function test_product_requires_at_least_one_team(): void
     {
-        $course = $this->buildCourse($this->company->id);
-
         $this->withToken($this->apiLogin($this->admin))
             ->postJson('/api/v1/admin/store-products', [
-                'course_id' => $course['course']->id,
                 'title' => 'Sem turma',
                 'price' => 50,
             ])

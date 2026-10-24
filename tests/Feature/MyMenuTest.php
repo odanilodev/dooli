@@ -103,11 +103,12 @@ class MyMenuTest extends TestCase
 
         $this->assertSame([
             '/admin/produtos',
+            '/admin/loja',
             '/admin/gateways',
             '/admin/pedidos',
             '/admin/assinaturas',
             '/admin/certificados',
-        ], array_slice($links, $products, 5));
+        ], array_slice($links, $products, 6));
 
         $names = collect(
             $this->withToken($this->apiLogin($this->admin))

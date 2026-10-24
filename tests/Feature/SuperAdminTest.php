@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Company;
 use App\Models\User;
 use App\Models\UserType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -101,15 +102,23 @@ class SuperAdminTest extends TestCase
         $response = $this->withToken($this->apiLogin($this->makeSuperAdmin()))
             ->postJson('/api/v1/admin/companies', [
                 'name' => 'Nova Escola',
+                'domain' => 'https://www.NovaEscola.com.br/',
                 'admin_name' => 'Admin Novo',
                 'admin_username' => 'novoadmin',
                 'admin_email' => 'novoadmin@escola.test',
                 'admin_password' => 'password123',
             ]);
 
-        $response->assertCreated()->assertJsonPath('data.name', 'Nova Escola');
+        $response->assertCreated()
+            ->assertJsonPath('data.name', 'Nova Escola')
+            ->assertJsonPath('data.domain', 'novaescola.com.br');
 
         $companyId = (int) $response->json('data.id');
+
+        $this->assertDatabaseHas('companies', [
+            'id' => $companyId,
+            'domain' => 'novaescola.com.br',
+        ]);
 
         $codes = UserType::withoutGlobalScopes()
             ->where('company_id', $companyId)
@@ -124,6 +133,68 @@ class SuperAdminTest extends TestCase
         $this->assertSame($companyId, $admin->company_id);
         $this->assertFalse($admin->isSuperAdmin());
         $this->assertSame('admin', $admin->userType()->withoutGlobalScopes()->value('code'));
+    }
+
+    public function test_company_domain_must_be_unique(): void
+    {
+        Company::factory()->create(['domain' => 'escola.test']);
+
+        $this->withToken($this->apiLogin($this->makeSuperAdmin()))
+            ->postJson('/api/v1/admin/companies', [
+                'name' => 'Outra Escola',
+                'domain' => 'https://www.escola.test/',
+                'admin_name' => 'Admin Outro',
+                'admin_username' => 'adminoutro',
+                'admin_email' => 'adminoutro@escola.test',
+                'admin_password' => 'password123',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('domain');
+    }
+
+    public function test_company_domain_must_be_a_valid_host(): void
+    {
+        $this->withToken($this->apiLogin($this->makeSuperAdmin()))
+            ->postJson('/api/v1/admin/companies', [
+                'name' => 'Escola Inválida',
+                'domain' => 'dominio invalido',
+                'admin_name' => 'Admin Inválido',
+                'admin_username' => 'admininvalido',
+                'admin_email' => 'admininvalido@escola.test',
+                'admin_password' => 'password123',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('domain');
+    }
+
+    public function test_super_admin_can_update_and_clear_company_domain(): void
+    {
+        $company = Company::factory()->create(['domain' => 'antigo.test']);
+        $token = $this->apiLogin($this->makeSuperAdmin());
+
+        $this->withToken($token)
+            ->putJson("/api/v1/admin/companies/{$company->id}", [
+                'domain' => 'https://www.NovoDominio.com/',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.domain', 'novodominio.com');
+
+        $this->assertDatabaseHas('companies', [
+            'id' => $company->id,
+            'domain' => 'novodominio.com',
+        ]);
+
+        $this->withToken($token)
+            ->putJson("/api/v1/admin/companies/{$company->id}", [
+                'domain' => null,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.domain', null);
+
+        $this->assertDatabaseHas('companies', [
+            'id' => $company->id,
+            'domain' => null,
+        ]);
     }
 
     public function test_normal_admin_cannot_create_company(): void

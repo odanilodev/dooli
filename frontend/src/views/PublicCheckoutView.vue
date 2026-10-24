@@ -1,9 +1,9 @@
 <template>
   <main class="content public-content">
     <nav class="public-breadcrumb" aria-label="Você está aqui">
-      <router-link :to="{ name: 'public-loja', params: { companySlug } }">Loja</router-link>
+      <router-link :to="storeRoute">Loja</router-link>
       <span>/</span>
-      <router-link :to="{ name: 'public-produto', params: { companySlug, productSlug } }">Produto</router-link>
+      <router-link :to="productRoute">Produto</router-link>
       <span>/</span>
       <span class="current">Checkout</span>
     </nav>
@@ -15,7 +15,7 @@
     <div v-else-if="error" class="public-empty">
       <strong>Não foi possível abrir o checkout</strong>
       <span>{{ error }}</span>
-      <router-link :to="{ name: 'public-loja', params: { companySlug } }" class="btn btn-outline btn-sm">Voltar para a loja</router-link>
+      <router-link :to="storeRoute" class="btn btn-outline btn-sm">Voltar para a loja</router-link>
     </div>
 
     <div v-else-if="companyMismatch" class="public-empty">
@@ -142,10 +142,6 @@
             <svg class="icon" width="14" height="14" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
             Acesso online
           </li>
-          <li>
-            <svg class="icon" width="14" height="14" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
-            Compra segura
-          </li>
         </ul>
 
         <div class="summary-line">
@@ -167,9 +163,12 @@
           <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
 
-        <div class="summary-security">
-          <svg class="icon" width="17" height="17" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
-          <span>Ambiente de pagamento protegido.</span>
+        <div class="trust-note">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+          <div>
+            <strong>Compra 100% segura</strong>
+            <span>Ambiente de pagamento protegido.</span>
+          </div>
         </div>
       </aside>
     </section>
@@ -243,6 +242,17 @@ let pollTimer = null;
 
 const companySlug = computed(() => String(route.params.companySlug || ''));
 const productSlug = computed(() => String(route.params.productSlug || ''));
+const fromInternal = computed(() => route.query.from === 'internal');
+const storeRoute = computed(() => (
+  fromInternal.value
+    ? { name: 'loja' }
+    : { name: 'public-loja', params: { companySlug: companySlug.value } }
+));
+const productRoute = computed(() => (
+  fromInternal.value
+    ? { name: 'loja-produto', params: { slug: productSlug.value } }
+    : { name: 'public-produto', params: { companySlug: companySlug.value, productSlug: productSlug.value } }
+));
 const gateway = computed(() => storefront.defaultGateway);
 const currentPrice = computed(() => Number(product.value?.sale) > 0 ? product.value.sale : product.value?.price);
 const productPalette = computed(() => paletteAt(Number(product.value?.id) || 0));
@@ -299,7 +309,11 @@ async function submit() {
       }
 
       toast.success('Assinatura criada. Aguardando confirmação.');
-      await router.push({ name: 'public-assinaturas', params: { companySlug: companySlug.value } });
+      await router.push(
+        fromInternal.value
+          ? { name: 'dashboard' }
+          : { name: 'public-assinaturas', params: { companySlug: companySlug.value } },
+      );
       return;
     }
 
@@ -491,11 +505,6 @@ onBeforeUnmount(stopPolling);
 .summary-total strong{font-size:27px;color:var(--accent);letter-spacing:-.035em;}
 .summary-total small{font-size:11px;color:var(--text-muted);}
 .summary-note{margin:0;color:var(--text-muted);font-size:12px;line-height:1.6;}
-.summary-security{
-  display:flex;align-items:flex-start;gap:9px;padding:13px;border-radius:12px;
-  background:var(--accent-soft);color:var(--accent);font-size:11.5px;line-height:1.45;font-weight:700;
-}
-.summary-security svg{flex-shrink:0;}
 .pix-wrap{display:flex;justify-content:center;}
 .pix-card{
   display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.65fr);gap:clamp(32px,5vw,70px);

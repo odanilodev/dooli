@@ -22,6 +22,7 @@ class MenuSeeder extends Seeder
         ['Anexos', '/admin/anexos', 'attachments'],
         ['Banners', '/admin/banners', 'banners'],
         ['Produtos', '/admin/produtos', 'store'],
+        ['Loja', '/admin/loja', 'storefront'],
         ['Gateways', '/admin/gateways', 'gateway'],
         ['Pedidos', '/admin/pedidos', 'orders'],
         ['Assinaturas', '/admin/assinaturas', 'subscriptions'],

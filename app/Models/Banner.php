@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
-    'company_id', 'name', 'sort_order', 'path', 'link', 'status',
+    'company_id', 'placement', 'name', 'sort_order', 'path', 'link', 'status',
     'eyebrow', 'title', 'title_highlight', 'description', 'quote',
     'cta_label', 'cta_link', 'secondary_label', 'secondary_link', 'image',
 ])]
@@ -17,7 +17,7 @@ class Banner extends Model
 {
     use BelongsToCompany, HasFactory;
 
-    protected $attributes = ['status' => 'active'];
+    protected $attributes = ['status' => 'active', 'placement' => 'home'];
 
     protected function casts(): array
     {

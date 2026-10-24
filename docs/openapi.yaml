@@ -208,13 +208,25 @@ paths:
   /api/v1/banners:
     get:
       tags: [Store]
-      summary: Banners ativos da home (hero)
+      summary: Banners ativos da home (hero, placement=home)
       security: []
       parameters:
         - { $ref: '#/components/parameters/XCompany' }
       responses:
         '200': { description: OK }
         '400': { description: Empresa nÃ£o informada }
+
+  /api/v1/storefront:
+    get:
+      tags: [Store]
+      summary: Contexto, textos e banners da loja interna
+      description: Inclui company.id, name, slug, public_store_url e gateways ativos, alem de settings e banners.
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/XCompany' }
+      responses:
+        '200': { description: OK }
+        '400': { description: Empresa nǜo informada }
 
   /api/v1/certificates/{code}/verify:
     get:
@@ -390,6 +402,52 @@ paths:
       responses:
         '201': { description: Criado }
         '422': { description: Cupom invÃ¡lido }
+
+  /api/v1/admin/storefront:
+    get:
+      tags: [Admin]
+      summary: Textos configurados da loja
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Admin]
+      summary: Atualiza textos da loja
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                catalog:
+                  type: object
+                  properties:
+                    eyebrow: { type: string, maxLength: 80 }
+                    title: { type: string, maxLength: 120 }
+                    description: { type: string, maxLength: 500 }
+                benefits:
+                  type: array
+                  maxItems: 3
+                  items:
+                    type: object
+                    properties:
+                      title: { type: string, maxLength: 80 }
+                      description: { type: string, maxLength: 160 }
+                internal:
+                  type: object
+                  properties:
+                    eyebrow: { type: string, maxLength: 80 }
+                    title: { type: string, maxLength: 120 }
+                    description: { type: string, maxLength: 500 }
+                footer:
+                  type: object
+                  properties:
+                    note: { type: string, maxLength: 255 }
+      responses:
+        '200': { description: OK }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Dados invǭlidos }
 
   /api/v1/admin/courses:
     get:
@@ -663,7 +721,7 @@ paths:
   /api/v1/public/companies/{companySlug}:
     get:
       tags: [Store]
-      summary: Dados publicos da empresa e branding
+      summary: Dados publicos da empresa, branding, storefront e banners da loja
       security: []
       parameters:
         - { name: companySlug, in: path, required: true, schema: { type: string } }
