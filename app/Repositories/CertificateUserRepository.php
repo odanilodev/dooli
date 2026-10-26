@@ -35,7 +35,7 @@ class CertificateUserRepository extends BaseRepository
     public function forUser(int $userId): Collection
     {
         return $this->query()
-            ->with(['certificate.course', 'team'])
+            ->with(['certificate.course', 'team', 'company'])
             ->where('user_id', $userId)
             ->latest('id')
             ->get();
@@ -44,7 +44,7 @@ class CertificateUserRepository extends BaseRepository
     public function findByCode(string $code): ?CertificateUser
     {
         return $this->query()
-            ->with(['certificate.course', 'user', 'team'])
+            ->with(['certificate.course', 'user', 'team', 'company'])
             ->where(function (Builder $query) use ($code) {
                 $query->where('code', $code)->orWhere('public_code', $code);
             })
@@ -54,7 +54,7 @@ class CertificateUserRepository extends BaseRepository
     public function findValidByCode(string $code): ?CertificateUser
     {
         return $this->query()
-            ->with(['certificate.course', 'user', 'team'])
+            ->with(['certificate.course', 'user', 'team', 'company'])
             ->where(function (Builder $query) use ($code) {
                 $query->where('code', $code)->orWhere('public_code', $code);
             })

@@ -1,6 +1,6 @@
 <template>
   <aside class="sidebar" :class="{ open: isOpen }">
-    <router-link to="/" class="brand" @click="close">
+    <router-link :to="{ name: 'dashboard' }" class="brand" @click="close">
       <BrandLogo />
     </router-link>
 
@@ -10,7 +10,7 @@
       </template>
 
       <template v-else>
-        <router-link to="/" class="nav-link" :class="{ active: $route.name === 'dashboard' }" @click="close">
+        <router-link :to="{ name: 'dashboard' }" class="nav-link" :class="{ active: $route.name === 'dashboard' }" @click="close">
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/></svg>
           <span>Início</span>
         </router-link>
@@ -65,7 +65,7 @@ const route = useRoute();
 const { openPath, isActive } = useNavMenu();
 
 const FALLBACK_MENU = [
-  { id: 'fb-dashboard', name: 'Dashboard', type: 'link', depth: 0, link: '/', icon: 'dashboard', children: [] },
+  { id: 'fb-dashboard', name: 'Dashboard', type: 'link', depth: 0, link: '/inicio', icon: 'dashboard', children: [] },
   {
     id: 'fb-admin',
     name: 'Administração',

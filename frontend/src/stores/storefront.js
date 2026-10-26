@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { api } from '../api/http';
 import { useBrandingStore } from './branding';
+import { useTenantStore } from './tenant';
 
 export const useStorefrontStore = defineStore('storefront', () => {
   const company = ref(null);
@@ -15,7 +16,28 @@ export const useStorefrontStore = defineStore('storefront', () => {
     return gateways.value.find((gateway) => gateway.code === 'mercadopago') ?? gateways.value[0] ?? null;
   });
 
+  function domainCompany(slug) {
+    const tenant = useTenantStore();
+
+    return tenant.isDomainMode && (!slug || slug === tenant.company?.slug);
+  }
+
+  function productsEndpoint(slug) {
+    return domainCompany(slug)
+      ? '/public/tenant/store/products'
+      : `/public/companies/${encodeURIComponent(slug)}/store/products`;
+  }
+
   async function loadCompany(slug) {
+    const tenant = useTenantStore();
+
+    if (domainCompany(slug) && tenant.company) {
+      company.value = tenant.company;
+      useBrandingStore().set(tenant.company?.branding);
+
+      return company.value;
+    }
+
     if (company.value?.slug === slug) {
       return company.value;
     }
@@ -44,7 +66,7 @@ export const useStorefrontStore = defineStore('storefront', () => {
     error.value = null;
 
     try {
-      const { data } = await api.get(`/public/companies/${encodeURIComponent(slug)}/store/products`, {
+      const { data } = await api.get(productsEndpoint(slug), {
         params: { per_page: 60, ...filters },
       });
 
@@ -63,9 +85,11 @@ export const useStorefrontStore = defineStore('storefront', () => {
   }
 
   async function fetchProduct(slug, productSlug) {
-    const { data } = await api.get(
-      `/public/companies/${encodeURIComponent(slug)}/store/products/${encodeURIComponent(productSlug)}`,
-    );
+    const endpoint = domainCompany(slug)
+      ? `/public/tenant/store/products/${encodeURIComponent(productSlug)}`
+      : `/public/companies/${encodeURIComponent(slug)}/store/products/${encodeURIComponent(productSlug)}`;
+
+    const { data } = await api.get(endpoint);
 
     return data.data;
   }

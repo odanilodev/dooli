@@ -41,6 +41,28 @@ class PasswordResetTest extends TestCase
         Notification::assertNothingSent();
     }
 
+    public function test_password_reset_link_uses_the_company_domain(): void
+    {
+        Notification::fake();
+
+        config()->set('app.frontend_scheme', 'https');
+        $this->company->update(['domain' => 'ourovelho.test']);
+
+        $this->postJson('/api/v1/auth/forgot-password', ['email' => $this->student->email])
+            ->assertOk();
+
+        Notification::assertSentTo(
+            $this->student,
+            ResetPassword::class,
+            function (ResetPassword $notification) {
+                $url = $notification->toMail($this->student)->actionUrl;
+
+                return str_starts_with($url, 'https://ourovelho.test/reset-password?')
+                    && ! str_contains($url, 'company=');
+            },
+        );
+    }
+
     public function test_user_can_reset_password_with_valid_token(): void
     {
         Notification::fake();

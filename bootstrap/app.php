@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureCompanyContext;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\ResolveCompanyByDomain;
 use App\Http\Middleware\ResolveCompanyBySlug;
 use App\Http\Middleware\SetCompanyContext;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'company' => SetCompanyContext::class,
             'company.required' => EnsureCompanyContext::class,
+            'company.domain' => ResolveCompanyByDomain::class,
             'company.slug' => ResolveCompanyBySlug::class,
             'role' => EnsureUserHasRole::class,
             'admin.access' => EnsureAdminAccess::class,

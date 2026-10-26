@@ -120,10 +120,12 @@
 <script setup>
 import { reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useTenant } from '../composables/useTenant';
 import { useTheme } from '../composables/useTheme';
 import { useToast } from '../composables/useToast';
 
 const router = useRouter();
+const { loginRoute } = useTenant();
 const { theme, setTheme } = useTheme();
 const toast = useToast();
 
@@ -149,7 +151,7 @@ const notifications = reactive({ newsletter: true, reminders: true, push: false 
 
 function deleteAccount() {
   if (window.confirm('Tem certeza que deseja excluir sua conta? Essa ação não pode ser desfeita.')) {
-    router.push('/login');
+    router.push(loginRoute());
   }
 }
 </script>

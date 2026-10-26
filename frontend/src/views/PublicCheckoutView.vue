@@ -218,6 +218,7 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api/http';
 import { paletteAt } from '../data/palette';
+import { useTenant } from '../composables/useTenant';
 import { useAuthStore } from '../stores/auth';
 import { useStorefrontStore } from '../stores/storefront';
 import { useToast } from '../composables/useToast';
@@ -228,6 +229,7 @@ const router = useRouter();
 const auth = useAuthStore();
 const storefront = useStorefrontStore();
 const toast = useToast();
+const { companySlug, publicRoute } = useTenant();
 
 const product = ref(null);
 const loading = ref(true);
@@ -240,18 +242,17 @@ const orderId = ref(null);
 const orderStatus = ref('pending');
 let pollTimer = null;
 
-const companySlug = computed(() => String(route.params.companySlug || ''));
 const productSlug = computed(() => String(route.params.productSlug || ''));
 const fromInternal = computed(() => route.query.from === 'internal');
 const storeRoute = computed(() => (
   fromInternal.value
     ? { name: 'loja' }
-    : { name: 'public-loja', params: { companySlug: companySlug.value } }
+    : publicRoute('public-loja')
 ));
 const productRoute = computed(() => (
   fromInternal.value
     ? { name: 'loja-produto', params: { slug: productSlug.value } }
-    : { name: 'public-produto', params: { companySlug: companySlug.value, productSlug: productSlug.value } }
+    : publicRoute('public-produto', { productSlug: productSlug.value })
 ));
 const gateway = computed(() => storefront.defaultGateway);
 const currentPrice = computed(() => Number(product.value?.sale) > 0 ? product.value.sale : product.value?.price);
@@ -312,7 +313,7 @@ async function submit() {
       await router.push(
         fromInternal.value
           ? { name: 'dashboard' }
-          : { name: 'public-assinaturas', params: { companySlug: companySlug.value } },
+          : publicRoute('public-assinaturas'),
       );
       return;
     }
@@ -367,7 +368,7 @@ function startPolling() {
       if (data.data.status === 'paid') {
         stopPolling();
         toast.success('Pagamento aprovado! Seu acesso foi liberado.');
-        await router.push('/');
+        await router.push({ name: 'dashboard' });
       }
     } catch (e) {
       /* keep polling */
@@ -393,11 +394,7 @@ async function copyPix() {
 
 async function switchCompanyAccount() {
   await auth.logout();
-  await router.push({
-    name: 'public-login',
-    params: { companySlug: companySlug.value },
-    query: { redirect: route.fullPath },
-  });
+  await router.push(publicRoute('public-login', {}, { redirect: route.fullPath }));
 }
 
 onBeforeUnmount(stopPolling);

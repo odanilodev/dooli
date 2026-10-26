@@ -80,12 +80,14 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { paletteAt } from '../data/palette';
+import { useTenant } from '../composables/useTenant';
 import { formatCurrency } from '../utils/format';
 import { useShopStore } from '../stores/store';
 
 const route = useRoute();
 const router = useRouter();
 const store = useShopStore();
+const { publicRoute } = useTenant();
 
 const product = ref(null);
 const loading = ref(false);
@@ -137,14 +139,7 @@ function buy() {
     return;
   }
 
-  router.push({
-    name: 'public-checkout',
-    params: {
-      companySlug: companySlug.value,
-      productSlug: product.value.slug,
-    },
-    query: { from: 'internal' },
-  });
+  router.push(publicRoute('public-checkout', { productSlug: product.value.slug }, { from: 'internal' }));
 }
 </script>
 

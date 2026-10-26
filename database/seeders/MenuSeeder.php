@@ -56,7 +56,7 @@ class MenuSeeder extends Seeder
 
         $this->menu('Dashboard', [
             'type' => 'link',
-            'link' => '/',
+            'link' => '/inicio',
             'icon' => 'dashboard',
             'sort_order' => 1,
             'sub' => null,

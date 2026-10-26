@@ -538,7 +538,7 @@ class CertificateService
             throw new CertificateNotAvailableException;
         }
 
-        return $issued->load(['certificate.course', 'team']);
+        return $issued->load(['certificate.course', 'team', 'company']);
     }
 
     /**
@@ -567,7 +567,7 @@ class CertificateService
             $certificateUser->user_id,
         );
 
-        return $revoked->load(['certificate.course', 'user', 'team']);
+        return $revoked->load(['certificate.course', 'user', 'team', 'company']);
     }
 
     public function verify(string $code): CertificateUser

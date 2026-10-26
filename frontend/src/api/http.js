@@ -4,6 +4,23 @@ const TOKEN_KEY = 'delta-class-token';
 const COMPANY_KEY = 'delta-class-company';
 const DEFAULT_COMPANY_ID = import.meta.env.VITE_COMPANY_ID ? Number(import.meta.env.VITE_COMPANY_ID) : null;
 
+export function normalizeHost(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/[/?].*$/, '')
+    .replace(/:\d+$/, '')
+    .replace(/^www\./, '')
+    .replace(/\.$/, '');
+}
+
+export function getCompanyDomain() {
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+
+  return normalizeHost(hostname);
+}
+
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1',
   headers: {
@@ -97,6 +114,12 @@ api.interceptors.request.use((config) => {
 
   if (companyId) {
     config.headers['X-Company'] = String(companyId);
+  }
+
+  const companyDomain = getCompanyDomain();
+
+  if (companyDomain) {
+    config.headers['X-Company-Domain'] = companyDomain;
   }
 
   return config;

@@ -518,6 +518,28 @@ O cadastro cria sempre um aluno da empresa do slug. O mesmo e-mail pode existir 
 
 `GET /api/v1/public/companies/{companySlug}` inclui `storefront.settings` e `storefront.banners` com os banners ativos de `placement=store`, permitindo que a loja pública renderize o carrossel e os textos configurados pelo admin sem requisições adicionais.
 
+## Loja publica por dominio
+
+Cada empresa pode ter um `domain` unico. O host e a chave do tenant: a loja abre na raiz do dominio, o login fica em `/entrar` e o painel em `/inicio`. O frontend envia o hostname no header **`X-Company-Domain`**; o middleware `company.domain` resolve a empresa ativa.
+
+- `GET /api/v1/public/tenant` - empresa, branding, storefront e banners
+- `GET /api/v1/public/tenant/store/products`
+- `GET /api/v1/public/tenant/store/products/{productSlug}`
+- `POST /api/v1/public/tenant/auth/login`
+- `POST /api/v1/public/tenant/auth/register`
+- `POST /api/v1/public/tenant/auth/forgot-password`
+- `POST /api/v1/public/tenant/auth/reset-password`
+
+Headers:
+
+- `X-Company-Domain`: hostname do tenant (ex.: `ourovelho.com.br`). Aceita `www.`, maiusculas e porta; e normalizado para o host.
+- `X-Company`: continua para dev/local, rotas internas e legado.
+- Rotas autenticadas ignoram o dominio e usam sempre a empresa do usuario.
+
+Dominios centrais da plataforma (super admin) ficam em `PLATFORM_DOMAINS` (virgula). Eles nunca sao resolvidos como tenant. As rotas antigas `/public/companies/{companySlug}` permanecem como fallback local/legado.
+
+Reset de senha, retorno de pagamento MercadoPago, assinaturas e certificados usam `https://{domain}/...` quando a empresa tem dominio; sem dominio, usam o fallback `FRONTEND_URL` com rotas `/#/e/{slug}/...`.
+
 ### Produto
 
 `store_products` agora possui:

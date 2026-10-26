@@ -1,7 +1,7 @@
 <template>
   <main class="content public-content">
     <nav class="public-breadcrumb" aria-label="Você está aqui">
-      <router-link :to="{ name: 'public-loja', params: { companySlug } }">Loja</router-link>
+      <router-link :to="publicRoute('public-loja')">Loja</router-link>
       <span>/</span>
       <span class="current">{{ product?.title || 'Produto' }}</span>
     </nav>
@@ -20,7 +20,7 @@
       <svg class="icon" width="38" height="38" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
       <strong>Produto não encontrado</strong>
       <span>{{ error }}</span>
-      <router-link :to="{ name: 'public-loja', params: { companySlug } }" class="btn btn-outline btn-sm">Voltar para a loja</router-link>
+      <router-link :to="publicRoute('public-loja')" class="btn btn-outline btn-sm">Voltar para a loja</router-link>
     </div>
 
     <template v-else-if="product">
@@ -234,6 +234,7 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { paletteAt } from '../data/palette';
 import { formatCurrency } from '../utils/format';
+import { useTenant } from '../composables/useTenant';
 import { useAuthStore } from '../stores/auth';
 import { useStorefrontStore } from '../stores/storefront';
 
@@ -241,13 +242,13 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const storefront = useStorefrontStore();
+const { companySlug, publicRoute } = useTenant();
 
 const product = ref(null);
 const loading = ref(false);
 const error = ref(null);
 const activeTab = ref('about');
 
-const companySlug = computed(() => String(route.params.companySlug || ''));
 const productSlug = computed(() => String(route.params.productSlug || ''));
 
 function load() {
@@ -290,17 +291,12 @@ function openContentTab() {
 }
 
 async function buy() {
-  const checkout = {
-    name: 'public-checkout',
-    params: { companySlug: companySlug.value, productSlug: productSlug.value },
-  };
+  const checkout = publicRoute('public-checkout', { productSlug: productSlug.value });
 
   if (!auth.isAuthenticated) {
-    await router.push({
-      name: 'public-cadastro',
-      params: { companySlug: companySlug.value },
-      query: { next: router.resolve(checkout).fullPath },
-    });
+    await router.push(publicRoute('public-cadastro', {}, {
+      next: router.resolve(checkout).fullPath,
+    }));
 
     return;
   }

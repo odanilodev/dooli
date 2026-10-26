@@ -14,22 +14,40 @@
       {{ loading ? 'Enviando...' : 'Enviar link' }}
     </button>
 
-    <p class="auth-switch">Lembrou a senha? <router-link to="/login">Voltar para o login</router-link></p>
+    <p class="auth-switch">Lembrou a senha? <router-link :to="loginRoute">Voltar para o login</router-link></p>
   </form>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useTenant } from '../composables/useTenant';
 import { useToast } from '../composables/useToast';
 
 const route = useRoute();
 const auth = useAuthStore();
 const toast = useToast();
+const { legacySlug, tenant } = useTenant();
 
 const email = ref('');
 const loading = ref(false);
+const companySlug = computed(() => {
+  if (legacySlug.value) {
+    return legacySlug.value;
+  }
+
+  return !tenant.isDomainMode && typeof route.query.company === 'string'
+    ? route.query.company
+    : null;
+});
+const loginRoute = computed(() => {
+  if (companySlug.value) {
+    return { name: 'legacy-login', params: { companySlug: companySlug.value } };
+  }
+
+  return tenant.isDomainMode ? { name: 'public-login' } : { name: 'login' };
+});
 
 async function submit() {
   if (!email.value.trim()) {
@@ -40,7 +58,7 @@ async function submit() {
   loading.value = true;
 
   try {
-    await auth.forgotPassword(email.value.trim(), route.query.company || null);
+    await auth.forgotPassword(email.value.trim(), companySlug.value);
     toast.success('Se o e-mail estiver cadastrado, enviaremos o link de redefinição.');
   } catch (e) {
     toast.error(e?.message || 'Não foi possível enviar o link.');

@@ -23,8 +23,8 @@ use App\Http\Controllers\Api\V1\Admin\PaymentController as AdminPaymentControlle
 use App\Http\Controllers\Api\V1\Admin\RatingController as AdminRatingController;
 use App\Http\Controllers\Api\V1\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Api\V1\Admin\ScheduleController as AdminScheduleController;
-use App\Http\Controllers\Api\V1\Admin\StoreProductController as AdminStoreProductController;
 use App\Http\Controllers\Api\V1\Admin\StorefrontSettingController as AdminStorefrontSettingController;
+use App\Http\Controllers\Api\V1\Admin\StoreProductController as AdminStoreProductController;
 use App\Http\Controllers\Api\V1\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Api\V1\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Api\V1\Admin\TopicController as AdminTopicController;
@@ -67,6 +67,24 @@ use Illuminate\Support\Facades\Route;
 Route::get('public/certificates/{code}', [CertificateVerifyController::class, 'show'])
     ->where('code', '[A-Za-z0-9-]+')
     ->middleware('throttle:public');
+
+/*
+|--------------------------------------------------------------------------
+| Public company storefront (tenant via custom domain)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('public/tenant')
+    ->middleware(['company.domain', 'throttle:public'])
+    ->group(function () {
+        Route::get('/', [PublicCompanyController::class, 'show']);
+        Route::get('store/products', [StoreController::class, 'index']);
+        Route::get('store/products/{productSlug}', [StoreController::class, 'showPublic']);
+
+        Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth');
+        Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:auth');
+        Route::post('auth/forgot-password', [PasswordResetController::class, 'sendLink'])->middleware('throttle:password');
+        Route::post('auth/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:password');
+    });
 
 /*
 |--------------------------------------------------------------------------

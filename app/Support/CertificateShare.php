@@ -2,14 +2,19 @@
 
 namespace App\Support;
 
+use App\Models\Company;
+
 class CertificateShare
 {
     /**
      * Public page where the certificate can be viewed and downloaded.
      */
-    public static function url(string $code): string
+    public static function url(string $code, ?Company $company = null): string
     {
-        return rtrim((string) config('app.frontend_url'), '/')
-            .'/v/'.rawurlencode($code);
+        $base = $company?->domain
+            ? $company->frontendUrl()
+            : rtrim((string) config('app.frontend_url'), '/');
+
+        return $base.'/v/'.rawurlencode($code);
     }
 }

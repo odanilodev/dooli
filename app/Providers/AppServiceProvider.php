@@ -100,10 +100,16 @@ class AppServiceProvider extends ServiceProvider
     {
         ResetPassword::createUrlUsing(function ($notifiable, string $token) {
             $email = urlencode($notifiable->getEmailForPasswordReset());
-            $company = urlencode((string) ($notifiable->company?->slug ?? ''));
+            $company = $notifiable->company;
+
+            if ($company?->domain && ! $notifiable->isSuperAdmin()) {
+                return $company->frontendUrl()."/reset-password?token={$token}&email={$email}";
+            }
+
+            $slug = urlencode((string) ($company?->slug ?? ''));
 
             return rtrim((string) config('app.frontend_url'), '/')
-                ."/#/reset-password?token={$token}&email={$email}&company={$company}";
+                ."/#/reset-password?token={$token}&email={$email}&company={$slug}";
         });
     }
 

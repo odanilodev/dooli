@@ -718,6 +718,78 @@ paths:
         '400': { description: Empresa nÃ£o informada }
         '401': { description: Assinatura invÃ¡lida }
 
+  /api/v1/public/tenant:
+    get:
+      tags: [Store]
+      summary: Dados publicos da empresa resolvida pelo dominio
+      description: Inclui empresa, branding, storefront, banners e gateways ativos.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XCompanyDomain'
+      responses:
+        '200': { description: OK }
+        '404': { description: Empresa inexistente ou inativa }
+  /api/v1/public/tenant/store/products:
+    get:
+      tags: [Store]
+      summary: Catalogo publico da empresa resolvida pelo dominio
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XCompanyDomain'
+      responses:
+        '200': { description: OK }
+        '404': { description: Empresa inexistente ou inativa }
+  /api/v1/public/tenant/store/products/{productSlug}:
+    get:
+      tags: [Store]
+      summary: Detalhe publico de um produto pelo dominio
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XCompanyDomain'
+        - { name: productSlug, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: OK }
+        '404': { description: Produto ou empresa nao encontrado }
+  /api/v1/public/tenant/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login restrito a empresa resolvida pelo dominio
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XCompanyDomain'
+      responses:
+        '200': { description: Autenticado }
+        '401': { description: Credenciais invalidas }
+        '404': { description: Empresa inexistente ou inativa }
+  /api/v1/public/tenant/auth/register:
+    post:
+      tags: [Auth]
+      summary: Cadastro de aluno na empresa resolvida pelo dominio
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XCompanyDomain'
+      responses:
+        '201': { description: Aluno criado e autenticado }
+        '404': { description: Empresa inexistente ou inativa }
+  /api/v1/public/tenant/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Envia link de redefinicao pela empresa do dominio
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XCompanyDomain'
+      responses:
+        '200': { description: Solicitacao aceita }
+  /api/v1/public/tenant/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Redefine a senha na empresa do dominio
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XCompanyDomain'
+      responses:
+        '200': { description: Senha redefinida }
+        '422': { description: Token invalido ou dados invalidos }
   /api/v1/public/companies/{companySlug}:
     get:
       tags: [Store]
@@ -801,6 +873,12 @@ components:
       required: true
       schema: { type: integer }
       description: Id da empresa (obrigatÃ³rio em rotas pÃºblicas/webhooks)
+    XCompanyDomain:
+      name: X-Company-Domain
+      in: header
+      required: true
+      schema: { type: string }
+      description: Hostname da empresa (ex. ourovelho.com.br); www, porta e protocolo sao normalizados.
     Page:
       name: page
       in: query

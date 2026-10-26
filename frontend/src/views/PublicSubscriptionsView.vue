@@ -6,7 +6,7 @@
         <h1>Minhas assinaturas</h1>
         <p v-if="subscriptions.length">{{ subscriptions.length }} assinatura(s) nesta loja.</p>
       </div>
-      <router-link :to="{ name: 'public-loja', params: { companySlug } }" class="btn btn-outline btn-sm">Voltar para a loja</router-link>
+      <router-link :to="publicRoute('public-loja')" class="btn btn-outline btn-sm">Voltar para a loja</router-link>
     </header>
 
     <div v-if="loading" class="public-empty">
@@ -24,7 +24,7 @@
       <svg class="icon" width="38" height="38" viewBox="0 0 24 24"><path d="M20 7h-6a4 4 0 0 0 0 8h2a4 4 0 0 1 0 8H9"/><path d="M16 3l4 4-4 4M8 21l-4-4 4-4"/></svg>
       <strong>Nenhuma assinatura ativa</strong>
       <span>Assine um produto da loja para começar a estudar.</span>
-      <router-link :to="{ name: 'public-loja', params: { companySlug } }" class="btn btn-primary btn-sm">Ir para a loja</router-link>
+      <router-link :to="publicRoute('public-loja')" class="btn btn-primary btn-sm">Ir para a loja</router-link>
     </div>
 
     <div v-else class="subscription-grid">
@@ -63,16 +63,15 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref } from 'vue';
 import { api } from '../api/http';
 import { paletteAt } from '../data/palette';
+import { useTenant } from '../composables/useTenant';
 import { useToast } from '../composables/useToast';
 import { formatCurrency, formatDate } from '../utils/format';
 
-const route = useRoute();
 const toast = useToast();
-const companySlug = computed(() => String(route.params.companySlug || ''));
+const { publicRoute } = useTenant();
 const subscriptions = ref([]);
 const loading = ref(true);
 const error = ref(null);

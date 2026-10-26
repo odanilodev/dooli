@@ -16,15 +16,13 @@
 
 <script setup>
 import { computed, watch } from 'vue';
-import { useRoute } from 'vue-router';
 import StoreCatalog from '../components/store/StoreCatalog.vue';
 import StoreHero from '../components/store/StoreHero.vue';
+import { useTenant } from '../composables/useTenant';
 import { useStorefrontStore } from '../stores/storefront';
 
-const route = useRoute();
 const storefront = useStorefrontStore();
-
-const companySlug = computed(() => String(route.params.companySlug || ''));
+const { companySlug, publicRoute } = useTenant();
 const products = computed(() => storefront.products);
 const storefrontData = computed(() => storefront.company?.storefront ?? null);
 const settings = computed(() => withDefaults(storefrontData.value?.settings));
@@ -34,10 +32,7 @@ const heroBanners = computed(() => (storefrontData.value?.banners ?? []).filter(
 const visibleBenefits = computed(() => (settings.value.benefits ?? []).filter((benefit) => benefit.title || benefit.description));
 
 function productRoute(product) {
-  return {
-    name: 'public-produto',
-    params: { companySlug: companySlug.value, productSlug: product.slug },
-  };
+  return publicRoute('public-produto', { productSlug: product.slug });
 }
 
 watch(companySlug, (slug) => {

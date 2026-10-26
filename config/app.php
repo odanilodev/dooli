@@ -68,6 +68,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Frontend Scheme
+    |--------------------------------------------------------------------------
+    |
+    | Scheme used when building tenant URLs from a custom domain. Local
+    | environments can override this with FRONTEND_SCHEME=http.
+    |
+    */
+
+    'frontend_scheme' => env('FRONTEND_SCHEME', 'https'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Platform Domains
+    |--------------------------------------------------------------------------
+    |
+    | Comma-separated hostnames that belong to the platform itself (the super
+    | admin panel) and must never be resolved as a tenant company domain.
+    |
+    */
+
+    'platform_domains' => array_values(array_filter(array_map(
+        fn (string $domain) => trim(strtolower($domain)),
+        explode(',', (string) env('PLATFORM_DOMAINS', 'localhost,127.0.0.1')),
+    ))),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

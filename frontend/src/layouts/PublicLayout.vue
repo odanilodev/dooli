@@ -2,13 +2,13 @@
   <div class="public-shell">
     <header class="public-header">
       <div class="public-header-inner">
-        <router-link :to="{ name: 'public-loja', params: { companySlug } }" class="public-brand">
+        <router-link :to="publicRoute('public-loja')" class="public-brand">
           <BrandLogo />
         </router-link>
 
         <nav v-if="auth.isAuthenticated" class="public-nav" aria-label="Navegação da loja">
-          <router-link :to="{ name: 'public-assinaturas', params: { companySlug } }">Minhas assinaturas</router-link>
-          <router-link to="/">Meus cursos</router-link>
+          <router-link :to="publicRoute('public-assinaturas')">Minhas assinaturas</router-link>
+          <router-link :to="{ name: 'dashboard' }">Meus cursos</router-link>
         </nav>
 
         <div class="public-actions">
@@ -23,7 +23,7 @@
           </button>
 
           <template v-if="!auth.isAuthenticated">
-            <router-link :to="{ name: 'public-login', params: { companySlug } }" class="public-signin">Entrar</router-link>
+            <router-link :to="publicRoute('public-login')" class="public-signin">Entrar</router-link>
             <button class="public-header-cta" type="button" @click="focusSearch">Explorar cursos</button>
           </template>
 
@@ -48,11 +48,11 @@
                 <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
                 Meu perfil
               </router-link>
-              <router-link to="/" @click="userMenuOpen = false">
+              <router-link :to="{ name: 'dashboard' }" @click="userMenuOpen = false">
                 <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
                 Meus cursos
               </router-link>
-              <router-link :to="{ name: 'public-assinaturas', params: { companySlug } }" @click="userMenuOpen = false">
+              <router-link :to="publicRoute('public-assinaturas')" @click="userMenuOpen = false">
                 <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
                 Minhas assinaturas
               </router-link>
@@ -67,8 +67,8 @@
     </header>
 
     <div class="public-body">
-      <p v-if="storefront.error && !storefront.company" class="public-error">
-        {{ storefront.error }}
+      <p v-if="loadError && !storefront.company" class="public-error">
+        {{ loadError }}
       </p>
 
       <router-view v-else />
@@ -85,23 +85,23 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import BrandLogo from '../components/BrandLogo.vue';
+import { useTenant } from '../composables/useTenant';
 import { useTheme } from '../composables/useTheme';
 import { useAuthStore } from '../stores/auth';
 import { resetUserStores } from '../stores/resetUserStores';
 import { useStorefrontStore } from '../stores/storefront';
 
-const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const storefront = useStorefrontStore();
 const { toggleTheme } = useTheme();
+const { tenant, companySlug, publicRoute } = useTenant();
 
 const userMenuOpen = ref(false);
 const userMenuRef = ref(null);
-
-const companySlug = computed(() => String(route.params.companySlug || ''));
+const loadError = computed(() => tenant.error || storefront.error);
 const footerNote = computed(
   () => storefront.company?.storefront?.settings?.footer?.note || 'Pagamento processado com segurança.',
 );
@@ -124,8 +124,7 @@ watch(
 
 async function focusSearch() {
   await router.push({
-    name: 'public-loja',
-    params: { companySlug: companySlug.value },
+    ...publicRoute('public-loja'),
     hash: '#catalogo',
   });
   await nextTick();
@@ -136,7 +135,7 @@ async function logout() {
   userMenuOpen.value = false;
   await auth.logout();
   resetUserStores();
-  await router.push({ name: 'public-loja', params: { companySlug: companySlug.value } });
+  await router.push(publicRoute('public-loja'));
 }
 
 function onClickOutside(event) {

@@ -83,9 +83,10 @@ class MercadoPagoGateway implements PaymentGatewayContract
         $payment->loadMissing(['order.items.storeProduct']);
         $company = $gateway->company;
         $slug = (string) $company?->slug;
-        $frontend = rtrim((string) config('app.frontend_url'), '/');
         $api = rtrim((string) config('app.url'), '/');
         $order = $payment->order;
+        $orderUrl = $company?->publicOrderUrl((int) $order->id)
+            ?? rtrim((string) config('app.frontend_url'), '/').'/#/e/'.$slug.'/pedido/'.$order->id;
 
         $items = [[
             'title' => $order->items->map(fn ($item) => $item->storeProduct?->title)->filter()->implode(', ') ?: 'Pedido',
@@ -101,9 +102,9 @@ class MercadoPagoGateway implements PaymentGatewayContract
                 'external_reference' => (string) $payment->id,
                 'notification_url' => $api.'/api/v1/webhooks/companies/'.$slug.'/payments/mercadopago?local_payment_id='.$payment->id,
                 'back_urls' => [
-                    'success' => $frontend.'/#/e/'.$slug.'/pedido/'.$order->id,
-                    'failure' => $frontend.'/#/e/'.$slug.'/pedido/'.$order->id,
-                    'pending' => $frontend.'/#/e/'.$slug.'/pedido/'.$order->id,
+                    'success' => $orderUrl,
+                    'failure' => $orderUrl,
+                    'pending' => $orderUrl,
                 ],
                 'auto_return' => 'approved',
             ]);
@@ -141,6 +142,8 @@ class MercadoPagoGateway implements PaymentGatewayContract
         $subscription->loadMissing(['user', 'storeProduct']);
         $company = $gateway->company;
         $slug = (string) $company?->slug;
+        $subscriptionsUrl = $company?->publicSubscriptionsUrl()
+            ?? rtrim((string) config('app.frontend_url'), '/').'/#/e/'.$slug.'/assinaturas';
 
         $response = Http::withToken($accessToken)
             ->acceptJson()
@@ -148,7 +151,7 @@ class MercadoPagoGateway implements PaymentGatewayContract
                 'reason' => 'Assinatura: '.$subscription->storeProduct?->title,
                 'external_reference' => (string) $subscription->id,
                 'payer_email' => $subscription->user?->email,
-                'back_url' => rtrim((string) config('app.frontend_url'), '/').'/#/e/'.$slug.'/assinaturas',
+                'back_url' => $subscriptionsUrl,
                 'notification_url' => rtrim((string) config('app.url'), '/').'/api/v1/webhooks/companies/'.$slug.'/subscriptions/mercadopago',
                 'status' => 'pending',
                 'auto_recurring' => [

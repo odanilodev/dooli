@@ -240,3 +240,22 @@ Nesse caso o aluno foi matriculado **direto na turma** (sem produto), pelo `Demo
 | Modelos | `app/Models/{Course,Module,Topic,Lesson,Team,StoreProduct,User}.php` |
 | Rotas do aluno | `routes/api/v1.php` (`me/courses`, `me/progress/complete`) |
 | Tenant | `app/Support/CompanyContext.php`, `app/Concerns/BelongsToCompany.php` |
+| Dominio do tenant | `app/Http/Middleware/ResolveCompanyByDomain.php`, `app/Models/Company.php` |
+
+---
+
+## 8. Tenant por dominio
+
+Cada empresa pode ter um `domain` unico. Ele e o endereco principal da loja, do login e do painel:
+
+- Loja publica: `https://{domain}/`
+- Produto: `https://{domain}/produto/{slug}`
+- Login/cadastro: `https://{domain}/entrar` e `https://{domain}/cadastro`
+- Painel do aluno/admin: `https://{domain}/inicio`
+- Certificado publico: `https://{domain}/v/{codigo}`
+
+O middleware `company.domain` resolve a empresa pelo header `X-Company-Domain` (ou `X-Forwarded-Host`/`Host`) e define `CompanyContext`. Dominios em `PLATFORM_DOMAINS` pertencem ao painel central e nao resolvem tenant. As rotas `/e/{slug}/...` continuam como fallback local/legado; empresas sem dominio usam esse formato.
+
+O dominio identifica o tenant, mas nao substitui autorizacao: rotas autenticadas sempre usam a empresa do usuario/token. O servidor precisa de DNS/TLS por dominio e fallback SPA para `index.html` (mantendo `/v/*` para `verificar.html`).
+
+Para testar localmente, mapeie o host (ex.: `ourovelho.test` para `127.0.0.1`), use `VITE_PLATFORM_DOMAINS=localhost,127.0.0.1` e acesse `http://ourovelho.test:5174`. O Vite de desenvolvimento aceita hosts customizados (`server.allowedHosts`); em producao a regra fica no proxy/Nginx. Defina `FRONTEND_SCHEME=http` no `.env` local se os links gerados pelo backend forem abertos via HTTP.

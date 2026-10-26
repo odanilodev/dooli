@@ -75,7 +75,7 @@
       {{ auth.loading ? 'Criando conta...' : 'Criar conta' }}
     </button>
 
-    <p v-if="companySlug" class="auth-switch">Já tem conta? <router-link :to="{ name: 'public-login', params: { companySlug }, query: nextUrl ? { redirect: nextUrl } : {} }">Entrar</router-link></p>
+    <p v-if="isTenant" class="auth-switch">Já tem conta? <router-link :to="loginRoute">Entrar</router-link></p>
     <p v-else class="auth-switch">Já tem conta? <router-link to="/login">Entrar</router-link></p>
   </form>
 </template>
@@ -84,23 +84,35 @@
 import { computed, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useTenant } from '../composables/useTenant';
 import { useToast } from '../composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const toast = useToast();
+const {
+  legacySlug,
+  isTenant,
+  publicRoute,
+  loginRoute: tenantLoginRoute,
+} = useTenant();
 const form = reactive({ name: '', email: '', password: '', passwordConfirm: '', terms: false });
 const mismatch = computed(() => form.password && form.passwordConfirm && form.password !== form.passwordConfirm);
-const companySlug = computed(() => (typeof route.params.companySlug === 'string' ? route.params.companySlug : null));
+const companySlug = computed(() => legacySlug.value);
+const loginRoute = computed(() => tenantLoginRoute());
 const nextUrl = computed(() => {
   const value = route.query.next;
 
-  if (!companySlug.value || typeof value !== 'string') {
+  if (!isTenant.value || typeof value !== 'string') {
     return null;
   }
 
-  return value.startsWith(`/e/${companySlug.value}/`) ? value : null;
+  if (legacySlug.value) {
+    return value.startsWith(`/e/${legacySlug.value}/`) ? value : null;
+  }
+
+  return value.startsWith('/') && !value.startsWith('//') ? value : null;
 });
 
 async function submit() {
@@ -140,8 +152,8 @@ async function submit() {
 
     if (nextUrl.value) {
       await router.push(nextUrl.value);
-    } else if (companySlug.value) {
-      await router.push({ name: 'public-loja', params: { companySlug: companySlug.value } });
+    } else if (isTenant.value) {
+      await router.push(publicRoute('public-loja'));
     } else {
       await router.push({ name: 'dashboard' });
     }

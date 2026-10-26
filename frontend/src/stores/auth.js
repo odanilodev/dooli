@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { api, getToken, setCompanyId, setToken } from '../api/http';
 import { useBrandingStore } from './branding';
+import { useTenantStore } from './tenant';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
@@ -50,13 +51,21 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value;
   }
 
+  function tenantEndpoint(companySlug, action) {
+    if (companySlug) {
+      return `/public/companies/${encodeURIComponent(companySlug)}/auth/${action}`;
+    }
+
+    return useTenantStore().isDomainMode
+      ? `/public/tenant/auth/${action}`
+      : `/auth/${action}`;
+  }
+
   async function login(credentials, companySlug = null) {
     loading.value = true;
 
     try {
-      const endpoint = companySlug
-        ? `/public/companies/${encodeURIComponent(companySlug)}/auth/login`
-        : '/auth/login';
+      const endpoint = tenantEndpoint(companySlug, 'login');
 
       const { data } = await api.post(endpoint, {
         email: credentials.email,
@@ -74,9 +83,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true;
 
     try {
-      const endpoint = companySlug
-        ? `/public/companies/${encodeURIComponent(companySlug)}/auth/register`
-        : '/auth/register';
+      const endpoint = tenantEndpoint(companySlug, 'register');
 
       const { data } = await api.post(endpoint, {
         ...payload,
@@ -90,9 +97,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function forgotPassword(email, companySlug = null) {
-    const endpoint = companySlug
-      ? `/public/companies/${encodeURIComponent(companySlug)}/auth/forgot-password`
-      : '/auth/forgot-password';
+    const endpoint = tenantEndpoint(companySlug, 'forgot-password');
 
     const { data } = await api.post(endpoint, { email });
 
@@ -100,9 +105,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function resetPassword(payload, companySlug = null) {
-    const endpoint = companySlug
-      ? `/public/companies/${encodeURIComponent(companySlug)}/auth/reset-password`
-      : '/auth/reset-password';
+    const endpoint = tenantEndpoint(companySlug, 'reset-password');
 
     const { data } = await api.post(endpoint, payload);
 

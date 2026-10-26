@@ -38,7 +38,10 @@ class CertificatePublicResource extends JsonResource
                 'qr_enabled' => (bool) $this->certificate?->qr_enabled,
                 'qr_placement' => $this->certificate?->qr_placement ?: 'front',
             ],
-            'share_url' => CertificateShare::url((string) ($this->public_code ?: $this->code)),
+            'share_url' => CertificateShare::url(
+                (string) ($this->public_code ?: $this->code),
+                $this->company,
+            ),
         ];
     }
 }

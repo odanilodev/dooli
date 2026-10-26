@@ -24,20 +24,39 @@
       {{ loading ? 'Salvando...' : 'Redefinir senha' }}
     </button>
 
-    <p class="auth-switch">Lembrou a senha? <router-link to="/login">Voltar para o login</router-link></p>
+    <p class="auth-switch">Lembrou a senha? <router-link :to="loginRoute">Voltar para o login</router-link></p>
   </form>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useTenant } from '../composables/useTenant';
 import { useToast } from '../composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const toast = useToast();
+const { legacySlug, tenant } = useTenant();
+
+const companySlug = computed(() => {
+  if (legacySlug.value) {
+    return legacySlug.value;
+  }
+
+  return !tenant.isDomainMode && typeof route.query.company === 'string'
+    ? route.query.company
+    : null;
+});
+const loginRoute = computed(() => {
+  if (companySlug.value) {
+    return { name: 'legacy-login', params: { companySlug: companySlug.value } };
+  }
+
+  return tenant.isDomainMode ? { name: 'public-login' } : { name: 'login' };
+});
 
 const form = reactive({
   token: typeof route.query.token === 'string' ? route.query.token : '',
@@ -67,14 +86,9 @@ async function submit() {
   loading.value = true;
 
   try {
-    await auth.resetPassword({ ...form }, route.query.company || null);
+    await auth.resetPassword({ ...form }, companySlug.value);
     toast.success('Senha redefinida! Redirecionando para o login...');
-    setTimeout(() => {
-      const company = typeof route.query.company === 'string' ? route.query.company : null;
-      router.push(company
-        ? { name: 'public-login', params: { companySlug: company } }
-        : '/login');
-    }, 1500);
+    setTimeout(() => router.push(loginRoute.value), 1500);
   } catch (e) {
     toast.error(e?.message || 'Não foi possível redefinir a senha.');
   } finally {

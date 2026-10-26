@@ -36,10 +36,56 @@ class Company extends Model
         });
     }
 
+    public function frontendUrl(): string
+    {
+        $domain = self::normalizeDomain($this->domain);
+
+        if ($domain) {
+            return rtrim((string) config('app.frontend_scheme', 'https'), '/')
+                .'://'.$domain;
+        }
+
+        return rtrim((string) config('app.frontend_url'), '/');
+    }
+
+    /**
+     * Resolve a frontend path using the company domain when available, or the
+     * legacy slug-based hash route as a fallback.
+     */
+    public function frontendPath(string $path = ''): string
+    {
+        $path = ltrim($path, '/');
+
+        if (filled($this->domain)) {
+            return $this->frontendUrl().($path === '' ? '/' : '/'.$path);
+        }
+
+        return $this->frontendUrl()
+            .'/#/e/'.rawurlencode((string) $this->slug)
+            .($path === '' ? '' : '/'.$path);
+    }
+
     public function publicStoreUrl(): string
     {
-        return rtrim((string) config('app.frontend_url'), '/')
-            .'/#/e/'.rawurlencode((string) $this->slug).'/loja';
+        if (filled($this->domain)) {
+            return $this->frontendUrl().'/';
+        }
+
+        return $this->frontendPath('loja');
+    }
+
+    public function publicOrderUrl(int $orderId): string
+    {
+        return $this->frontendPath('pedido/'.$orderId);
+    }
+
+    public function publicSubscriptionsUrl(): string
+    {
+        if (filled($this->domain)) {
+            return $this->frontendUrl().'/minhas-assinaturas';
+        }
+
+        return $this->frontendPath('assinaturas');
     }
 
     public static function normalizeDomain(?string $value): ?string
@@ -48,10 +94,12 @@ class Company extends Model
             return null;
         }
 
-        $domain = strtolower(trim($value));
-        $domain = (string) preg_replace('#^https?://#i', '', $domain);
+        $domain = (string) preg_replace('#^https?://#i', '', trim($value));
+        $domain = (string) preg_replace('#[/?].*$#', '', $domain);
+        $domain = (string) preg_replace('#:\d+$#', '', $domain);
+        $domain = strtolower(trim($domain));
         $domain = (string) preg_replace('#^www\.#i', '', $domain);
-        $domain = rtrim($domain, '/');
+        $domain = rtrim($domain, '.');
 
         return $domain === '' ? null : $domain;
     }

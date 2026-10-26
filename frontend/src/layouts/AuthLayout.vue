@@ -25,17 +25,18 @@
 import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import BrandLogo from '../components/BrandLogo.vue';
+import { useTenant } from '../composables/useTenant';
 import { useTheme } from '../composables/useTheme';
 import { useStorefrontStore } from '../stores/storefront';
 
 const route = useRoute();
 const storefront = useStorefrontStore();
 const { toggleTheme } = useTheme();
+const { isTenant, companySlug, publicRoute } = useTenant();
 
-const companySlug = computed(() => (typeof route.params.companySlug === 'string' ? route.params.companySlug : null));
-const brandLink = computed(() => (companySlug.value
-  ? { name: 'public-loja', params: { companySlug: companySlug.value } }
-  : '/'));
+const brandLink = computed(() => (isTenant.value
+  ? publicRoute('public-loja')
+  : { name: 'login' }));
 
 watch(companySlug, async (slug) => {
   if (slug) {

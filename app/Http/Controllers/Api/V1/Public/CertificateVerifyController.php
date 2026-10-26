@@ -48,6 +48,7 @@ class CertificateVerifyController extends ApiController
             return ApiResponse::success([
                 'redirect_url' => CertificateShare::url(
                     (string) ($replacement->public_code ?: $replacement->code),
+                    $replacement->company,
                 ),
             ])->header('X-Robots-Tag', 'noindex, nofollow');
         }

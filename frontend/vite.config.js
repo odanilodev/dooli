@@ -37,6 +37,8 @@ export default defineConfig({
   },
   server: {
     host: true,
+    // Local custom tenant domains (e.g. ourovelho.test) are mapped via hosts.
+    allowedHosts: true,
     port: 5173,
     watch: {
       usePolling: true,

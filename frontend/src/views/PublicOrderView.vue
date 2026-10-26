@@ -1,7 +1,7 @@
 <template>
   <main class="content public-content">
     <nav class="public-breadcrumb" aria-label="Você está aqui">
-      <router-link :to="{ name: 'public-loja', params: { companySlug } }">Loja</router-link>
+      <router-link :to="publicRoute('public-loja')">Loja</router-link>
       <span>/</span>
       <span class="current">Pedido</span>
     </nav>
@@ -14,7 +14,7 @@
       <svg class="icon" width="38" height="38" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
       <strong>Pedido não encontrado</strong>
       <span>{{ error }}</span>
-      <router-link :to="{ name: 'public-loja', params: { companySlug } }" class="btn btn-outline btn-sm">Voltar para a loja</router-link>
+      <router-link :to="publicRoute('public-loja')" class="btn btn-outline btn-sm">Voltar para a loja</router-link>
     </div>
 
     <section v-else-if="order" class="order-layout">
@@ -81,7 +81,7 @@
           Assim que o pagamento for confirmado, seu acesso será liberado automaticamente.
         </p>
 
-        <router-link v-if="order.status === 'paid'" to="/" class="btn btn-primary order-cta">
+        <router-link v-if="order.status === 'paid'" :to="{ name: 'dashboard' }" class="btn btn-primary order-cta">
           Ir para meus cursos
           <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </router-link>
@@ -130,15 +130,16 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '../api/http';
 import { paletteAt } from '../data/palette';
+import { useTenant } from '../composables/useTenant';
 import { formatCurrency, formatDate } from '../utils/format';
 
 const route = useRoute();
+const { publicRoute } = useTenant();
 const order = ref(null);
 const loading = ref(true);
 const error = ref(null);
 let timer = null;
 
-const companySlug = computed(() => String(route.params.companySlug || ''));
 const orderId = computed(() => String(route.params.orderId || ''));
 
 load();

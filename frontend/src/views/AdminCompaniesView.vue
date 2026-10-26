@@ -33,12 +33,12 @@
         <div class="form-group">
           <label for="co-slug">Slug da loja</label>
           <input id="co-slug" class="form-control" v-model="form.slug" placeholder="minha-escola">
-          <span class="form-hint">Usado no link /#/e/{slug}/loja. Alterar o slug quebra links antigos.</span>
+          <span class="form-hint">Fallback local/legado em /e/{slug}/loja. O domínio é o endereço principal da empresa.</span>
         </div>
         <div class="form-group">
           <label for="co-domain">Domínio</label>
           <input id="co-domain" class="form-control" v-model="form.domain" placeholder="minhaescola.com.br">
-          <span class="form-hint">Opcional. Informe apenas o domínio, sem https://, www. ou caminhos.</span>
+          <span class="form-hint">Opcional. Resolve a loja, o login e o painel da empresa. Informe apenas o host, sem https://, www. ou caminhos.</span>
         </div>
       </div>
 

@@ -113,3 +113,13 @@ app/
 routes/api.php + routes/api/v1.php
 docs/ + postman/
 ```
+
+## Tenancy por dominio
+
+- **Dominio** (`companies.domain`, opcional e unico) e a chave principal do tenant. `Company::normalizeDomain()` remove protocolo, `www.`, porta, caminho e normaliza para minusculo.
+- **Resolucao publica:** o frontend envia `X-Company-Domain`; `ResolveCompanyByDomain` (alias `company.domain`) define `CompanyContext` e `public_company`. `X-Forwarded-Host`/`Host` sao fallback. Dominios em `PLATFORM_DOMAINS` nunca viram tenant.
+- **Rotas:** `/api/v1/public/tenant/*` para loja/login/cadastro/reset por dominio. `/api/v1/public/companies/{slug}/*` continua como fallback local/legado. Rotas autenticadas ignoram o dominio e usam a empresa do usuario.
+- **URLs:** `Company::frontendUrl()`/`publicStoreUrl()`/`publicOrderUrl()`/`publicSubscriptionsUrl()` preferem `https://{domain}`. Sem dominio, usam `FRONTEND_URL/#/e/{slug}/...`.
+- **Frontend:** `createWebHistory` (sem hash), loja publica em `/`, login em `/entrar`, painel em `/inicio`; `useTenant()` mapeia rotas para o modo dominio ou legado por slug. `PLATFORM_DOMAINS`/`VITE_PLATFORM_DOMAINS` separam o painel central. O servidor precisa de fallback SPA para todos os hosts.
+- **Links externos:** reset de senha, retorno do MercadoPago, assinaturas e certificados usam o dominio da empresa quando configurado.
+- **Seguranca:** dominio identifica o tenant, mas nao autoriza; autorizacao continua por `company_id` do usuario/token.
