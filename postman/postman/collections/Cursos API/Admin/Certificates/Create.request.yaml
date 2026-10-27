@@ -10,7 +10,6 @@ body:
         "name": "Certificado de Teste",
         "title": "Certificado de Conclusão",
         "course_id": {{course_id}},
-        "grade": 100,
         "version": "1.0",
         "time": 10
     }

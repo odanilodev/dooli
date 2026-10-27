@@ -19,7 +19,6 @@ class CertificateFactory extends Factory
             'course_id' => Course::factory(),
             'name' => 'Certificado',
             'title' => 'Certificado de Conclusão',
-            'grade' => 100,
             'version' => '1.0',
             'time' => 10,
         ];

@@ -433,7 +433,7 @@ CRUD. O campo `placement` separa os banners de `home` (hero da home logada) e `s
 - A loja pública recebe os mesmos dados em `storefront` no endpoint da empresa por slug.
 
 ### Certificados (modelos) (`certificates`)
-CRUD dos templates por curso (`name`, `title`, `course_id`, `grade`, `version`, `time`). A listagem expõe `issued_certificates_count` (todos os emitidos) e `valid_certificates_count` (válidos).
+CRUD dos templates por curso (`name`, `title`, `course_id`, `version`, `time`). A listagem expõe `issued_certificates_count` (todos os emitidos) e `valid_certificates_count` (válidos).
 - **Visual:** `body` (texto com variáveis `{aluno}`, `{curso}`, `{data}`, `{carga_horaria}`, `{codigo}`), `signatory_name`, `signatory_title` e os uploads `background` (fundo) e `signature` (assinatura).
 - **Uploads:** envie como `multipart/form-data` (`jpg/jpeg/png/webp`, máx. 4 MB). Os arquivos são salvos no disco `public` em `certificates/{company_id}/…` e a resposta expõe `background`/`signature`/`modules_background` (caminho) e `background_url`/`signature_url`/`modules_background_url` (URL pública). Ao substituir/excluir, o arquivo antigo é removido. Para remover fundo do certificado, assinatura ou fundo próprio da grade, envie `remove_background=1`, `remove_signature=1` e/ou `remove_modules_background=1`.
 - **Versões:** cada linha é uma versão do certificado do curso (a mais recente é a **atual**). Para criar uma nova versão clonando a atual, envie `copy_from` (id do template de origem): as imagens são copiadas para novos arquivos (não compartilhados), e uploads enviados no mesmo request têm precedência. Envie `remove_background=1`, `remove_signature=1` e/ou `remove_modules_background=1` para não copiar as imagens correspondentes.

@@ -32,7 +32,6 @@ class CertificateSeeder extends Seeder
             ['company_id' => $company->id, 'course_id' => $course->id, 'name' => 'Certificado de Conclusão'],
             [
                 'title' => 'Certificado de Conclusão do Curso de PHP',
-                'grade' => 10,
                 'version' => '1.0',
                 'time' => 1800,
             ],

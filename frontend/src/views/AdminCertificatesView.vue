@@ -71,10 +71,6 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label for="c-grade">Nota mínima (opcional)</label>
-              <input id="c-grade" type="number" min="0" max="100" class="form-control" v-model="form.grade">
-            </div>
-            <div class="form-group">
               <label for="c-signatory-name">Nome do assinante</label>
               <input id="c-signatory-name" class="form-control" v-model="form.signatory_name" placeholder="Maria Silva">
             </div>
@@ -732,7 +728,6 @@ const form = reactive({
   name: '',
   title: '',
   course_id: '',
-  grade: '',
   version: '',
   time: 0,
   body: '',
@@ -786,7 +781,6 @@ function resetForm() {
   form.name = '';
   form.title = '';
   form.course_id = '';
-  form.grade = '';
   form.version = '';
   form.time = 0;
   form.body = '';
@@ -1025,7 +1019,6 @@ function cloneTemplate(source) {
   form.name = source.name ?? '';
   form.title = source.title ?? '';
   form.course_id = source.course_id ?? scopedCourseId.value ?? '';
-  form.grade = source.grade ?? '';
   form.time = source.time ?? 0;
   form.body = source.body ?? '';
   form.signatory_name = source.signatory_name ?? '';
@@ -1147,7 +1140,6 @@ function openEdit(certificate) {
   form.name = certificate.name ?? '';
   form.title = certificate.title ?? '';
   form.course_id = certificate.course_id ?? '';
-  form.grade = certificate.grade ?? '';
   form.version = certificate.version ?? '';
   form.time = certificate.time ?? 0;
   form.body = certificate.body ?? '';
@@ -1287,7 +1279,6 @@ async function save() {
     name: form.name,
     title: form.title,
     course_id: isScoped.value ? scopedCourseId.value : Number(form.course_id),
-    grade: form.grade === '' || form.grade === null ? null : Number(form.grade),
     version: form.version || null,
     time: Number(form.time) || 0,
     body: form.body || null,

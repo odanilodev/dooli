@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
-    'company_id', 'name', 'grade', 'title', 'course_id', 'version', 'time',
+    'company_id', 'name', 'title', 'course_id', 'version', 'time',
     'background', 'signature', 'body', 'signatory_name', 'signatory_title',
     'layout', 'modules_placement', 'modules_title', 'modules_layout', 'modules_background',
     'qr_enabled', 'qr_placement',
@@ -23,7 +23,6 @@ class Certificate extends Model
     protected function casts(): array
     {
         return [
-            'grade' => 'decimal:2',
             'time' => 'integer',
             'layout' => 'array',
             'modules_layout' => 'array',

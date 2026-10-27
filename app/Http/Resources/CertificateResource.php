@@ -13,7 +13,6 @@ class CertificateResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'title' => $this->title,
-            'grade' => $this->grade,
             'version' => $this->version,
             'time' => $this->time,
             'course_id' => $this->course_id,

@@ -26,7 +26,6 @@ class StoreCertificateRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'title' => ['required', 'string', 'max:255'],
             'course_id' => ['required', 'integer', $this->companyExists('courses')],
-            'grade' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'version' => ['nullable', 'string', 'max:50'],
             'copy_from' => ['nullable', 'integer', $this->companyExists('certificates')],
             'time' => ['sometimes', 'integer', 'min:0'],

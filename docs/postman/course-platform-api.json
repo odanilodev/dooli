@@ -3770,7 +3770,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n    \"name\": \"Certificado de Teste\",\n    \"title\": \"Certificado de Conclusão\",\n    \"course_id\": {{course_id}},\n    \"grade\": 100,\n    \"version\": \"1.0\",\n    \"time\": 10\n}"
+                                    "raw": "{\n    \"name\": \"Certificado de Teste\",\n    \"title\": \"Certificado de Conclusão\",\n    \"course_id\": {{course_id}},\n    \"version\": \"1.0\",\n    \"time\": 10\n}"
                                 }
                             },
                             "event": [

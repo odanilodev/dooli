@@ -26,7 +26,6 @@ class UpdateCertificateRequest extends FormRequest
             'name' => ['sometimes', 'string', 'max:255'],
             'title' => ['sometimes', 'string', 'max:255'],
             'course_id' => ['sometimes', 'integer', $this->companyExists('courses')],
-            'grade' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'version' => ['nullable', 'string', 'max:50'],
             'time' => ['sometimes', 'integer', 'min:0'],
             'background' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
