@@ -143,7 +143,6 @@
             <div class="dw-seg">
               <button type="button" class="dw-seg-btn" :class="{ active: form.content_type === 'video' }" @click="setContentType('video')">Vídeo</button>
               <button type="button" class="dw-seg-btn" :class="{ active: form.content_type === 'document' }" @click="setContentType('document')">Documento</button>
-              <button type="button" class="dw-seg-btn" :class="{ active: form.content_type === 'live' }" @click="setContentType('live')">Ao vivo</button>
               <button type="button" class="dw-seg-btn" :class="{ active: !form.content_type }" @click="setContentType('')">Sem mídia</button>
             </div>
           </div>
@@ -171,7 +170,6 @@
               <input class="form-control" v-model="newVideo.title" placeholder="Título do vídeo">
               <select class="form-control" v-model="newVideo.player">
                 <option value="vdocipher">VdoCipher</option>
-                <option value="panda">Panda Video</option>
                 <option value="vimeo">Vimeo</option>
                 <option value="fastpix">FastPix</option>
                 <option value="external">Link externo</option>
@@ -241,21 +239,6 @@
             </div>
 
             <p class="form-hint">PDFs são exibidos no player da aula; outros formatos ficam disponíveis para abrir/baixar.</p>
-          </template>
-
-          <!-- AO VIVO -->
-          <template v-else-if="form.content_type === 'live'">
-            <div class="form-group">
-              <label :for="`dw-webinar`">Link do embed</label>
-              <input :id="`dw-webinar`" class="form-control" v-model="form.webinar_link" placeholder="https://player.vdocipher.com/live-v2?liveId=...">
-            </div>
-            <div class="form-group">
-              <label :for="`dw-webinar-at`">Início agendado</label>
-              <input :id="`dw-webinar-at`" class="form-control" type="datetime-local" v-model="form.webinar_starts_at">
-            </div>
-            <p class="form-hint">
-              Preencha o link para exibir a transmissão. Com data futura o aluno vê "Em breve"; a partir da data, o player ao vivo é liberado.
-            </p>
           </template>
 
           <template v-else>
@@ -328,7 +311,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { api } from '../../api/http';
 import { useToast } from '../../composables/useToast';
 import { playerLabel, statusLabel, typeLabel } from '../../utils/adminLabels';
-import { toDateTimeInput } from '../../utils/format';
 import FilePicker from './FilePicker.vue';
 import SearchSelect from './SearchSelect.vue';
 import VideoUploader from './VideoUploader.vue';
@@ -355,7 +337,6 @@ const form = reactive({
   name: '', description: '', image: '', status: 'active', sort_order: 0,
   content: '', content_type: '', video_id: '', document_id: '', required_lesson_id: '',
   require_full_watch: false, comments_enabled: true, student_replies_enabled: true,
-  webinar_link: '', webinar_starts_at: '',
 });
 const selectedAttachments = ref([]);
 
@@ -531,8 +512,6 @@ function sync() {
   form.require_full_watch = !!data.require_full_watch;
   form.comments_enabled = data.comments_enabled ?? true;
   form.student_replies_enabled = data.student_replies_enabled ?? true;
-  form.webinar_link = data.webinar_link ?? '';
-  form.webinar_starts_at = toDateTimeInput(data.webinar_starts_at);
   selectedAttachments.value = (data.attachments ?? []).map((a) => a.id);
   linkedCourses.value = (data.courses ?? []).map((c) => ({ id: c.id, name: c.name }));
   courseSearch.value = '';
@@ -553,10 +532,6 @@ function deriveContentType(data) {
     return 'document';
   }
 
-  if (data.webinar_link) {
-    return 'live';
-  }
-
   return '';
 }
 
@@ -569,16 +544,9 @@ function setContentType(value) {
 
   if (value === 'video') {
     form.document_id = '';
-    form.webinar_link = '';
     form.content = '';
   } else if (value === 'document') {
     form.video_id = '';
-    form.webinar_link = '';
-    form.require_full_watch = false;
-    form.content = '';
-  } else if (value === 'live') {
-    form.video_id = '';
-    form.document_id = '';
     form.require_full_watch = false;
     form.content = '';
   }
@@ -746,8 +714,6 @@ function basePayload() {
     require_full_watch: !!form.require_full_watch,
     comments_enabled: !!form.comments_enabled,
     student_replies_enabled: !!form.student_replies_enabled,
-    webinar_link: form.webinar_link || null,
-    webinar_starts_at: form.webinar_starts_at || null,
     attachment_ids: selectedAttachments.value,
   };
 }

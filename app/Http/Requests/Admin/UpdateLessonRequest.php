@@ -36,8 +36,6 @@ class UpdateLessonRequest extends FormRequest
             'require_full_watch' => ['sometimes', 'boolean'],
             'comments_enabled' => ['sometimes', 'boolean'],
             'student_replies_enabled' => ['sometimes', 'boolean'],
-            'webinar_link' => ['nullable', 'url', 'max:255', Rule::requiredIf(fn () => $this->contentRequired(LessonContentType::Live, 'webinar_link'))],
-            'webinar_starts_at' => ['nullable', 'date'],
             'published_at' => ['nullable', 'date'],
             'attachment_ids' => ['sometimes', 'array'],
             'attachment_ids.*' => ['integer', $this->companyExists('attachments')],

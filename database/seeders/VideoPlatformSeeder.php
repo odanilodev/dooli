@@ -23,14 +23,6 @@ class VideoPlatformSeeder extends Seeder
                 ],
                 'settings' => ['ttl' => 3600],
             ],
-            [
-                'name' => 'Panda Video',
-                'code' => VideoPlayer::Panda->value,
-                'credentials' => [
-                    'api_key' => 'DEMO-PANDA-API-KEY',
-                ],
-                'settings' => [],
-            ],
         ];
 
         foreach ($platforms as $platform) {

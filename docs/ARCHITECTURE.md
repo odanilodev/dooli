@@ -29,7 +29,7 @@ Route → Middleware → FormRequest → Controller → Service → Repository �
 | Modelo de aulas | Tabela `lessons` → model **`Lesson`** (rota `/lessons`); `Class` é reservado no PHP |
 | Certificados | `certificates` = template por curso (layout + `qr_enabled`/`qr_placement` + `modules_placement`/`modules_layout`/fundo próprio da grade); `certificate_users` = emissão por user+team com snapshots `lessons_count` e `modules` (unique parcial via `active_flag`: 1 válido por user+team+template; versões anteriores ficam no histórico como `replaced`). Template com certificado emitido é imutável; válidos podem ser transferidos para outra versão do mesmo curso. A página pública usa o UUID, sem tenant/autenticação |
 | Pagamentos | `PaymentGatewayContract` + `GatewayManager` (Strategy/Factory); adapter real MercadoPago + Manual |
-| Vídeo | `VideoPlatformContract` + `VideoPlatformManager` resolvido por `videos.player`; adapters reais: Panda (playback) e VdoCipher (playback OTP + upload/import via API); stubs para os demais |
+| Vídeo | `VideoPlatformContract` + `VideoPlatformManager` resolvido por `videos.player`; adapter real: VdoCipher (playback OTP + upload/import via API); stubs para os demais |
 | Webhooks | Verificação de assinatura, idempotência por `external_id`, processamento via Job |
 | Progresso | `timelines` + `actions.code` (unique de banco `user+course+lesson+action+team` garante idempotência) |
 | Conclusão | `course_completions` = **marco mais recente** da conquista (user+team+course, `required_lessons`, `lesson_ids`, `completed_at`), independente do certificado |

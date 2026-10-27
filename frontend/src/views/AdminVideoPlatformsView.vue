@@ -27,7 +27,7 @@
 
         <div class="form-group">
           <label :for="`vp-secret-${p.id}`">
-            Credencial ({{ credentialKey(p) }})
+            Credencial (api_secret)
             <span class="vp-hint">{{ p.has_credentials ? 'já configurada — deixe vazio para manter' : 'não configurada' }}</span>
           </label>
           <input
@@ -80,10 +80,6 @@ const rowErrors = reactive({});
 const loading = ref(true);
 const savingId = ref(null);
 
-function credentialKey(platform) {
-  return platform.code === 'panda' ? 'api_key' : 'api_secret';
-}
-
 async function load() {
   loading.value = true;
 
@@ -110,7 +106,7 @@ async function save(platform) {
   const payload = { status: form.status };
 
   if (form.api_secret?.trim()) {
-    payload.credentials = { [credentialKey(platform)]: form.api_secret.trim() };
+    payload.credentials = { api_secret: form.api_secret.trim() };
   }
 
   if (form.ttl !== '' && form.ttl !== null && form.ttl !== undefined) {

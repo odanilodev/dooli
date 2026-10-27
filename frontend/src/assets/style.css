@@ -35,6 +35,7 @@ html[data-theme="dark"]{
   --hero-quote:#c7d2de;
   --ring:#0b1420;
   --scrim:rgba(6,10,18,.6);
+  color-scheme:dark;
 }
 
 html[data-theme="light"]{
@@ -53,6 +54,7 @@ html[data-theme="light"]{
   --hero-quote:#3d5165;
   --ring:#ffffff;
   --scrim:rgba(15,23,35,.5);
+  color-scheme:light;
 }
 
 *,*::before,*::after{box-sizing:border-box;}
@@ -419,10 +421,7 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 @keyframes video-spin{to{transform:rotate(360deg);}}
 .live-badge{position:absolute;top:12px;right:12px;z-index:2;display:flex;align-items:center;gap:6px;background:#e02424;color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;padding:4px 9px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.35);}
 .live-badge::before{content:"";width:7px;height:7px;border-radius:50%;background:#fff;animation:pulse-dot 1.4s ease-in-out infinite;}
-.live-soon{flex-direction:column;gap:10px;background:#0c141e;}
 .live-soon-badge{background:#f59e0b;color:#1a1205;font-size:11px;font-weight:800;letter-spacing:.06em;padding:4px 10px;border-radius:4px;}
-.live-soon-title{color:#fff;font-size:18px;font-weight:700;}
-.live-soon-date{color:var(--text-muted);font-size:13px;}
 .document-stage{background:#0c141e;}
 .document-frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;}
 .document-loading{display:flex;flex-direction:column;align-items:center;gap:12px;}

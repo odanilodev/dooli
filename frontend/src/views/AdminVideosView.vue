@@ -28,7 +28,6 @@
           <select id="v-player" class="form-control" v-model="form.player">
             <option value="">—</option>
             <option value="vdocipher">vdocipher</option>
-            <option value="panda">panda</option>
             <option value="vimeo">vimeo</option>
             <option value="fastpix">fastpix</option>
             <option value="external">external</option>
@@ -204,7 +203,6 @@ const toast = useToast();
 const playerFilters = [
   { value: '', label: 'Todos' },
   { value: 'vdocipher', label: 'VdoCipher' },
-  { value: 'panda', label: 'Panda' },
   { value: 'vimeo', label: 'Vimeo' },
   { value: 'fastpix', label: 'FastPix' },
   { value: 'external', label: 'External' },

@@ -55,6 +55,17 @@ class VideoPlatformTest extends TestCase
         $this->assertDatabaseMissing('video_platforms', ['id' => $id]);
     }
 
+    public function test_panda_platform_is_not_supported(): void
+    {
+        $this->withToken($this->apiLogin($this->admin))
+            ->postJson('/api/v1/admin/video-platforms', [
+                'name' => 'Panda Video',
+                'code' => 'panda',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('code');
+    }
+
     public function test_student_cannot_manage_video_platforms(): void
     {
         $this->withToken($this->apiLogin($this->student))

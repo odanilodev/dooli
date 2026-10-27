@@ -24,8 +24,9 @@
         <div v-if="mode === 'custom'" class="dash-range">
           <input class="form-control" type="date" v-model="customFrom" :max="customTo || undefined">
           <span class="dash-range-sep">até</span>
-          <input class="form-control" type="date" v-model="customTo" :min="customFrom || undefined">
+          <input class="form-control" type="date" v-model="customTo" :min="customFrom || undefined" :max="maxCustomTo || undefined">
           <button class="btn btn-primary btn-sm" :disabled="!canApplyRange" @click="applyRange">Aplicar</button>
+          <span v-if="customRangeTooLong" class="form-error show dash-range-error">O período máximo é de 3 meses.</span>
         </div>
       </div>
     </div>
@@ -209,7 +210,7 @@
               <span class="dash-sub">{{ formatDate(student.created_at) }}</span>
             </li>
           </ul>
-          <p v-else class="dash-empty">Nenhum aluno cadastrado.</p>
+          <p v-else class="dash-empty">Nenhum aluno cadastrado no período.</p>
         </section>
       </div>
 
@@ -249,7 +250,9 @@ const kpis = computed(() => data.value?.kpis ?? {});
 const revenueSeries = computed(() => data.value?.revenue_series ?? []);
 const ordersTotal = computed(() => (data.value?.order_status ?? []).reduce((sum, row) => sum + row.count, 0));
 
-const canApplyRange = computed(() => Boolean(customFrom.value && customTo.value) && customFrom.value <= customTo.value);
+const maxCustomTo = computed(() => (customFrom.value ? addMonths(customFrom.value, 3) : ''));
+const customRangeTooLong = computed(() => Boolean(customFrom.value && customTo.value) && customTo.value > maxCustomTo.value);
+const canApplyRange = computed(() => Boolean(customFrom.value && customTo.value) && customFrom.value <= customTo.value && !customRangeTooLong.value);
 
 const rangeLabel = computed(() => {
   if (mode.value === 'custom') {
@@ -292,6 +295,10 @@ function openCustom() {
 
     customFrom.value = toISODate(start);
     customTo.value = toISODate(today);
+  }
+
+  if (customRangeTooLong.value) {
+    customTo.value = maxCustomTo.value;
   }
 
   mode.value = 'custom';
@@ -343,6 +350,20 @@ function toISODate(date) {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+function addMonths(value, months) {
+  const [year, month, day] = (value || '').split('-').map(Number);
+
+  if (!year || !month || !day) {
+    return '';
+  }
+
+  const date = new Date(year, month - 1 + months, 1, 12);
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  date.setDate(Math.min(day, lastDay));
+
+  return toISODate(date);
 }
 
 function initials(name) {
@@ -463,9 +484,10 @@ const statusChartOptions = computed(() => {
 <style scoped>
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
 .dash-filters{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end;}
-.dash-range{display:flex;align-items:center;gap:8px;}
+.dash-range{display:grid;grid-template-columns:auto auto auto auto;align-items:center;column-gap:8px;row-gap:4px;}
 .dash-range .form-control{width:auto;min-width:150px;}
-.dash-range-sep{font-size:12px;color:var(--text-muted);}
+.dash-range-sep{font-size:12px;font-weight:600;color:var(--text-secondary);}
+.dash-range-error{grid-column:1 / 4;}
 .dash-grid{display:grid;gap:16px;margin-top:18px;}
 .dash-grid-2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));}
 .dash-grid-3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}

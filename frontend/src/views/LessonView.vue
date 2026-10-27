@@ -42,21 +42,6 @@
               Ir para "{{ prerequisiteLesson.name }}"
             </button>
           </div>
-          <div v-else-if="currentLesson.webinar_link && !liveSoon" class="video-stage has-player">
-            <iframe
-              :src="currentLesson.webinar_link"
-              class="video-frame"
-              title="Aula ao vivo"
-              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-              allowfullscreen
-            ></iframe>
-            <span class="live-badge">AO VIVO</span>
-          </div>
-          <div v-else-if="currentLesson.webinar_link && liveSoon" class="video-stage live-soon">
-            <span class="live-soon-badge">EM BREVE</span>
-            <div class="live-soon-title">Aula ao vivo</div>
-            <div class="live-soon-date">{{ formatDate(currentLesson.webinar_starts_at) }}</div>
-          </div>
           <div v-else-if="videoEmbedUrl" class="video-stage has-player">
             <VideoPlayer
               :key="currentLesson.id"
@@ -426,7 +411,6 @@ const videoPlatform = ref(null);
 const videoDuration = ref(0);
 const videoResumeFrom = ref(0);
 const videoLoading = ref(false);
-const now = ref(Date.now());
 const watchedToEnd = ref(false);
 const documentPreviewUrl = ref(null);
 const documentLoading = ref(false);
@@ -434,7 +418,6 @@ const documentError = ref('');
 
 let videoLessonId = null;
 let videoRequestId = 0;
-let nowTimer = null;
 let documentPreviewId = null;
 
 const courseId = computed(() => Number(route.params.courseId));
@@ -482,7 +465,7 @@ const showMediaBlock = computed(() => {
     return false;
   }
 
-  return isCurrentLocked.value || !!lesson.webinar_link || isVideoLesson.value || showDocumentStage.value;
+  return isCurrentLocked.value || isVideoLesson.value || showDocumentStage.value;
 });
 
 const supplementalDocument = computed(() => {
@@ -518,16 +501,6 @@ const averageRating = computed(() => {
 });
 
 const averageStars = computed(() => Math.round(averageRating.value / 2));
-
-const liveSoon = computed(() => {
-  const lesson = currentLesson.value;
-
-  if (!lesson?.webinar_link || !lesson.webinar_starts_at) {
-    return false;
-  }
-
-  return new Date(lesson.webinar_starts_at).getTime() > now.value;
-});
 
 function resetVideoState() {
   videoLoading.value = false;
@@ -741,14 +714,10 @@ function handleBeforeUnload() {
 
 onMounted(() => {
   window.addEventListener('beforeunload', handleBeforeUnload);
-  nowTimer = setInterval(() => {
-    now.value = Date.now();
-  }, 30000);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload);
-  clearInterval(nowTimer);
   flushVideoPosition();
   revokeDocumentPreview();
 });

@@ -224,7 +224,6 @@ class LessonService
         if ($type === null) {
             $data['video_id'] = null;
             $data['document_id'] = null;
-            $data['webinar_link'] = null;
             $data['require_full_watch'] = false;
 
             return $data;
@@ -232,14 +231,8 @@ class LessonService
 
         if ($type === LessonContentType::Video->value) {
             $data['document_id'] = null;
-            $data['webinar_link'] = null;
         } elseif ($type === LessonContentType::Document->value) {
             $data['video_id'] = null;
-            $data['webinar_link'] = null;
-            $data['require_full_watch'] = false;
-        } elseif ($type === LessonContentType::Live->value) {
-            $data['video_id'] = null;
-            $data['document_id'] = null;
             $data['require_full_watch'] = false;
         }
 
@@ -257,10 +250,6 @@ class LessonService
 
         if (! empty($data['document_id'])) {
             return LessonContentType::Document->value;
-        }
-
-        if (! empty($data['webinar_link'])) {
-            return LessonContentType::Live->value;
         }
 
         return null;

@@ -6,7 +6,6 @@ enum LessonContentType: string
 {
     case Video = 'video';
     case Document = 'document';
-    case Live = 'live';
 
     public static function values(): array
     {

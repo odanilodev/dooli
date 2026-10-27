@@ -80,8 +80,8 @@ class DashboardService
             'order_status' => $this->orderStatus($start, $end),
             'top_courses' => $this->topCourses($start, $end),
             'top_buyers' => $this->topBuyers($start, $end),
-            'recent_orders' => $this->recentOrders(),
-            'recent_students' => $this->recentStudents(),
+            'recent_orders' => $this->recentOrders($start, $end),
+            'recent_students' => $this->recentStudents($start, $end),
             'students_per_course' => $this->studentsPerCourse(),
         ];
     }
@@ -287,10 +287,14 @@ class DashboardService
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function recentOrders(): array
+    private function recentOrders(?Carbon $from, ?Carbon $to): array
     {
-        return Order::query()
-            ->with('user:id,name,email,image')
+        return $this->applyRange(
+            Order::query()->with('user:id,name,email,image'),
+            'created_at',
+            $from,
+            $to,
+        )
             ->latest()
             ->limit(8)
             ->get(['id', 'user_id', 'status', 'total', 'created_at'])
@@ -308,10 +312,14 @@ class DashboardService
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function recentStudents(): array
+    private function recentStudents(?Carbon $from, ?Carbon $to): array
     {
-        return User::query()
-            ->whereHas('userType', fn ($query) => $query->where('code', UserTypeCode::Student->value))
+        return $this->applyRange(
+            User::query()->whereHas('userType', fn ($query) => $query->where('code', UserTypeCode::Student->value)),
+            'created_at',
+            $from,
+            $to,
+        )
             ->latest()
             ->limit(8)
             ->get(['id', 'name', 'email', 'image', 'status', 'created_at'])

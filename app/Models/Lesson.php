@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 #[Fillable([
     'company_id', 'name', 'module_id', 'topic_id', 'description', 'content',
     'sort_order', 'status', 'content_type', 'video_id', 'document_id', 'required_lesson_id',
-    'require_full_watch', 'comments_enabled', 'student_replies_enabled', 'webinar_link', 'webinar_starts_at', 'published_at',
+    'require_full_watch', 'comments_enabled', 'student_replies_enabled', 'published_at',
 ])]
 class Lesson extends Model
 {
@@ -37,7 +37,6 @@ class Lesson extends Model
             'require_full_watch' => 'boolean',
             'comments_enabled' => 'boolean',
             'student_replies_enabled' => 'boolean',
-            'webinar_starts_at' => 'datetime',
             'published_at' => 'datetime',
         ];
     }

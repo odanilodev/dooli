@@ -27,7 +27,7 @@ Migrations originais já indexam `status` e chaves estrangeiras (InnoDB). A migr
 - Worker dedicado (`queue` no `docker-compose`).
 
 ### Cache
-- Adapter de vídeo (Panda) usa cache de 30 min por vídeo para evitar chamadas repetidas à API externa.
+- Playback VdoCipher não é cacheado: o OTP é de uso único e gerado a cada requisição.
 
 ## Revisão de consultas
 

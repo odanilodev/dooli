@@ -31,7 +31,6 @@ export function teamStatusLabel(status) {
 
 export const PLAYER_LABELS = {
   vdocipher: 'VdoCipher',
-  panda: 'Panda Video',
   vimeo: 'Vimeo',
   fastpix: 'FastPix',
   external: 'Link externo',

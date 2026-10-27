@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\StoreProduct;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
 
@@ -190,6 +191,74 @@ class AdminDashboardTest extends TestCase
 
         $this->assertEquals(30, $older->json('data.kpis.revenue'));
         $this->assertEquals(1, $older->json('data.kpis.orders_paid'));
+    }
+
+    public function test_custom_date_range_filters_all_period_blocks(): void
+    {
+        $this->seedSales();
+
+        $response = $this->withToken($this->apiLogin($this->admin))
+            ->getJson('/api/v1/admin/dashboard?from='.now()->subDays(25)->toDateString().'&to='.now()->subDays(10)->toDateString())
+            ->assertOk()
+            ->assertJsonPath('data.period', 'custom');
+
+        $this->assertEquals(30, $response->json('data.kpis.revenue'));
+        $this->assertCount(1, $response->json('data.recent_orders'));
+        $this->assertEquals(30, $response->json('data.recent_orders.0.total'));
+        $this->assertCount(1, $response->json('data.top_courses'));
+        $this->assertEquals(1, $response->json('data.top_courses.0.sales'));
+        $this->assertEquals(30, $response->json('data.top_courses.0.revenue'));
+        $this->assertCount(1, $response->json('data.top_buyers'));
+        $this->assertEquals(1, $response->json('data.top_buyers.0.orders_count'));
+        $this->assertEquals(30, $response->json('data.top_buyers.0.total'));
+        $this->assertCount(0, $response->json('data.recent_students'));
+
+        $statuses = collect($response->json('data.order_status'))->pluck('count', 'status');
+        $this->assertEquals(1, $statuses[OrderStatus::Paid->value]);
+        $this->assertEquals(0, $statuses[OrderStatus::Refunded->value]);
+    }
+
+    public function test_custom_date_range_can_span_up_to_three_months(): void
+    {
+        Carbon::setTestNow('2026-06-15 12:00:00');
+
+        try {
+            $this->withToken($this->apiLogin($this->admin))
+                ->getJson('/api/v1/admin/dashboard?from=2026-03-15&to=2026-06-15')
+                ->assertOk()
+                ->assertJsonPath('data.period', 'custom');
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_custom_date_range_can_be_historical_within_three_months(): void
+    {
+        Carbon::setTestNow('2026-10-27 12:00:00');
+
+        try {
+            $this->withToken($this->apiLogin($this->admin))
+                ->getJson('/api/v1/admin/dashboard?from=2026-01-15&to=2026-03-15')
+                ->assertOk()
+                ->assertJsonPath('data.period', 'custom');
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_custom_date_range_longer_than_three_months_is_rejected(): void
+    {
+        Carbon::setTestNow('2026-06-15 12:00:00');
+
+        try {
+            $this->withToken($this->apiLogin($this->admin))
+                ->getJson('/api/v1/admin/dashboard?from=2026-03-14&to=2026-06-15')
+                ->assertStatus(422)
+                ->assertJsonValidationErrors('to')
+                ->assertJsonPath('errors.to.0', 'O período personalizado não pode exceder 3 meses.');
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_from_without_to_is_rejected(): void

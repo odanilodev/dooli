@@ -235,6 +235,25 @@ class LessonManagementTest extends TestCase
             ->assertJsonValidationErrors('document_id');
     }
 
+    public function test_live_content_type_is_not_supported(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $token = $this->apiLogin($this->admin);
+
+        $this->withToken($token)
+            ->putJson("/api/v1/admin/lessons/{$data['lesson']->id}", [
+                'content_type' => 'live',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('content_type');
+
+        $this->withToken($token)
+            ->getJson("/api/v1/admin/lessons/{$data['lesson']->id}")
+            ->assertOk()
+            ->assertJsonMissingPath('data.webinar_link')
+            ->assertJsonMissingPath('data.webinar_starts_at');
+    }
+
     public function test_switching_lesson_to_document_clears_video_and_full_watch(): void
     {
         $data = $this->buildCourse($this->company->id);

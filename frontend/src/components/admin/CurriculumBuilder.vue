@@ -141,7 +141,7 @@
                           @click="emit('select', { type: 'lesson', id: lesson.id })"
                         >
                           <span class="cb-handle" title="Arrastar" @click.stop>⠿</span>
-                          <span class="cb-dot" :class="liveState(lesson) || 'idle'"></span>
+                          <span class="cb-dot"></span>
 
                           <input
                             v-if="isEditing('lesson', lesson.id)"
@@ -156,8 +156,6 @@
                           >
                           <span v-else class="cb-name">{{ lesson.name }}</span>
 
-                          <span v-if="liveState(lesson) === 'live'" class="cb-chip live"><i></i>Ao vivo</span>
-                          <span v-else-if="liveState(lesson) === 'soon'" class="cb-chip soon">Em breve</span>
                           <span v-if="lesson.video" class="cb-chip">Vídeo</span>
                           <span v-if="lesson.document" class="cb-chip">Doc</span>
                           <span v-if="lesson.attachments?.length" class="cb-chip">{{ lesson.attachments.length }} anexo(s)</span>
@@ -203,7 +201,7 @@
                   @click="emit('select', { type: 'lesson', id: lesson.id })"
                 >
                   <span class="cb-handle" title="Arrastar" @click.stop>⠿</span>
-                  <span class="cb-dot" :class="liveState(lesson) || 'idle'"></span>
+                  <span class="cb-dot"></span>
 
                   <input
                     v-if="isEditing('lesson', lesson.id)"
@@ -218,8 +216,6 @@
                   >
                   <span v-else class="cb-name">{{ lesson.name }}</span>
 
-                  <span v-if="liveState(lesson) === 'live'" class="cb-chip live"><i></i>Ao vivo</span>
-                  <span v-else-if="liveState(lesson) === 'soon'" class="cb-chip soon">Em breve</span>
                   <span v-if="lesson.video" class="cb-chip">Vídeo</span>
                   <span v-if="lesson.document" class="cb-chip">Doc</span>
                   <span v-if="lesson.attachments?.length" class="cb-chip">{{ lesson.attachments.length }} anexo(s)</span>
@@ -403,18 +399,6 @@ function onLessonChange(event, level, parentId, list) {
   }
 }
 
-function liveState(lesson) {
-  if (!lesson.webinar_link) {
-    return null;
-  }
-
-  if (lesson.webinar_starts_at && new Date(lesson.webinar_starts_at).getTime() > Date.now()) {
-    return 'soon';
-  }
-
-  return 'live';
-}
-
 function closeMenus() {
   openMenu.value = null;
 }
@@ -463,15 +447,11 @@ onBeforeUnmount(() => document.removeEventListener('click', closeMenus));
 .cb-count{font-size:11px;color:var(--text-muted);flex-shrink:0;}
 
 .cb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--border);}
-.cb-dot.live{background:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.18);}
-.cb-dot.soon{background:#f59e0b;}
 
 .cb-chip{
   font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px;
   background:var(--bg-card-alt);color:var(--text-secondary);flex-shrink:0;display:inline-flex;align-items:center;gap:4px;
 }
-.cb-chip.live{background:rgba(239,68,68,.15);color:#ef4444;}
-.cb-chip.soon{background:rgba(245,158,11,.15);color:#f59e0b;}
 .cb-chip.draft{background:rgba(148,163,184,.18);color:#94a3b8;}
 .cb-chip.req{background:rgba(59,130,246,.15);color:#3b82f6;}
 .cb-chip i{width:6px;height:6px;border-radius:50%;background:currentColor;}

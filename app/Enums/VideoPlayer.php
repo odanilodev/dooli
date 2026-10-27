@@ -4,7 +4,6 @@ namespace App\Enums;
 
 enum VideoPlayer: string
 {
-    case Panda = 'panda';
     case VdoCipher = 'vdocipher';
     case Vimeo = 'vimeo';
     case FastPix = 'fastpix';

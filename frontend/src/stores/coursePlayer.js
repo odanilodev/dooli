@@ -16,7 +16,7 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
     const flat = [];
 
     const contentTypeOf = (lesson) => lesson.content_type
-      ?? (lesson.video ? 'video' : (lesson.document ? 'document' : (lesson.webinar_link ? 'live' : null)));
+      ?? (lesson.video ? 'video' : (lesson.document ? 'document' : null));
 
     for (const module of modules) {
       for (const topic of module.topics ?? []) {
@@ -30,8 +30,6 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
             video: lesson.video ?? null,
             document: lesson.document ?? null,
             attachments: lesson.attachments ?? [],
-            webinar_link: lesson.webinar_link ?? null,
-            webinar_starts_at: lesson.webinar_starts_at ?? null,
             requiredLessonId: lesson.required_lesson_id ?? null,
             requireFullWatch: lesson.require_full_watch ?? false,
             commentsEnabled: lesson.comments_enabled ?? true,
@@ -56,18 +54,16 @@ export const useCoursePlayerStore = defineStore('coursePlayer', () => {
           video: lesson.video ?? null,
           document: lesson.document ?? null,
           attachments: lesson.attachments ?? [],
-            webinar_link: lesson.webinar_link ?? null,
-            webinar_starts_at: lesson.webinar_starts_at ?? null,
-            requiredLessonId: lesson.required_lesson_id ?? null,
-            requireFullWatch: lesson.require_full_watch ?? false,
-            commentsEnabled: lesson.comments_enabled ?? true,
-            studentRepliesEnabled: lesson.student_replies_enabled ?? true,
-            availableAt: lesson.available_at ?? null,
-            scheduleLocked: lesson.is_locked ?? false,
-            moduleId: module.id,
-            moduleName: module.name,
-            topicId: null,
-            topicName: null,
+          requiredLessonId: lesson.required_lesson_id ?? null,
+          requireFullWatch: lesson.require_full_watch ?? false,
+          commentsEnabled: lesson.comments_enabled ?? true,
+          studentRepliesEnabled: lesson.student_replies_enabled ?? true,
+          availableAt: lesson.available_at ?? null,
+          scheduleLocked: lesson.is_locked ?? false,
+          moduleId: module.id,
+          moduleName: module.name,
+          topicId: null,
+          topicName: null,
           });
         }
       }
