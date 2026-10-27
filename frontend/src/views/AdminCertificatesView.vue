@@ -191,10 +191,10 @@
           </div>
         </div>
 
-        <div class="certificate-form-preview">
+        <div ref="previewPanel" class="certificate-form-preview">
           <div class="certificate-preview-head">
             <span class="certificate-preview-label">Pré-visualização</span>
-            <span class="certificate-drag-hint">Arraste os campos; use as alças para redimensionar</span>
+            <span class="certificate-drag-hint">Arraste para mover; use as alças para redimensionar; o alinhamento só ajusta o texto</span>
           </div>
 
           <div v-if="modulesOnSeparatePage" class="certificate-preview-tabs">
@@ -650,6 +650,7 @@ const layout = ref(normalizeLayout(null));
 const modulesLayout = ref(normalizeModulesPageLayout(null));
 const previewPage = ref('certificate');
 const selectedField = ref(null);
+const previewPanel = ref(null);
 const fontOptions = FONT_OPTIONS;
 const modulesPlacementOptions = MODULES_PLACEMENT_OPTIONS;
 const moduleFormatOptions = MODULES_FORMAT_OPTIONS;
@@ -823,17 +824,42 @@ function setActiveLayout(next) {
   layout.value = next;
 }
 
+function alignmentAnchorX(fieldKey, align) {
+  const canvas = previewPanel.value?.querySelector('.certificate-canvas');
+  const field = canvas?.querySelector(`.field-${fieldKey}`);
+
+  if (!canvas || !field || canvas.clientWidth <= 0) {
+    return null;
+  }
+
+  const canvasRect = canvas.getBoundingClientRect();
+  const fieldRect = field.getBoundingClientRect();
+  const left = ((fieldRect.left - canvasRect.left - canvas.clientLeft) / canvas.clientWidth) * 100;
+  const width = (fieldRect.width / canvas.clientWidth) * 100;
+  const offset = align === 'left' ? 0 : (align === 'center' ? width / 2 : width);
+
+  return Math.round(Math.min(100, Math.max(0, left + offset)) * 10) / 10;
+}
+
 function updateField(key, value) {
   if (!selectedField.value) {
     return;
   }
 
+  const current = activeLayout.value[selectedField.value];
+  const next = { ...current, [key]: value };
+
+  if (key === 'align' && value !== current.align) {
+    const x = alignmentAnchorX(selectedField.value, value);
+
+    if (x !== null) {
+      next.x = x;
+    }
+  }
+
   setActiveLayout({
     ...activeLayout.value,
-    [selectedField.value]: {
-      ...activeLayout.value[selectedField.value],
-      [key]: value,
-    },
+    [selectedField.value]: next,
   });
 }
 
