@@ -27,7 +27,7 @@
       {{ auth.loading ? 'Entrando...' : 'Entrar' }}
     </button>
 
-    <p v-if="isTenant" class="auth-switch">Ainda não tem conta? <router-link :to="publicRoute('public-loja')">Compre um curso para criar sua conta.</router-link></p>
+    <p v-if="isTenant" class="auth-switch"><router-link :to="publicRoute('public-loja')">Criar uma conta</router-link></p>
     <p v-else class="auth-switch">Para criar uma conta, use o link da sua empresa.</p>
   </form>
 </template>
