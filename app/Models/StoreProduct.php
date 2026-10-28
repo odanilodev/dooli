@@ -79,6 +79,21 @@ class StoreProduct extends Model
         return $this->billing_type === BillingType::Subscription->value;
     }
 
+    public function accessLabel(): string
+    {
+        if ($this->billing_type === BillingType::Subscription->value) {
+            return 'Assinatura mensal';
+        }
+
+        if ($this->access_duration_days === null) {
+            return 'Acesso permanente';
+        }
+
+        return $this->access_duration_days === 1
+            ? 'Acesso por 1 dia'
+            : "Acesso por {$this->access_duration_days} dias";
+    }
+
     public function accessExpiresAt(Carbon $startsAt): ?Carbon
     {
         if ($this->access_duration_days === null) {

@@ -43,6 +43,7 @@ class DatabaseSeederTest extends TestCase
         'notification_users',
         'orders',
         'order_items',
+        'order_events',
         'payments',
         'payment_events',
         'refunds',

@@ -25,6 +25,7 @@ class MenuSeeder extends Seeder
         ['Loja', '/admin/loja', 'storefront'],
         ['Gateways', '/admin/gateways', 'gateway'],
         ['Pedidos', '/admin/pedidos', 'orders'],
+        ['Pagamentos', '/admin/pagamentos', 'payments'],
         ['Assinaturas', '/admin/assinaturas', 'subscriptions'],
         ['Certificados', '/admin/certificados', 'certificate'],
         ['Plataformas de vídeo', '/admin/video-platforms', 'video-platforms'],

@@ -271,6 +271,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::apiResource('coupons', AdminCouponController::class);
         Route::apiResource('store-products', AdminStoreProductController::class);
 
+        Route::get('payments/summary', [AdminPaymentController::class, 'summary']);
         Route::apiResource('payments', AdminPaymentController::class)->only(['index', 'store', 'show']);
         Route::post('payments/{payment}/refund', [AdminPaymentController::class, 'refund']);
 

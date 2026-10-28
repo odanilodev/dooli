@@ -3,12 +3,16 @@
 namespace App\Services;
 
 use App\DTO\CreatePaymentDTO;
+use App\Enums\OrderEventActorType;
+use App\Enums\OrderEventType;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentEventStatus;
 use App\Enums\PaymentStatus;
+use App\Enums\RefundStatus;
 use App\Exceptions\PaymentException;
 use App\Exceptions\ResourceNotFoundException;
 use App\Models\Gateway;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentEvent;
 use App\Repositories\GatewayRepository;
@@ -28,6 +32,7 @@ class PaymentService
         private readonly Payments\GatewayManager $gatewayManager,
         private readonly EnrollmentService $enrollments,
         private readonly DatalogService $audit,
+        private readonly OrderEventService $orderEvents,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -35,10 +40,19 @@ class PaymentService
         return $this->payments->paginate(
             perPage: $perPage,
             filters: $filters,
-            with: ['gateway', 'order'],
+            with: ['gateway', 'order.user'],
             sort: $filters['sort'] ?? null,
             direction: $filters['direction'] ?? 'desc',
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<string, float|int|array<string, int>>
+     */
+    public function summary(array $filters): array
+    {
+        return $this->payments->summary($filters);
     }
 
     public function find(int $id): Payment
@@ -83,6 +97,23 @@ class PaymentService
                 'event' => 'charge.created',
                 'description' => 'Cobrança criada no gateway.',
                 'metadata' => $result->raw,
+            ]);
+
+            $this->orderEvents->record($order, OrderEventType::PaymentStarted, [
+                'payment_id' => $payment->id,
+                'status' => PaymentStatus::Pending->value,
+                'description' => $dto->method === 'pix'
+                    ? 'Aguardando a confirmação do PIX.'
+                    : 'Aguardando a confirmação do pagamento.',
+                'source_type' => 'payment',
+                'source_id' => (int) $payment->id,
+                'occurred_at' => $payment->created_at,
+                'metadata' => [
+                    'payment_id' => $payment->id,
+                    'method' => $dto->method,
+                    'amount' => (float) $payment->amount,
+                    'gateway' => $gateway->name,
+                ],
             ]);
 
             $this->audit->log('payment', 'create', 'payment', "Pagamento criado: {$payment->id}");
@@ -143,6 +174,21 @@ class PaymentService
                 'metadata' => $result['raw'] ?? [],
             ]);
 
+            $this->orderEvents->record($order, OrderEventType::PaymentStarted, [
+                'payment_id' => $payment->id,
+                'status' => PaymentStatus::Pending->value,
+                'description' => 'Checkout de cartão criado. Aguardando a confirmação do gateway.',
+                'source_type' => 'payment',
+                'source_id' => (int) $payment->id,
+                'occurred_at' => $payment->created_at,
+                'metadata' => [
+                    'payment_id' => $payment->id,
+                    'method' => 'credit_card',
+                    'amount' => (float) $payment->amount,
+                    'gateway' => $gateway->name,
+                ],
+            ]);
+
             $this->audit->log('payment', 'create', 'payment', "Checkout de cartão criado: {$payment->id}");
 
             return [
@@ -162,12 +208,32 @@ class PaymentService
         }
 
         return DB::transaction(function () use ($payment, $context) {
+            $order = $payment->order()->firstOrFail();
+
+            if ($order->status === OrderStatus::Canceled->value) {
+                $this->orderEvents->record($order, OrderEventType::PaymentBlocked, [
+                    'payment_id' => $payment->id,
+                    'status' => OrderStatus::Canceled->value,
+                    'description' => 'A confirmação foi ignorada porque o pedido já estava cancelado.',
+                    'actor_type' => OrderEventActorType::Gateway->value,
+                    'actor_name' => $payment->gateway?->name,
+                    'source_type' => 'payment',
+                    'source_id' => (int) $payment->id,
+                    'metadata' => ['source' => $context['source'] ?? null],
+                ]);
+
+                return $payment;
+            }
+
+            $paidAt = ! empty($context['paid_at'])
+                ? Carbon::parse($context['paid_at'])
+                : ($payment->paid_at ? Carbon::parse($payment->paid_at) : now());
+
             $payment = $this->payments->update($payment, [
                 'status' => PaymentStatus::Paid->value,
-                'paid_at' => now(),
+                'paid_at' => $paidAt,
             ]);
 
-            $order = $payment->order;
             $order->update(['status' => OrderStatus::Paid->value]);
 
             if ($order->subscription_id) {
@@ -176,7 +242,7 @@ class PaymentService
                 if ($order->subscription) {
                     $periodStart = $order->period_start
                         ? Carbon::parse($order->period_start)
-                        : now();
+                        : $paidAt->copy();
                     $periodEnd = $order->period_end
                         ? Carbon::parse($order->period_end)
                         : $periodStart->copy()->addMonthNoOverflow();
@@ -190,7 +256,7 @@ class PaymentService
             } else {
                 $this->enrollments->grantAccessForOrder(
                     $order->load('items.storeProduct'),
-                    $payment->paid_at ? Carbon::parse($payment->paid_at) : now(),
+                    $paidAt,
                 );
             }
 
@@ -199,7 +265,37 @@ class PaymentService
                 'status' => PaymentEventStatus::Processed->value,
                 'event' => 'payment.paid',
                 'description' => 'Pagamento confirmado e acesso liberado.',
-                'metadata' => $context,
+                'metadata' => [...$context, 'paid_at' => $paidAt->toIso8601String()],
+            ]);
+
+            $this->orderEvents->record($order, OrderEventType::PaymentApproved, [
+                'payment_id' => $payment->id,
+                'status' => PaymentStatus::Paid->value,
+                'description' => 'O pagamento foi confirmado pelo gateway.',
+                'actor_type' => OrderEventActorType::Gateway->value,
+                'actor_name' => $payment->gateway?->name,
+                'source_type' => 'payment',
+                'source_id' => (int) $payment->id,
+                'occurred_at' => $paidAt,
+                'metadata' => [
+                    'payment_id' => $payment->id,
+                    'method' => $payment->method,
+                    'amount' => (float) $payment->amount,
+                    'transaction_id' => $payment->transaction_id,
+                    'gateway' => $payment->gateway?->name,
+                    'source' => $context['source'] ?? null,
+                ],
+            ]);
+
+            $this->orderEvents->record($order, OrderEventType::AccessGranted, [
+                'payment_id' => $payment->id,
+                'status' => OrderStatus::Paid->value,
+                'description' => 'O conteúdo da compra foi disponibilizado na área do aluno.',
+                'actor_type' => OrderEventActorType::System->value,
+                'source_type' => 'order',
+                'source_id' => (int) $order->id,
+                'occurred_at' => $paidAt,
+                'metadata' => ['payment_id' => $payment->id],
             ]);
 
             $this->audit->log('payment', 'confirm', 'payment', "Pagamento confirmado: {$payment->id}");
@@ -233,19 +329,23 @@ class PaymentService
 
         return DB::transaction(function () use ($payment, $amount, $reason, $refundable) {
             $result = $this->gatewayManager->for($payment->gateway)->refund($payment, $amount, $reason);
+            $order = $payment->order()->firstOrFail();
+            $refundedAt = ! empty($result->raw['date_created'])
+                ? Carbon::parse($result->raw['date_created'])
+                : now();
 
-            $payment->refunds()->create([
+            $refund = $payment->refunds()->create([
                 'amount' => $amount,
                 'reason' => $reason,
                 'status' => $result->status,
-                'refunded_at' => now(),
+                'refunded_at' => $refundedAt,
             ]);
 
             $fullyRefunded = $amount >= $refundable;
 
             if ($fullyRefunded) {
                 $payment = $this->payments->update($payment, ['status' => PaymentStatus::Refunded->value]);
-                $payment->order->update(['status' => OrderStatus::Refunded->value]);
+                $order->update(['status' => OrderStatus::Refunded->value]);
             }
 
             PaymentEvent::query()->create([
@@ -256,6 +356,30 @@ class PaymentService
                 'metadata' => ['amount' => $amount, 'fully_refunded' => $fullyRefunded],
             ]);
 
+            $this->orderEvents->record($order, OrderEventType::PaymentRefunded, [
+                'payment_id' => $payment->id,
+                'status' => PaymentStatus::Refunded->value,
+                'description' => $reason ?? 'O valor foi devolvido ao comprador.',
+                'source_type' => 'refund',
+                'source_id' => (int) $refund->id,
+                'occurred_at' => $refundedAt,
+                'metadata' => [
+                    'payment_id' => $payment->id,
+                    'amount' => $amount,
+                    'fully_refunded' => $fullyRefunded,
+                ],
+            ]);
+
+            if ($fullyRefunded) {
+                $this->orderEvents->record($order, OrderEventType::OrderRefunded, [
+                    'status' => OrderStatus::Refunded->value,
+                    'description' => 'O valor da compra foi devolvido integralmente.',
+                    'source_type' => 'order',
+                    'source_id' => (int) $order->id,
+                    'occurred_at' => $refundedAt,
+                ]);
+            }
+
             $this->audit->log('payment', 'refund', 'payment', "Estorno do pagamento {$payment->id}");
 
             return $payment->refresh();
@@ -263,9 +387,93 @@ class PaymentService
     }
 
     /**
+     * @param  array<string, mixed>  $metadata
+     */
+    private function applyRefundWebhook(
+        Payment $payment,
+        Order $order,
+        ?string $gatewayName,
+        array $metadata,
+    ): void {
+        $refundedAt = Carbon::parse(
+            $metadata['date_last_updated']
+                ?? $metadata['date_created']
+                ?? now(),
+        );
+
+        $amount = $metadata['transaction_amount_refunded']
+            ?? $metadata['transaction_amount']
+            ?? null;
+
+        $refund = is_numeric($amount) && (float) $amount > 0
+            ? $payment->refunds()->create([
+                'amount' => round((float) $amount, 2),
+                'reason' => 'Estorno informado pelo gateway.',
+                'status' => RefundStatus::Refunded->value,
+                'refunded_at' => $refundedAt,
+            ])
+            : null;
+
+        $payment = $this->payments->update($payment, [
+            'status' => PaymentStatus::Refunded->value,
+        ]);
+        $order->update(['status' => OrderStatus::Refunded->value]);
+
+        $this->orderEvents->record($order, OrderEventType::PaymentRefunded, [
+            'payment_id' => $payment->id,
+            'status' => PaymentStatus::Refunded->value,
+            'description' => 'O gateway informou o estorno deste pagamento.',
+            'actor_type' => OrderEventActorType::Gateway->value,
+            'actor_name' => $gatewayName,
+            'source_type' => $refund ? 'refund' : 'payment',
+            'source_id' => (int) ($refund?->id ?? $payment->id),
+            'occurred_at' => $refundedAt,
+            'metadata' => [
+                'payment_id' => $payment->id,
+                'amount' => $refund ? (float) $refund->amount : null,
+            ],
+        ]);
+
+        $this->orderEvents->record($order, OrderEventType::OrderRefunded, [
+            'status' => OrderStatus::Refunded->value,
+            'description' => 'O valor da compra foi devolvido.',
+            'actor_type' => OrderEventActorType::Gateway->value,
+            'actor_name' => $gatewayName,
+            'source_type' => 'order',
+            'source_id' => (int) $order->id,
+            'occurred_at' => $refundedAt,
+        ]);
+    }
+
+    private function applyFailedWebhook(
+        Payment $payment,
+        Order $order,
+        PaymentEvent $paymentEvent,
+        ?string $gatewayName,
+    ): void {
+        $this->payments->update($payment, ['status' => PaymentStatus::Failed->value]);
+
+        $this->orderEvents->record($order, OrderEventType::PaymentFailed, [
+            'payment_id' => $payment->id,
+            'status' => PaymentStatus::Failed->value,
+            'description' => 'O gateway recusou esta tentativa de pagamento.',
+            'actor_type' => OrderEventActorType::Gateway->value,
+            'actor_name' => $gatewayName,
+            'source_type' => 'payment',
+            'source_id' => (int) $payment->id,
+            'occurred_at' => $paymentEvent->created_at,
+            'metadata' => [
+                'payment_id' => $payment->id,
+                'method' => $payment->method,
+                'amount' => (float) $payment->amount,
+            ],
+        ]);
+    }
+
+    /**
      * Applies a normalized gateway webhook payload. Idempotent.
      *
-     * @param  array{external_id: ?string, event: string, status: string, transaction_id: ?string, metadata: array}  $payload
+     * @param  array{external_id: ?string, event: string, status: string, transaction_id: ?string, paid_at?: ?string, metadata: array}  $payload
      */
     public function applyWebhook(int $paymentId, array $payload): string
     {
@@ -297,7 +505,7 @@ class PaymentService
                 ]);
             }
 
-            PaymentEvent::query()->create([
+            $paymentEvent = PaymentEvent::query()->create([
                 'payment_id' => $payment->id,
                 'status' => PaymentEventStatus::Received->value,
                 'event' => $payload['event'],
@@ -306,13 +514,26 @@ class PaymentService
                 'metadata' => $payload['metadata'] ?? [],
             ]);
 
+            $order = $payment->order()->firstOrFail();
+            $gatewayName = $payment->gateway?->name;
+
             match ($payload['status']) {
-                PaymentStatus::Paid->value => $this->confirm($payment, ['source' => 'webhook']),
-                PaymentStatus::Refunded->value => tap(
-                    $this->payments->update($payment, ['status' => PaymentStatus::Refunded->value]),
-                    fn (Payment $updated) => $updated->order->update(['status' => OrderStatus::Refunded->value]),
+                PaymentStatus::Paid->value => $this->confirm($payment, [
+                    'source' => 'webhook',
+                    'paid_at' => $payload['paid_at'] ?? null,
+                ]),
+                PaymentStatus::Refunded->value => $this->applyRefundWebhook(
+                    $payment,
+                    $order,
+                    $gatewayName,
+                    (array) ($payload['metadata'] ?? []),
                 ),
-                PaymentStatus::Failed->value => $this->payments->update($payment, ['status' => PaymentStatus::Failed->value]),
+                PaymentStatus::Failed->value => $this->applyFailedWebhook(
+                    $payment,
+                    $order,
+                    $paymentEvent,
+                    $gatewayName,
+                ),
                 default => null,
             };
 

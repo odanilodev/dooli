@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DTO\ApplyCouponDTO;
 use App\DTO\CreateOrderDTO;
 use App\Enums\GeneralStatus;
+use App\Enums\OrderEventType;
 use App\Enums\OrderStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Order;
@@ -21,6 +22,7 @@ class OrderService
         private readonly StoreProductService $storeProducts,
         private readonly CouponService $coupons,
         private readonly DatalogService $audit,
+        private readonly OrderEventService $events,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -28,9 +30,10 @@ class OrderService
         return $this->orders->paginate(
             perPage: $perPage,
             filters: $filters,
-            with: ['items.storeProduct', 'payments'],
+            with: ['items.storeProduct', 'latestPayment', 'user'],
             sort: $filters['sort'] ?? null,
             direction: $filters['direction'] ?? 'desc',
+            withCount: ['items'],
         );
     }
 
@@ -58,6 +61,8 @@ class OrderService
 
                 $items[] = [
                     'store_product_id' => $storeProduct->id,
+                    'product_title' => $storeProduct->title,
+                    'product_access_label' => $storeProduct->accessLabel(),
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'total' => $lineTotal,
@@ -93,6 +98,20 @@ class OrderService
                 $this->coupons->registerUsage($coupon);
             }
 
+            $this->events->record($order, OrderEventType::OrderCreated, [
+                'status' => $order->status,
+                'description' => 'Seu pedido foi registrado e está aguardando pagamento.',
+                'source_type' => 'order',
+                'source_id' => (int) $order->id,
+                'occurred_at' => $order->created_at,
+                'metadata' => [
+                    'subtotal' => (float) $order->subtotal,
+                    'discount' => (float) $order->discount,
+                    'total' => (float) $order->total,
+                    'coupon_code' => $coupon?->code,
+                ],
+            ]);
+
             $this->audit->log('order', 'create', 'order', "Pedido criado: {$order->id}", $dto->userId);
 
             return $order->load(['items.storeProduct', 'coupon']);
@@ -105,11 +124,21 @@ class OrderService
             throw new BusinessRuleException('Apenas pedidos pendentes podem ser cancelados.');
         }
 
-        $order = $this->orders->update($order, ['status' => OrderStatus::Canceled->value]);
+        return DB::transaction(function () use ($order) {
+            $order = $this->orders->update($order, ['status' => OrderStatus::Canceled->value]);
 
-        $this->audit->log('order', 'cancel', 'order', "Pedido cancelado: {$order->id}", $order->user_id);
+            $this->events->record($order, OrderEventType::OrderCanceled, [
+                'status' => $order->status,
+                'description' => 'O pedido foi encerrado antes da confirmação do pagamento.',
+                'source_type' => 'order',
+                'source_id' => (int) $order->id,
+                'occurred_at' => $order->updated_at,
+            ]);
 
-        return $order;
+            $this->audit->log('order', 'cancel', 'order', "Pedido cancelado: {$order->id}", $order->user_id);
+
+            return $order;
+        });
     }
 
     private function assertPurchasable(StoreProduct $storeProduct): void

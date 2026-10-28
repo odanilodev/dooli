@@ -20,6 +20,7 @@ import PublicProductView from '../views/PublicProductView.vue';
 import PublicCheckoutView from '../views/PublicCheckoutView.vue';
 import PublicOrderView from '../views/PublicOrderView.vue';
 import PublicSubscriptionsView from '../views/PublicSubscriptionsView.vue';
+import StudentOrdersView from '../views/StudentOrdersView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import AdminVideoPlatformsView from '../views/AdminVideoPlatformsView.vue';
@@ -43,6 +44,7 @@ import AdminMenusView from '../views/AdminMenusView.vue';
 import AdminCompaniesView from '../views/AdminCompaniesView.vue';
 import AdminGatewaysView from '../views/AdminGatewaysView.vue';
 import AdminOrdersView from '../views/AdminOrdersView.vue';
+import AdminPaymentsView from '../views/AdminPaymentsView.vue';
 import AdminSubscriptionsView from '../views/AdminSubscriptionsView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
@@ -81,6 +83,12 @@ const routes = [
         name: 'public-pedido',
         component: PublicOrderView,
         meta: { title: 'Pedido', requiresCompanyAuth: true },
+      },
+      {
+        path: 'minhas-compras',
+        name: 'public-compras',
+        component: StudentOrdersView,
+        meta: { title: 'Minhas compras', requiresCompanyAuth: true },
       },
       {
         path: 'minhas-assinaturas',
@@ -185,6 +193,7 @@ const routes = [
       { path: 'admin/loja', name: 'admin-loja', component: AdminStoreView, meta: { title: 'Loja (admin)', requiresAdminMenu: true } },
       { path: 'admin/gateways', name: 'admin-gateways', component: AdminGatewaysView, meta: { title: 'Gateways (admin)', requiresAdminMenu: true } },
       { path: 'admin/pedidos', name: 'admin-pedidos', component: AdminOrdersView, meta: { title: 'Pedidos (admin)', requiresAdminMenu: true } },
+      { path: 'admin/pagamentos', name: 'admin-pagamentos', component: AdminPaymentsView, meta: { title: 'Pagamentos (admin)', requiresAdminMenu: true } },
       { path: 'admin/assinaturas', name: 'admin-assinaturas', component: AdminSubscriptionsView, meta: { title: 'Assinaturas (admin)', requiresAdminMenu: true } },
       { path: 'admin/usuarios', name: 'admin-usuarios', component: AdminUsersView, meta: { title: 'Usuários (admin)', requiresAdmin: true } },
       { path: 'admin/tipos-de-usuario', name: 'admin-tipos-de-usuario', component: AdminUserTypesView, meta: { title: 'Tipos de usuário (admin)', requiresAdmin: true } },
@@ -222,6 +231,12 @@ const routes = [
         name: 'legacy-pedido',
         component: PublicOrderView,
         meta: { title: 'Pedido', requiresCompanyAuth: true },
+      },
+      {
+        path: 'minhas-compras',
+        name: 'legacy-compras',
+        component: StudentOrdersView,
+        meta: { title: 'Minhas compras', requiresCompanyAuth: true },
       },
       {
         path: 'assinaturas',

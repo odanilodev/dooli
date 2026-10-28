@@ -44,7 +44,9 @@ class AdminOrderTest extends TestCase
             ->getJson('/api/v1/admin/orders')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('meta.total', 1);
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.user.name', $this->student->name)
+            ->assertJsonPath('data.0.type', 'one_time');
     }
 
     public function test_admin_can_show_an_order(): void
@@ -60,7 +62,9 @@ class AdminOrderTest extends TestCase
         $this->withToken($this->apiLogin($this->admin))
             ->getJson("/api/v1/admin/orders/{$orderId}")
             ->assertOk()
-            ->assertJsonPath('data.id', $orderId);
+            ->assertJsonPath('data.id', $orderId)
+            ->assertJsonPath('data.user.name', $this->student->name)
+            ->assertJsonPath('data.timeline.0.type', 'order.created');
     }
 
     public function test_admin_cannot_show_an_order_from_another_company(): void

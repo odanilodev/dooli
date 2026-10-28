@@ -199,6 +199,13 @@
           </template>
 
           <p class="summary-note">Você pode fechar esta página. O acesso será liberado quando o pagamento for aprovado.</p>
+          <router-link
+            v-if="orderId"
+            :to="publicRoute('public-pedido', { orderId })"
+            class="btn btn-outline btn-sm"
+          >
+            Acompanhar pedido
+          </router-link>
         </div>
 
         <div class="pix-qr">
@@ -336,12 +343,12 @@ async function submit() {
     }
 
     const paymentData = payment.data.data;
-    const transaction = paymentData?.metadata?.point_of_interaction?.transaction_data ?? {};
+    const pixData = paymentData?.pix ?? {};
 
     pix.value = {
-      code: transaction.qr_code ?? null,
-      qrImage: transaction.qr_code_base64
-        ? `data:image/png;base64,${transaction.qr_code_base64}`
+      code: pixData.qr_code ?? null,
+      qrImage: pixData.qr_code_base64
+        ? `data:image/png;base64,${pixData.qr_code_base64}`
         : null,
     };
 
@@ -368,7 +375,7 @@ function startPolling() {
       if (data.data.status === 'paid') {
         stopPolling();
         toast.success('Pagamento aprovado! Seu acesso foi liberado.');
-        await router.push({ name: 'dashboard' });
+        await router.push(publicRoute('public-pedido', { orderId: orderId.value }));
       }
     } catch (e) {
       /* keep polling */

@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use Illuminate\Database\Eloquent\Builder;
 
 class OrderRepository extends BaseRepository
 {
@@ -21,8 +22,37 @@ class OrderRepository extends BaseRepository
     public function findWithRelations(int $id): Order
     {
         return $this->query()
-            ->with(['items.storeProduct.course', 'payments.gateway', 'coupon', 'user'])
+            ->with([
+                'items.storeProduct.course',
+                'payments.gateway',
+                'payments.events',
+                'payments.refunds',
+                'coupon',
+                'user',
+            ])
             ->findOrFail($id);
+    }
+
+    protected function applyFilters(Builder $query, array $filters): void
+    {
+        $search = trim((string) ($filters['search'] ?? ''));
+        unset($filters['search']);
+
+        parent::applyFilters($query, $filters);
+
+        if ($search === '') {
+            return;
+        }
+
+        $query->where(function (Builder $builder) use ($search) {
+            $builder
+                ->where($this->model->qualifyColumn('status'), 'like', "%{$search}%")
+                ->orWhere($this->model->qualifyColumn('id'), 'like', "%{$search}%")
+                ->orWhereHas('user', function (Builder $user) use ($search) {
+                    $user->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+        });
     }
 
     public function countCouponUsageForUser(int $couponId, int $userId): int

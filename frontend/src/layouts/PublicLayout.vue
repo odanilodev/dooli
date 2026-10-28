@@ -7,7 +7,8 @@
         </router-link>
 
         <nav v-if="auth.isAuthenticated" class="public-nav" aria-label="Navegação da loja">
-          <router-link :to="publicRoute('public-assinaturas')">Minhas assinaturas</router-link>
+          <!-- <router-link :to="publicRoute('public-compras')">Minhas compras</router-link> -->
+          <!-- <router-link :to="publicRoute('public-assinaturas')">Minhas assinaturas</router-link> -->
           <router-link :to="{ name: 'dashboard' }">Meus cursos</router-link>
         </nav>
 
@@ -52,10 +53,14 @@
                 <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
                 Meus cursos
               </router-link>
-              <router-link :to="publicRoute('public-assinaturas')" @click="userMenuOpen = false">
+              <router-link :to="publicRoute('public-compras')" @click="userMenuOpen = false">
+                <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
+                Minhas compras
+              </router-link>
+              <!-- <router-link :to="publicRoute('public-assinaturas')" @click="userMenuOpen = false">
                 <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
                 Minhas assinaturas
-              </router-link>
+              </router-link> -->
               <a href="#" @click.prevent="logout">
                 <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
                 Sair

@@ -11,6 +11,8 @@ use App\Http\Requests\Store\StoreOrderRequest;
 use App\Http\Requests\Student\PayOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\PaymentResource;
+use App\Http\Resources\StudentOrderDetailResource;
+use App\Http\Resources\StudentOrderResource;
 use App\Models\Gateway;
 use App\Models\Order;
 use App\Services\OrderService;
@@ -29,11 +31,14 @@ class OrderController extends ApiController
     public function index(Request $request): JsonResponse
     {
         $paginator = $this->orders->paginate(
-            filters: ['user_id' => $request->user()->id, ...$request->only(['status', 'sort', 'direction'])],
+            filters: [
+                'user_id' => $request->user()->id,
+                ...$request->only(['status', 'date_from', 'date_to', 'sort', 'direction']),
+            ],
             perPage: $this->perPage($request),
         );
 
-        return ApiResponse::paginated($paginator, OrderResource::class);
+        return ApiResponse::paginated($paginator, StudentOrderResource::class);
     }
 
     public function store(StoreOrderRequest $request): JsonResponse
@@ -83,7 +88,7 @@ class OrderController extends ApiController
     {
         $this->authorize('view', $order);
 
-        return ApiResponse::success(new OrderResource($this->orders->find($order->id)));
+        return ApiResponse::success(new StudentOrderDetailResource($this->orders->find($order->id)));
     }
 
     public function cancel(Request $request, Order $order): JsonResponse

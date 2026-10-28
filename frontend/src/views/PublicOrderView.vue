@@ -3,7 +3,9 @@
     <nav class="public-breadcrumb" aria-label="Você está aqui">
       <router-link :to="publicRoute('public-loja')">Loja</router-link>
       <span>/</span>
-      <span class="current">Pedido</span>
+      <router-link :to="publicRoute('public-compras')">Minhas compras</router-link>
+      <span>/</span>
+      <span class="current">Pedido #{{ orderId }}</span>
     </nav>
 
     <div v-if="loading" class="public-empty">
@@ -14,7 +16,7 @@
       <svg class="icon" width="38" height="38" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
       <strong>Pedido não encontrado</strong>
       <span>{{ error }}</span>
-      <router-link :to="publicRoute('public-loja')" class="btn btn-outline btn-sm">Voltar para a loja</router-link>
+      <router-link :to="publicRoute('public-compras')" class="btn btn-outline btn-sm">Ver minhas compras</router-link>
     </div>
 
     <section v-else-if="order" class="order-layout">
@@ -32,27 +34,40 @@
             <p>{{ statusDescription(order.status) }}</p>
           </div>
 
-          <span class="status-pill order-pill" :class="order.status">{{ statusLabel(order.status) }}</span>
+          <span class="status-pill order-pill" :class="orderStatusClass(order.status)">{{ orderStatusLabel(order.status) }}</span>
         </div>
 
         <div class="order-section">
           <div class="order-section-head">
             <h2>Itens do pedido</h2>
-            <span v-if="order.created_at">Criado em {{ formatDate(order.created_at) }}</span>
+            <span v-if="order.created_at">Pedido feito em {{ formatDateTime(order.created_at) }}</span>
           </div>
 
           <div class="order-items">
             <div v-for="(item, index) in order.items" :key="item.id" class="order-item">
               <div class="order-item-media" :style="{ background: itemGrad(index) }">
-                <img v-if="item.store_product?.image_url || item.store_product?.image" :src="item.store_product.image_url || item.store_product.image" :alt="item.store_product?.title">
+                <img v-if="item.store_product?.image_url || item.store_product?.image" :src="item.store_product.image_url || item.store_product.image" :alt="item.product_title || item.store_product?.title" loading="lazy" decoding="async">
                 <svg v-else class="icon" width="20" height="20" viewBox="0 0 24 24"><path :d="itemIcon(index)" /></svg>
               </div>
               <div class="order-item-copy">
-                <strong>{{ item.store_product?.title || 'Produto' }}</strong>
-                <span>{{ item.store_product?.access_label || 'Conteúdo digital' }}</span>
+                <strong>{{ item.product_title || item.store_product?.title || 'Produto' }}</strong>
+                <span>{{ item.product_access_label || item.store_product?.access_label || 'Conteúdo digital' }}</span>
+                <small v-if="item.quantity > 1 || item.unit_price">
+                  {{ item.quantity }} x {{ formatCurrency(item.unit_price) }}
+                </small>
               </div>
               <strong class="order-item-price">{{ formatCurrency(item.total) }}</strong>
             </div>
+          </div>
+        </div>
+
+        <div v-if="order.payments?.length" class="order-section">
+          <div class="order-section-head">
+            <h2>Pagamentos</h2>
+            <span>{{ order.payments.length }} {{ order.payments.length === 1 ? 'tentativa' : 'tentativas' }}</span>
+          </div>
+          <div class="order-payments">
+            <PaymentDetailsCard v-for="payment in order.payments" :key="payment.id" :payment="payment" />
           </div>
         </div>
 
@@ -62,7 +77,7 @@
             <strong>{{ formatCurrency(order.subtotal) }}</strong>
           </div>
           <div v-if="Number(order.discount) > 0" class="order-total-line discount">
-            <span>Desconto</span>
+            <span>Desconto<span v-if="order.coupon?.code"> · {{ order.coupon.code }}</span></span>
             <strong>- {{ formatCurrency(order.discount) }}</strong>
           </div>
           <div class="order-total-line total">
@@ -81,42 +96,19 @@
           Assim que o pagamento for confirmado, seu acesso será liberado automaticamente.
         </p>
 
-        <router-link v-if="order.status === 'paid'" :to="{ name: 'dashboard' }" class="btn btn-primary order-cta">
-          Ir para meus cursos
-          <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </router-link>
+        <div class="order-actions">
+          <router-link v-if="order.status === 'paid'" :to="{ name: 'dashboard' }" class="btn btn-primary order-cta">
+            Ir para meus cursos
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </router-link>
+          <router-link :to="publicRoute('public-compras')" class="btn btn-outline">Minhas compras</router-link>
+        </div>
       </div>
 
       <aside class="order-aside">
         <p class="public-eyebrow">Acompanhe</p>
-        <h2>O que acontece agora?</h2>
-
-        <ol class="order-steps">
-          <li class="done">
-            <span class="order-step-dot"></span>
-            <div>
-              <strong>Pedido criado</strong>
-              <span>Recebemos os dados da sua compra.</span>
-            </div>
-          </li>
-          <li :class="{ done: order.status === 'paid', current: order.status === 'pending', danger: ['canceled', 'refunded'].includes(order.status) }">
-            <span class="order-step-dot"></span>
-            <div>
-              <strong>Confirmação do pagamento</strong>
-              <span v-if="order.status === 'pending'">Estamos aguardando a confirmação do gateway.</span>
-              <span v-else-if="order.status === 'paid'">Pagamento aprovado com sucesso.</span>
-              <span v-else>O pagamento não foi concluído.</span>
-            </div>
-          </li>
-          <li :class="{ done: order.status === 'paid' }">
-            <span class="order-step-dot"></span>
-            <div>
-              <strong>Liberação do acesso</strong>
-              <span>O conteúdo aparece na sua área de cursos.</span>
-            </div>
-          </li>
-        </ol>
-
+        <h2>Histórico do pedido</h2>
+        <OrderTimeline :events="order.timeline || []" />
         <p v-if="order.status === 'pending'" class="order-aside-note">
           Esta página atualiza o status automaticamente.
         </p>
@@ -131,7 +123,10 @@ import { useRoute } from 'vue-router';
 import { api } from '../api/http';
 import { paletteAt } from '../data/palette';
 import { useTenant } from '../composables/useTenant';
-import { formatCurrency, formatDate } from '../utils/format';
+import { formatCurrency, formatDateTime } from '../utils/format';
+import { orderStatusClass, orderStatusLabel } from '../utils/orderStatus';
+import OrderTimeline from '../components/OrderTimeline.vue';
+import PaymentDetailsCard from '../components/PaymentDetailsCard.vue';
 
 const route = useRoute();
 const { publicRoute } = useTenant();
@@ -182,7 +177,7 @@ function itemIcon(index) {
 }
 
 timer = setInterval(() => {
-  if (order.value?.status !== 'paid') {
+  if (order.value?.status === 'pending') {
     load();
   }
 }, 8000);
@@ -192,24 +187,15 @@ onBeforeUnmount(() => clearInterval(timer));
 
 <style scoped>
 .order-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.55fr);gap:clamp(24px,3vw,40px);align-items:start;}
-.order-card{
-  display:flex;flex-direction:column;gap:32px;padding:clamp(24px,3.4vw,40px);
-  border:0;border-radius:28px;background:var(--bg-card);box-shadow:0 18px 48px rgba(15,23,42,.07);
-}
+.order-card{display:flex;flex-direction:column;gap:32px;padding:clamp(24px,3.4vw,40px);border:0;border-radius:28px;background:var(--bg-card);box-shadow:0 18px 48px rgba(15,23,42,.07);}
 .order-status-head{display:flex;align-items:flex-start;gap:18px;}
-.order-status-icon{
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  width:58px;height:58px;border-radius:18px;background:var(--accent-soft);color:var(--accent);
-}
+.order-status-icon{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:58px;height:58px;border-radius:18px;background:var(--accent-soft);color:var(--accent);}
 .order-status-icon.pending{background:rgba(234,179,8,.12);color:#d9a514;}
 .order-status-icon.canceled,.order-status-icon.refunded{background:rgba(255,107,107,.12);color:#ff6b6b;}
 .order-status-copy{display:flex;flex-direction:column;gap:6px;min-width:0;}
 .order-status-copy h1{font-size:clamp(34px,3.8vw,46px);font-weight:800;line-height:1.04;letter-spacing:-.04em;}
 .order-status-copy p:last-child{max-width:620px;color:var(--text-secondary);font-size:14px;line-height:1.6;}
-.order-pill{margin-left:auto;flex-shrink:0;background:var(--bg-card-alt);color:var(--text-secondary);}
-.order-pill.paid{background:rgba(34,197,94,.14);color:#22c55e;}
-.order-pill.pending{background:rgba(234,179,8,.12);color:#d9a514;}
-.order-pill.canceled,.order-pill.refunded{background:rgba(255,107,107,.12);color:#ff6b6b;}
+.order-pill{margin-left:auto;flex-shrink:0;}
 .order-section{display:flex;flex-direction:column;gap:16px;}
 .order-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .order-section-head h2{font-size:21px;font-weight:800;letter-spacing:-.02em;}
@@ -217,47 +203,25 @@ onBeforeUnmount(() => clearInterval(timer));
 .order-items{display:flex;flex-direction:column;border-radius:20px;overflow:hidden;background:var(--bg-card-alt);}
 .order-item{display:flex;align-items:center;gap:16px;padding:18px;}
 .order-item + .order-item{border-top:1px solid var(--border);}
-.order-item-media{
-  position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  width:64px;height:56px;border-radius:13px;overflow:hidden;color:#fff;
-}
+.order-item-media{position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0;width:64px;height:56px;border-radius:13px;overflow:hidden;color:#fff;}
 .order-item-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .order-item-copy{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1;}
 .order-item-copy strong{font-size:14.5px;line-height:1.35;}
-.order-item-copy span{color:var(--text-muted);font-size:12px;}
+.order-item-copy span,.order-item-copy small{color:var(--text-muted);font-size:12px;}
 .order-item-price{font-size:16px;white-space:nowrap;letter-spacing:-.02em;}
+.order-payments{display:flex;flex-direction:column;gap:12px;}
 .order-totals{display:flex;flex-direction:column;gap:10px;width:100%;max-width:440px;margin-left:auto;padding-top:4px;}
 .order-total-line{display:flex;align-items:center;justify-content:space-between;gap:16px;color:var(--text-secondary);font-size:13px;}
 .order-total-line strong{color:var(--text-primary);font-size:13.5px;}
 .order-total-line.discount strong{color:#22c55e;}
 .order-total-line.total{padding-top:16px;border-top:1px solid var(--border);font-size:14px;font-weight:800;}
 .order-total-line.total strong{font-size:29px;color:var(--accent);letter-spacing:-.035em;}
-.order-note{
-  padding:16px 18px;border-radius:14px;
-  background:var(--bg-card-alt);color:var(--text-secondary);font-size:13px;line-height:1.6;
-}
+.order-note{padding:16px 18px;border-radius:14px;background:var(--bg-card-alt);color:var(--text-secondary);font-size:13px;line-height:1.6;}
 .order-note.success{background:rgba(34,197,94,.08);color:#22c55e;}
-.order-cta{align-self:flex-start;padding:14px 22px;border-radius:13px;}
-.order-aside{
-  position:sticky;top:108px;display:flex;flex-direction:column;gap:12px;padding:clamp(24px,2.6vw,32px);
-  border:0;border-radius:26px;background:var(--bg-card);box-shadow:0 18px 48px rgba(15,23,42,.07);
-}
+.order-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.order-cta{padding:14px 22px;border-radius:13px;}
+.order-aside{position:sticky;top:108px;display:flex;flex-direction:column;gap:12px;padding:clamp(24px,2.6vw,32px);border:0;border-radius:26px;background:var(--bg-card);box-shadow:0 18px 48px rgba(15,23,42,.07);}
 .order-aside h2{margin:2px 0 10px;font-size:24px;font-weight:800;letter-spacing:-.025em;}
-.order-steps{display:flex;flex-direction:column;gap:0;margin:0;padding:0;list-style:none;}
-.order-steps li{position:relative;display:flex;gap:13px;padding-bottom:24px;}
-.order-steps li:last-child{padding-bottom:0;}
-.order-steps li::before{content:'';position:absolute;left:7px;top:16px;bottom:0;width:1px;background:var(--border);}
-.order-steps li:last-child::before{display:none;}
-.order-step-dot{
-  position:relative;z-index:1;width:15px;height:15px;border-radius:50%;flex-shrink:0;
-  margin-top:2px;border:2px solid var(--border);background:var(--bg-card);
-}
-.order-steps li.done .order-step-dot{border-color:var(--accent);background:var(--accent);}
-.order-steps li.current .order-step-dot{border-color:#d9a514;background:#d9a514;box-shadow:0 0 0 5px rgba(234,179,8,.14);}
-.order-steps li.danger .order-step-dot{border-color:#ff6b6b;background:#ff6b6b;}
-.order-steps li > div{display:flex;flex-direction:column;gap:4px;}
-.order-steps strong{font-size:13.5px;}
-.order-steps span:not(.order-step-dot){color:var(--text-muted);font-size:12px;line-height:1.5;}
 .order-aside-note{margin-top:2px;color:var(--text-muted);font-size:12px;line-height:1.55;}
 @media(max-width:1000px){
   .order-layout{grid-template-columns:1fr;}

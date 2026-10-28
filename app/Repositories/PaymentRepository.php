@@ -2,7 +2,10 @@
 
 namespace App\Repositories;
 
+use App\Enums\PaymentStatus;
+use App\Enums\RefundStatus;
 use App\Models\Payment;
+use App\Models\Refund;
 
 class PaymentRepository extends BaseRepository
 {
@@ -19,7 +22,53 @@ class PaymentRepository extends BaseRepository
 
     public function findWithEvents(int $id): Payment
     {
-        return $this->query()->with(['events', 'refunds', 'order', 'gateway'])->findOrFail($id);
+        return $this->query()
+            ->with(['events', 'refunds', 'order.user', 'gateway'])
+            ->findOrFail($id);
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<string, float|int|array<string, int>>
+     */
+    public function summary(array $filters): array
+    {
+        $query = $this->query();
+        $this->applyFilters($query, $filters);
+
+        $rows = (clone $query)
+            ->selectRaw('status, COUNT(*) as total_count, COALESCE(SUM(amount), 0) as total_amount')
+            ->groupBy('status')
+            ->get()
+            ->keyBy('status');
+
+        $counts = [];
+        $amounts = [];
+
+        foreach (PaymentStatus::values() as $status) {
+            $counts[$status] = (int) ($rows[$status]->total_count ?? 0);
+            $amounts[$status] = round((float) ($rows[$status]->total_amount ?? 0), 2);
+        }
+
+        $refunded = round((float) Refund::query()
+            ->whereIn('payment_id', (clone $query)->select('payments.id'))
+            ->where('status', RefundStatus::Refunded->value)
+            ->sum('amount'), 2);
+
+        $gross = round(
+            ($amounts[PaymentStatus::Paid->value] ?? 0)
+            + ($amounts[PaymentStatus::Refunded->value] ?? 0),
+            2,
+        );
+
+        return [
+            'received' => round(max($gross - $refunded, 0), 2),
+            'gross' => $gross,
+            'refunded' => $refunded,
+            'pending' => $amounts[PaymentStatus::Pending->value] ?? 0,
+            'failed' => $amounts[PaymentStatus::Failed->value] ?? 0,
+            'counts' => $counts,
+        ];
     }
 
     public function findByTransactionId(string $transactionId): ?Payment

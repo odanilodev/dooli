@@ -102,6 +102,7 @@ const FALLBACK_MENU = [
       { id: 'fb-storefront', name: 'Loja', type: 'link', depth: 1, link: '/admin/loja', icon: 'storefront' },
       { id: 'fb-gateways', name: 'Gateways', type: 'link', depth: 1, link: '/admin/gateways', icon: 'gateway' },
       { id: 'fb-orders', name: 'Pedidos', type: 'link', depth: 1, link: '/admin/pedidos', icon: 'orders' },
+      { id: 'fb-payments', name: 'Pagamentos', type: 'link', depth: 1, link: '/admin/pagamentos', icon: 'payments' },
       { id: 'fb-subscriptions', name: 'Assinaturas', type: 'link', depth: 1, link: '/admin/assinaturas', icon: 'subscriptions' },
       { id: 'fb-certificates', name: 'Certificados', type: 'link', depth: 1, link: '/admin/certificados', icon: 'certificate' },
       { id: 'fb-video-platforms', name: 'Plataformas de vídeo', type: 'link', depth: 1, link: '/admin/video-platforms', icon: 'video-platforms' },

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Api\V1\ApiController;
+use App\Http\Resources\AdminOrderDetailResource;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\OrderService;
@@ -19,7 +20,7 @@ class OrderController extends ApiController
         $this->authorize('viewAny', Order::class);
 
         $paginator = $this->orders->paginate(
-            filters: $request->only(['search', 'status', 'user_id', 'sort', 'direction']),
+            filters: $request->only(['search', 'status', 'user_id', 'date_from', 'date_to', 'sort', 'direction']),
             perPage: $this->perPage($request),
         );
 
@@ -30,6 +31,6 @@ class OrderController extends ApiController
     {
         $this->authorize('view', $order);
 
-        return ApiResponse::success(new OrderResource($this->orders->find($order->id)));
+        return ApiResponse::success(new AdminOrderDetailResource($this->orders->find($order->id)));
     }
 }

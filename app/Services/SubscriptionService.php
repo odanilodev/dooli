@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Enums\AccessGrantSource;
 use App\Enums\BillingType;
 use App\Enums\GeneralStatus;
+use App\Enums\OrderEventActorType;
+use App\Enums\OrderEventType;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\SubscriptionStatus;
@@ -27,6 +29,7 @@ class SubscriptionService
         private readonly EnrollmentService $enrollments,
         private readonly AccessGrantService $accessGrants,
         private readonly DatalogService $audit,
+        private readonly OrderEventService $orderEvents,
     ) {}
 
     /**
@@ -225,6 +228,8 @@ class SubscriptionService
         $order->items()->create([
             'company_id' => $subscription->company_id,
             'store_product_id' => $product->id,
+            'product_title' => $product->title,
+            'product_access_label' => $product->accessLabel(),
             'quantity' => 1,
             'unit_price' => $subscription->amount,
             'total' => $subscription->amount,
@@ -241,6 +246,39 @@ class SubscriptionService
             'paid_at' => $paidAt,
         ]);
 
-        $this->payments->confirm($payment, ['source' => 'subscription_webhook']);
+        $this->orderEvents->record($order, OrderEventType::OrderCreated, [
+            'status' => OrderStatus::Pending->value,
+            'description' => 'Cobrança da assinatura registrada.',
+            'actor_type' => OrderEventActorType::System->value,
+            'source_type' => 'order',
+            'source_id' => (int) $order->id,
+            'occurred_at' => $order->created_at,
+            'metadata' => [
+                'subscription_id' => $subscription->id,
+                'period_start' => $periodStart->toIso8601String(),
+                'period_end' => $periodEnd->toIso8601String(),
+                'total' => (float) $order->total,
+            ],
+        ]);
+
+        $this->orderEvents->record($order, OrderEventType::PaymentStarted, [
+            'payment_id' => $payment->id,
+            'status' => PaymentStatus::Pending->value,
+            'description' => 'Cobrança da assinatura enviada ao gateway.',
+            'actor_type' => OrderEventActorType::System->value,
+            'source_type' => 'payment',
+            'source_id' => (int) $payment->id,
+            'occurred_at' => $payment->created_at,
+            'metadata' => [
+                'payment_id' => $payment->id,
+                'method' => 'credit_card',
+                'amount' => (float) $payment->amount,
+            ],
+        ]);
+
+        $this->payments->confirm($payment, [
+            'source' => 'subscription_webhook',
+            'paid_at' => $paidAt->toIso8601String(),
+        ]);
     }
 }

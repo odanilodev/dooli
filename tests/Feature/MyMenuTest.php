@@ -106,9 +106,10 @@ class MyMenuTest extends TestCase
             '/admin/loja',
             '/admin/gateways',
             '/admin/pedidos',
+            '/admin/pagamentos',
             '/admin/assinaturas',
             '/admin/certificados',
-        ], array_slice($links, $products, 6));
+        ], array_slice($links, $products, 7));
 
         $names = collect(
             $this->withToken($this->apiLogin($this->admin))

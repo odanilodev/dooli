@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Enums\GatewayCode;
+use App\Enums\OrderEventActorType;
+use App\Enums\OrderEventType;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentEventStatus;
 use App\Enums\PaymentStatus;
@@ -11,6 +13,7 @@ use App\Models\Company;
 use App\Models\Coupon;
 use App\Models\Gateway;
 use App\Models\Order;
+use App\Models\OrderEvent;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\PaymentEvent;
@@ -139,9 +142,29 @@ class OrderSeeder extends Seeder
                 ['order_id' => $order->id, 'store_product_id' => $storeProduct->id],
                 [
                     'company_id' => $company->id,
+                    'product_title' => $storeProduct->title,
+                    'product_access_label' => $storeProduct->accessLabel(),
                     'quantity' => $data['item']['quantity'],
                     'unit_price' => $data['item']['unit_price'],
                     'total' => $data['item']['unit_price'] * $data['item']['quantity'],
+                ],
+            );
+
+            OrderEvent::query()->updateOrCreate(
+                [
+                    'order_id' => $order->id,
+                    'type' => OrderEventType::OrderCreated->value,
+                    'source_type' => 'order',
+                    'source_id' => $order->id,
+                ],
+                [
+                    'company_id' => $company->id,
+                    'status' => OrderStatus::Pending->value,
+                    'title' => 'Pedido criado',
+                    'description' => 'Pedido registrado no sistema.',
+                    'actor_type' => OrderEventActorType::System->value,
+                    'occurred_at' => $order->created_at ?? now(),
+                    'metadata' => ['total' => (float) $order->total],
                 ],
             );
 
@@ -170,12 +193,116 @@ class OrderSeeder extends Seeder
                 );
             }
 
+            $this->paymentEvent(
+                $order,
+                $payment,
+                OrderEventType::PaymentStarted,
+                PaymentStatus::Pending->value,
+                'Pagamento iniciado',
+                'Tentativa de pagamento registrada.',
+                $payment->created_at,
+            );
+
+            if (in_array($payment->status, [PaymentStatus::Paid->value, PaymentStatus::Refunded->value], true)) {
+                $this->paymentEvent(
+                    $order,
+                    $payment,
+                    OrderEventType::PaymentApproved,
+                    PaymentStatus::Paid->value,
+                    'Pagamento aprovado',
+                    'Pagamento confirmado pelo gateway.',
+                    $payment->paid_at ?? $payment->updated_at,
+                );
+
+                OrderEvent::query()->updateOrCreate(
+                    [
+                        'order_id' => $order->id,
+                        'type' => OrderEventType::AccessGranted->value,
+                        'source_type' => 'order',
+                        'source_id' => $order->id,
+                    ],
+                    [
+                        'company_id' => $company->id,
+                        'payment_id' => $payment->id,
+                        'status' => OrderStatus::Paid->value,
+                        'title' => 'Acesso liberado',
+                        'description' => 'Acesso disponibilizado na área do aluno.',
+                        'actor_type' => OrderEventActorType::System->value,
+                        'occurred_at' => $payment->paid_at ?? $payment->updated_at,
+                    ],
+                );
+            }
+
             if ($data['payment']['refund'] !== null) {
-                Refund::query()->updateOrCreate(
+                $refund = Refund::query()->updateOrCreate(
                     ['company_id' => $company->id, 'payment_id' => $payment->id],
                     $data['payment']['refund'],
                 );
+
+                OrderEvent::query()->updateOrCreate(
+                    [
+                        'order_id' => $order->id,
+                        'type' => OrderEventType::PaymentRefunded->value,
+                        'source_type' => 'refund',
+                        'source_id' => $refund->id,
+                    ],
+                    [
+                        'company_id' => $company->id,
+                        'payment_id' => $payment->id,
+                        'status' => PaymentStatus::Refunded->value,
+                        'title' => 'Estorno realizado',
+                        'description' => $refund->reason ?: 'O valor foi devolvido ao comprador.',
+                        'actor_type' => OrderEventActorType::System->value,
+                        'occurred_at' => $refund->refunded_at ?? now(),
+                        'metadata' => ['amount' => (float) $refund->amount],
+                    ],
+                );
+
+                OrderEvent::query()->updateOrCreate(
+                    [
+                        'order_id' => $order->id,
+                        'type' => OrderEventType::OrderRefunded->value,
+                        'source_type' => 'order',
+                        'source_id' => $order->id,
+                    ],
+                    [
+                        'company_id' => $company->id,
+                        'status' => OrderStatus::Refunded->value,
+                        'title' => 'Pedido estornado',
+                        'description' => 'O valor da compra foi devolvido.',
+                        'actor_type' => OrderEventActorType::System->value,
+                        'occurred_at' => $refund->refunded_at ?? now(),
+                    ],
+                );
             }
         }
+    }
+
+    private function paymentEvent(
+        Order $order,
+        Payment $payment,
+        OrderEventType $type,
+        string $status,
+        string $title,
+        string $description,
+        mixed $occurredAt,
+    ): void {
+        OrderEvent::query()->updateOrCreate(
+            [
+                'order_id' => $order->id,
+                'type' => $type->value,
+                'source_type' => 'payment',
+                'source_id' => $payment->id,
+            ],
+            [
+                'company_id' => $order->company_id,
+                'payment_id' => $payment->id,
+                'status' => $status,
+                'title' => $title,
+                'description' => $description,
+                'actor_type' => OrderEventActorType::Gateway->value,
+                'occurred_at' => $occurredAt ?? now(),
+            ],
+        );
     }
 }

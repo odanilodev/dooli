@@ -16,6 +16,7 @@ class RefundResource extends JsonResource
             'reason' => $this->reason,
             'status' => $this->status,
             'refunded_at' => $this->refunded_at?->toIso8601String(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }
