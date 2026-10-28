@@ -99,13 +99,16 @@ class ReportService
         $ids = collect($paginator->items())->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         $counts = $this->reports->progressCounts($this->columnFor($groupBy), $ids, $scope);
+        $certificateCounts = in_array($groupBy, ['team', 'course'], true)
+            ? $this->reports->certifiedStudentCounts($this->columnFor($groupBy), $ids, $scope)
+            : collect();
 
         $rows = match ($groupBy) {
-            'course' => $this->buildCourseRows($paginator->items(), $counts, $reach['course'], $courseLessons),
+            'course' => $this->buildCourseRows($paginator->items(), $counts, $reach['course'], $courseLessons, $certificateCounts),
             'module' => $this->buildModuleRows($paginator->items(), $counts, $reach['module'], $moduleLessons),
             'lesson' => $this->buildLessonRows($paginator->items(), $counts, $reach['lesson']),
             'student' => $this->buildStudentRows($companyId, $paginator->items(), $counts, $teamIds, $coursesByTeam, $courseLessons, $locked),
-            default => $this->buildTeamRows($paginator->items(), $counts, $reach['studentsByTeam'], $coursesByTeam, $courseLessons, $locked),
+            default => $this->buildTeamRows($paginator->items(), $counts, $reach['studentsByTeam'], $coursesByTeam, $courseLessons, $locked, $certificateCounts),
         };
 
         return [
@@ -152,6 +155,7 @@ class ReportService
         }
 
         $relevantCourseIds = array_values(array_unique($relevantCourseIds));
+        $certificates = $this->reports->validCertificatesForUser($companyId, $userId, $teamIdsOfUser, $relevantCourseIds);
         $eligible = $this->reports->eligibleLessons($companyId, $relevantCourseIds, null, null);
 
         $courseLessons = [];
@@ -209,6 +213,7 @@ class ReportService
                 $blocked = isset($locked[$teamId][$courseId]) ? count($locked[$teamId][$courseId]) : 0;
 
                 $info = $completionInfo[$courseId.':'.$teamId] ?? null;
+                $certificate = $certificates->get($courseId.':'.$teamId);
 
                 $items[] = [
                     'team_id' => $teamId,
@@ -225,6 +230,11 @@ class ReportService
                     'completed_at' => $info['completed_at'] ?? null,
                     'required_lessons' => (int) ($info['required_lessons'] ?? 0),
                     'new_lessons_since_completion' => $info !== null ? max(0, $total - (int) $info['required_lessons']) : 0,
+                    'certificate' => $certificate === null ? null : [
+                        'issued_at' => $certificate->created_at ? Carbon::parse($certificate->created_at)->toIso8601String() : null,
+                        'lessons_count' => (int) $certificate->lessons_count,
+                        'new_lessons' => max(0, $total - (int) $certificate->lessons_count),
+                    ],
                     'watched_seconds' => $watched,
                     'last_activity_at' => $lastActivity,
                     'lessons' => $lessonRows,
@@ -382,6 +392,10 @@ class ReportService
             $headers[] = 'Alunos';
         }
 
+        if ($this->exportShowsCertificates($groupBy)) {
+            $headers[] = 'Alunos certificados';
+        }
+
         return array_merge($headers, [
             'Aulas',
             'Concluídas',
@@ -409,6 +423,10 @@ class ReportService
             $values[] = $row['students'];
         }
 
+        if ($this->exportShowsCertificates($groupBy)) {
+            $values[] = (int) ($row['certified_students'] ?? 0);
+        }
+
         $values[] = $row['lessons'];
         $values[] = $row['completed'];
         $values[] = $row['in_progress'];
@@ -425,6 +443,11 @@ class ReportService
         return in_array($groupBy, ['team', 'course', 'lesson'], true);
     }
 
+    private function exportShowsCertificates(string $groupBy): bool
+    {
+        return in_array($groupBy, ['team', 'course'], true);
+    }
+
     private function exportDate(mixed $value): string
     {
         return $value ? Carbon::parse($value)->format('d/m/Y H:i') : '';
@@ -437,11 +460,12 @@ class ReportService
      * @param  array<int, array<int, int>>  $coursesByTeam
      * @param  array<int, array<int, int>>  $courseLessons
      * @param  array<int, array<int, array<int, bool>>>  $locked
+     * @param  Collection<string, object>  $certificateCounts
      * @return array<int, array<string, mixed>>
      */
-    private function buildTeamRows(array $items, $counts, array $studentsByTeam, array $coursesByTeam, array $courseLessons, array $locked): array
+    private function buildTeamRows(array $items, $counts, array $studentsByTeam, array $coursesByTeam, array $courseLessons, array $locked, Collection $certificateCounts): array
     {
-        return array_map(function ($team) use ($counts, $studentsByTeam, $coursesByTeam, $courseLessons, $locked) {
+        return array_map(function ($team) use ($counts, $studentsByTeam, $coursesByTeam, $courseLessons, $locked, $certificateCounts) {
             $id = (int) $team->id;
             $lessons = [];
             $blockedSet = [];
@@ -464,6 +488,7 @@ class ReportService
                 'name' => $team->name,
                 'subtitle' => null,
                 'students' => $students,
+                'certified_students' => (int) ($certificateCounts->get($id)->certified_students ?? 0),
                 'lessons' => $total,
                 'pairs' => $students * $total,
                 'blocked' => $students * count($blockedSet),
@@ -477,11 +502,12 @@ class ReportService
      * @param  Collection<string, object>  $counts
      * @param  array<int, array<string, int>>  $stats
      * @param  array<int, array<int, int>>  $courseLessons
+     * @param  Collection<string, object>  $certificateCounts
      * @return array<int, array<string, mixed>>
      */
-    private function buildCourseRows(array $items, $counts, array $stats, array $courseLessons): array
+    private function buildCourseRows(array $items, $counts, array $stats, array $courseLessons, Collection $certificateCounts): array
     {
-        return array_map(function ($course) use ($counts, $stats, $courseLessons) {
+        return array_map(function ($course) use ($counts, $stats, $courseLessons, $certificateCounts) {
             $id = (int) $course->id;
             $stat = $stats[$id] ?? [];
 
@@ -490,6 +516,7 @@ class ReportService
                 'name' => $course->name,
                 'subtitle' => null,
                 'students' => $stat['students'] ?? 0,
+                'certified_students' => (int) ($certificateCounts->get($id)->certified_students ?? 0),
                 'lessons' => count($courseLessons[$id] ?? []),
                 'pairs' => $stat['pairs'] ?? 0,
                 'blocked' => $stat['blocked'] ?? 0,
@@ -611,6 +638,7 @@ class ReportService
             'name' => $row['name'],
             'subtitle' => $row['subtitle'],
             'students' => (int) $row['students'],
+            'certified_students' => isset($row['certified_students']) ? (int) $row['certified_students'] : null,
             'lessons' => (int) $row['lessons'],
             'completed' => $completed,
             'in_progress' => $inProgress,
@@ -649,6 +677,14 @@ class ReportService
 
         return [
             'students' => (int) $reach['dataset']['students'],
+            'certified_students' => $this->reports->certifiedStudents(
+                (int) $scope['companyId'],
+                $scope['teamIds'],
+                $scope['courseIds'],
+                $scope['studentStatus'] ?? null,
+                $scope['search'] ?? null,
+                $scope['userIds'] ?? [],
+            ),
             'lessons' => count($lessons),
             'completed' => $completed,
             'in_progress' => $inProgress,
@@ -978,6 +1014,7 @@ class ReportService
                 'group_by' => $groupBy,
                 'totals' => [
                     'students' => 0,
+                    'certified_students' => 0,
                     'lessons' => 0,
                     'completed' => 0,
                     'in_progress' => 0,

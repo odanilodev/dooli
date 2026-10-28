@@ -12,6 +12,7 @@ use App\Models\Team;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -307,6 +308,130 @@ class ReportRepository extends BaseRepository
             ->first();
 
         return $row ?? (object) ['completed' => 0, 'in_progress' => 0];
+    }
+
+    /**
+     * Distinct students with at least one valid certificate inside the scope.
+     *
+     * @param  array<int, int>  $teamIds
+     * @param  array<int, int>  $courseIds
+     * @param  array<int, int>  $userIds
+     */
+    public function certifiedStudents(
+        int $companyId,
+        array $teamIds,
+        array $courseIds,
+        ?string $status,
+        ?string $search,
+        array $userIds = [],
+    ): int {
+        if ($teamIds === [] || $courseIds === []) {
+            return 0;
+        }
+
+        return (int) $this->certificateHolders($companyId, $teamIds, $courseIds, $status, $search, $userIds)
+            ->distinct()
+            ->count('certificate_users.user_id');
+    }
+
+    /**
+     * Distinct certified students grouped by teams or courses.
+     *
+     * @param  array<int, int>  $ids
+     * @param  array<string, mixed>  $scope
+     * @return Collection<string, object>
+     */
+    public function certifiedStudentCounts(string $column, array $ids, array $scope): Collection
+    {
+        if ($ids === []) {
+            return collect();
+        }
+
+        $group = $column === 'course_id' ? 'certificates.course_id' : 'certificate_users.team_id';
+
+        return $this->certificateHolders(
+            (int) $scope['companyId'],
+            $scope['teamIds'],
+            $scope['courseIds'],
+            $scope['studentStatus'] ?? null,
+            $scope['search'] ?? null,
+            $scope['userIds'] ?? [],
+        )
+            ->whereIn($group, $ids)
+            ->groupBy($group)
+            ->selectRaw("{$group} as group_id")
+            ->selectRaw('COUNT(DISTINCT certificate_users.user_id) as certified_students')
+            ->get()
+            ->keyBy('group_id');
+    }
+
+    /**
+     * Valid certificates of one student inside the team/course scope.
+     *
+     * @param  array<int, int>  $teamIds
+     * @param  array<int, int>  $courseIds
+     * @return Collection<string, object>
+     */
+    public function validCertificatesForUser(int $companyId, int $userId, array $teamIds, array $courseIds): Collection
+    {
+        if ($teamIds === [] || $courseIds === []) {
+            return collect();
+        }
+
+        return DB::table('certificate_users')
+            ->join('certificates', 'certificates.id', '=', 'certificate_users.certificate_id')
+            ->where('certificate_users.company_id', $companyId)
+            ->where('certificates.company_id', $companyId)
+            ->where('certificate_users.user_id', $userId)
+            ->whereNull('certificate_users.invalidated_at')
+            ->whereIn('certificate_users.team_id', $teamIds)
+            ->whereIn('certificates.course_id', $courseIds)
+            ->get([
+                'certificates.course_id',
+                'certificate_users.team_id',
+                'certificate_users.lessons_count',
+                'certificate_users.created_at',
+            ])
+            ->keyBy(fn ($row) => $row->course_id.':'.$row->team_id);
+    }
+
+    /**
+     * @param  array<int, int>  $teamIds
+     * @param  array<int, int>  $courseIds
+     * @param  array<int, int>  $userIds
+     */
+    private function certificateHolders(
+        int $companyId,
+        array $teamIds,
+        array $courseIds,
+        ?string $status,
+        ?string $search,
+        array $userIds,
+    ): QueryBuilder {
+        return DB::table('certificate_users')
+            ->join('certificates', 'certificates.id', '=', 'certificate_users.certificate_id')
+            ->join('users', 'users.id', '=', 'certificate_users.user_id')
+            ->join('team_users', function ($join) use ($companyId) {
+                $join->on('team_users.user_id', '=', 'certificate_users.user_id')
+                    ->on('team_users.team_id', '=', 'certificate_users.team_id')
+                    ->where('team_users.company_id', $companyId)
+                    ->where('team_users.status', GeneralStatus::Active->value)
+                    ->where(fn ($q) => $q->whereNull('team_users.expired_at')->orWhere('team_users.expired_at', '>', now()));
+            })
+            ->join('team_courses', function ($join) use ($companyId) {
+                $join->on('team_courses.team_id', '=', 'certificate_users.team_id')
+                    ->on('team_courses.course_id', '=', 'certificates.course_id')
+                    ->where('team_courses.company_id', $companyId)
+                    ->where('team_courses.status', GeneralStatus::Active->value);
+            })
+            ->where('certificate_users.company_id', $companyId)
+            ->where('certificates.company_id', $companyId)
+            ->whereNull('certificate_users.invalidated_at')
+            ->whereIn('certificate_users.team_id', $teamIds)
+            ->whereIn('certificates.course_id', $courseIds)
+            ->when($userIds, fn ($q, $ids) => $q->whereIn('certificate_users.user_id', $ids))
+            ->when($status, fn ($q, $s) => $q->where('users.status', $s))
+            ->when($search, fn ($q, $s) => $q->where('users.name', 'like', "%{$s}%"));
     }
 
     /**

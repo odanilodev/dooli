@@ -7,7 +7,7 @@
         <p class="page-subtitle">Acompanhe o que os alunos concluíram, estão fazendo e ainda não iniciaram.</p>
       </div>
       <button class="btn btn-outline" :disabled="exporting" @click="exportFile">
-        {{ exporting ? 'Exportando...' : 'Exportar CSV' }}
+        {{ exporting ? 'Exportando...' : 'Exportar Excel' }}
       </button>
     </div>
 
@@ -121,6 +121,7 @@
 
     <div class="report-kpis">
       <div class="stat-card"><span class="stat-value">{{ totals.students ?? 0 }}</span><span class="stat-label">Alunos no escopo</span></div>
+      <div class="stat-card" title="Alunos com pelo menos um certificado válido no escopo atual; inclui certificados emitidos antes de novas aulas"><span class="stat-value">{{ totals.certified_students ?? 0 }}</span><span class="stat-label">Alunos certificados</span></div>
       <div class="stat-card"><span class="stat-value">{{ totals.lessons ?? 0 }}</span><span class="stat-label">Aulas elegíveis</span></div>
       <div class="stat-card"><span class="stat-value">{{ totals.completed ?? 0 }}</span><span class="stat-label">Concluídas</span></div>
       <div class="stat-card"><span class="stat-value">{{ totals.in_progress ?? 0 }}</span><span class="stat-label">Em andamento</span></div>
@@ -142,6 +143,7 @@
           <tr>
             <th>{{ nameColumn }}</th>
             <th v-if="showStudents">Alunos</th>
+            <th v-if="showCertificates" title="Alunos distintos com certificado válido">Alunos certificados</th>
             <th v-if="showLessons">Aulas</th>
             <th>Concluídas</th>
             <th>Em andamento</th>
@@ -158,6 +160,7 @@
               <span v-if="row.subtitle" class="admin-sub">{{ row.subtitle }}</span>
             </td>
             <td v-if="showStudents" class="admin-muted">{{ row.students }}</td>
+            <td v-if="showCertificates">{{ row.certified_students ?? 0 }}</td>
             <td v-if="showLessons" class="admin-muted">{{ row.lessons }}</td>
             <td>{{ row.completed }}</td>
             <td>{{ row.in_progress }}</td>
@@ -235,6 +238,7 @@ const lessonDrawer = reactive({ open: false, lesson: null });
 
 const totals = computed(() => store.totals ?? {});
 const showStudents = computed(() => ['team', 'course', 'lesson'].includes(store.groupBy));
+const showCertificates = computed(() => ['team', 'course'].includes(store.groupBy));
 const showLessons = computed(() => store.groupBy !== 'student');
 
 const nameColumn = computed(() => ({

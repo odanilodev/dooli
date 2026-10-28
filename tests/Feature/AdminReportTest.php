@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Enums\GeneralStatus;
+use App\Models\Certificate;
+use App\Models\CertificateUser;
 use App\Models\Company;
+use App\Models\Course;
 use App\Models\Schedule;
 use App\Models\Team;
 use App\Models\User;
@@ -12,6 +15,8 @@ use App\Support\CompanyContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
 
@@ -233,6 +238,168 @@ class AdminReportTest extends TestCase
             ->assertJsonPath('meta.totals.students', 1);
     }
 
+    public function test_report_totals_count_distinct_students_with_valid_certificates(): void
+    {
+        ['course' => $course] = $this->buildCourse($this->company->id);
+
+        $team = $this->enroll($this->student, $course, $this->company->id);
+        $secondTeam = $this->enroll($this->student, $course, $this->company->id);
+        $other = $this->addStudentToTeam($team);
+
+        $this->issueCertificate($this->student, $team, $course);
+        $this->issueCertificate($this->student, $secondTeam, $course);
+        $this->issueCertificate($other, $team, $course);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson('/api/v1/admin/reports/progress?group_by=team')
+            ->assertOk()
+            ->assertJsonPath('meta.totals.students', 2)
+            ->assertJsonPath('meta.totals.certified_students', 2);
+    }
+
+    public function test_report_rows_count_certified_students_by_team_and_course(): void
+    {
+        ['course' => $course] = $this->buildCourse($this->company->id);
+
+        $team = $this->enroll($this->student, $course, $this->company->id);
+        $other = $this->addStudentToTeam($team);
+        $revoked = $this->addStudentToTeam($team);
+
+        $this->issueCertificate($this->student, $team, $course);
+        $this->issueCertificate($other, $team, $course);
+        $this->issueCertificate($revoked, $team, $course, valid: false);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson('/api/v1/admin/reports/progress?group_by=team')
+            ->assertOk()
+            ->assertJsonPath('data.0.students', 3)
+            ->assertJsonPath('data.0.certified_students', 2);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson("/api/v1/admin/reports/progress?group_by=course&team_id={$team->id}")
+            ->assertOk()
+            ->assertJsonPath('data.0.certified_students', 2);
+    }
+
+    public function test_student_detail_exposes_valid_certificate_and_new_lessons(): void
+    {
+        ['course' => $course, 'module' => $module, 'lesson' => $lesson] = $this->buildCourse($this->company->id);
+        $team = $this->enroll($this->student, $course, $this->company->id);
+
+        $this->withToken($this->apiLogin($this->student))->postJson('/api/v1/me/progress/complete', [
+            'lesson_id' => $lesson->id,
+            'course_id' => $course->id,
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+        ])->assertOk();
+
+        $this->buildModuleLesson($this->company->id, $module);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson("/api/v1/admin/reports/students/{$this->student->id}")
+            ->assertOk()
+            ->assertJsonPath('data.items.0.is_course_completed', true)
+            ->assertJsonPath('data.items.0.new_lessons_since_completion', 1)
+            ->assertJsonPath('data.items.0.certificate.lessons_count', 1)
+            ->assertJsonPath('data.items.0.certificate.new_lessons', 1);
+
+        CertificateUser::query()->where('user_id', $this->student->id)->firstOrFail()
+            ->forceFill(['invalidated_at' => now()])
+            ->save();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson("/api/v1/admin/reports/students/{$this->student->id}")
+            ->assertOk()
+            ->assertJsonPath('data.items.0.certificate', null);
+    }
+
+    public function test_report_certificate_total_respects_filters_and_ignores_invalidated(): void
+    {
+        ['course' => $course, 'module' => $module, 'lesson' => $lesson] = $this->buildCourse($this->company->id);
+        ['course' => $secondCourse] = $this->buildCourse($this->company->id);
+
+        $team = $this->enroll($this->student, $course, $this->company->id);
+        $inactive = $this->addStudentToTeam($team);
+        $revoked = $this->addStudentToTeam($team);
+        $secondStudent = User::factory()->create([
+            'company_id' => $this->company->id,
+            'user_type_id' => $this->student->user_type_id,
+        ]);
+        $secondTeam = $this->enroll($secondStudent, $secondCourse, $this->company->id);
+
+        $this->issueCertificate($this->student, $team, $course);
+        $this->issueCertificate($inactive, $team, $course);
+        $this->issueCertificate($revoked, $team, $course, valid: false);
+        $this->issueCertificate($secondStudent, $secondTeam, $secondCourse);
+
+        $inactive->update(['status' => GeneralStatus::Inactive->value]);
+
+        $endpoint = '/api/v1/admin/reports/progress?group_by=team';
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson($endpoint)
+            ->assertOk()
+            ->assertJsonPath('meta.totals.certified_students', 3);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson($endpoint.'&student_status=active')
+            ->assertOk()
+            ->assertJsonPath('meta.totals.certified_students', 2);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson($endpoint.'&student_status=inactive')
+            ->assertOk()
+            ->assertJsonPath('meta.totals.certified_students', 1);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson($endpoint.'&search='.urlencode($inactive->name))
+            ->assertOk()
+            ->assertJsonPath('meta.totals.certified_students', 1);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson($endpoint."&course_id={$course->id}")
+            ->assertOk()
+            ->assertJsonPath('meta.totals.certified_students', 2);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson($endpoint."&team_id={$team->id}")
+            ->assertOk()
+            ->assertJsonPath('meta.totals.certified_students', 2);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson($endpoint."&module_id={$module->id}")
+            ->assertOk()
+            ->assertJsonPath('meta.totals.certified_students', 2);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson($endpoint."&lesson_id={$lesson->id}")
+            ->assertOk()
+            ->assertJsonPath('meta.totals.certified_students', 2);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson($endpoint."&user_ids[]={$secondStudent->id}")
+            ->assertOk()
+            ->assertJsonPath('meta.totals.certified_students', 1);
+    }
+
+    public function test_report_certificate_total_ignores_other_companies(): void
+    {
+        $otherCompany = Company::factory()->create();
+        ['course' => $otherCourse] = $this->buildCourse($otherCompany->id);
+        $otherStudent = User::factory()->create([
+            'company_id' => $otherCompany->id,
+            'user_type_id' => $this->student->user_type_id,
+        ]);
+        $otherTeam = $this->enroll($otherStudent, $otherCourse, $otherCompany->id);
+
+        $this->issueCertificate($otherStudent, $otherTeam, $otherCourse);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson('/api/v1/admin/reports/progress?group_by=team')
+            ->assertOk()
+            ->assertJsonPath('meta.totals.certified_students', 0);
+    }
+
     public function test_report_group_by_student_respects_the_student_filter(): void
     {
         ['course' => $course] = $this->buildCourse($this->company->id);
@@ -391,31 +558,39 @@ class AdminReportTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_report_export_returns_excel_compatible_csv(): void
+    public function test_report_export_returns_xlsx_with_auto_column_widths(): void
     {
         ['course' => $course] = $this->buildCourse($this->company->id);
         $team = $this->enroll($this->student, $course, $this->company->id);
+        $this->issueCertificate($this->student, $team, $course);
 
         $response = $this->withToken($this->apiLogin($this->admin))
             ->get('/api/v1/admin/reports/export?group_by=team')
-            ->assertOk();
+            ->assertOk()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
         $content = $response->streamedContent();
+        $this->assertStringStartsWith('PK', $content);
 
-        $this->assertStringStartsWith("\xEF\xBB\xBF", $content);
+        $path = tempnam(sys_get_temp_dir(), 'report-');
+        file_put_contents($path, $content);
 
-        $lines = preg_split('/\r\n|\n|\r/', trim(substr($content, 3)));
-        $headers = str_getcsv($lines[0], ';', '"', '\\');
-        $row = str_getcsv($lines[1], ';', '"', '\\');
+        try {
+            $sheet = IOFactory::load($path)->getActiveSheet();
 
-        $this->assertSame([
-            'Turma', 'Alunos', 'Aulas', 'Concluídas', 'Em andamento', 'Pendentes', 'Bloqueadas', 'Progresso (%)', 'Última atividade',
-        ], $headers);
-        $this->assertSame($team->name, $row[0]);
-        $this->assertSame('1', $row[1]);
-        $this->assertSame('1', $row[2]);
-        $this->assertSame('0', $row[3]);
-        $this->assertSame('0,00', $row[7]);
+            $this->assertSame('Turma', $sheet->getCell('A1')->getValue());
+            $this->assertSame('Alunos certificados', $sheet->getCell('C1')->getValue());
+            $this->assertSame($team->name, $sheet->getCell('A2')->getValue());
+            $this->assertEquals(1, $sheet->getCell('B2')->getValue());
+            $this->assertEquals(1, $sheet->getCell('C2')->getValue());
+            $this->assertEquals(1, $sheet->getCell('D2')->getValue());
+            $this->assertSame('0,00', $sheet->getCell('I2')->getValue());
+            $this->assertGreaterThanOrEqual(12, $sheet->getColumnDimension('A')->getWidth());
+            $this->assertGreaterThanOrEqual(20, $sheet->getColumnDimension('C')->getWidth());
+            $this->assertTrue($sheet->getStyle('A1')->getFont()->getBold());
+        } finally {
+            @unlink($path);
+        }
     }
 
     public function test_report_export_includes_all_pages(): void
@@ -695,6 +870,25 @@ class AdminReportTest extends TestCase
         Artisan::call('progress:rebuild', ['--company' => $this->company->id, '--fresh' => true]);
 
         $this->assertSame(0, Artisan::call('progress:verify', ['--company' => $this->company->id]));
+    }
+
+    private function issueCertificate(User $user, Team $team, Course $course, bool $valid = true): CertificateUser
+    {
+        $certificate = Certificate::query()
+            ->withoutGlobalScope('company')
+            ->where('company_id', $team->company_id)
+            ->where('course_id', $course->id)
+            ->firstOrFail();
+
+        return CertificateUser::query()->create([
+            'code' => (string) Str::uuid(),
+            'company_id' => $team->company_id,
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+            'certificate_id' => $certificate->id,
+            'lessons_count' => 1,
+            'invalidated_at' => $valid ? null : now(),
+        ]);
     }
 
     private function addStudentToTeam(Team $team): User

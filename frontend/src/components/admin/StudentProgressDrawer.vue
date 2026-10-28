@@ -21,13 +21,27 @@
           </div>
 
           <div class="report-kpis-inline">
-            <span v-if="item.is_course_completed" class="status-pill active">Concluído</span>
+            <span v-if="item.is_course_completed" class="status-pill active">
+              {{ item.new_lessons_since_completion > 0 ? 'Concluído anteriormente' : 'Concluído' }}
+            </span>
             <span><b>{{ item.completed }}</b> concluídas</span>
             <span><b>{{ item.in_progress }}</b> em andamento</span>
             <span><b>{{ item.pending }}</b> pendentes</span>
             <span><b>{{ item.blocked }}</b> bloqueadas</span>
             <span><b>{{ item.percentage }}%</b></span>
-            <span v-if="item.new_lessons_since_completion > 0"><b>+{{ item.new_lessons_since_completion }}</b> novas</span>
+            <span v-if="!item.certificate && item.new_lessons_since_completion > 0"><b>+{{ item.new_lessons_since_completion }}</b> novas desde a conclusão</span>
+          </div>
+
+          <div class="report-certificate">
+            <template v-if="item.certificate">
+              <span class="status-pill active">Certificado válido</span>
+              <span>emitido em {{ formatDate(item.certificate.issued_at) }}</span>
+              <span>{{ item.certificate.lessons_count }} aulas certificadas</span>
+              <span v-if="item.certificate.new_lessons > 0" class="status-pill inactive">
+                +{{ item.certificate.new_lessons }} novas aulas pendentes
+              </span>
+            </template>
+            <span v-else class="status-pill inactive">Sem certificado válido</span>
           </div>
 
           <table class="admin-table report-drawer-table">
@@ -55,7 +69,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { api } from '../../api/http';
-import { formatDateTime } from '../../utils/format';
+import { formatDate, formatDateTime } from '../../utils/format';
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -114,5 +128,6 @@ function watched(seconds) {
 .report-drawer-course{margin-top:16px;}
 .report-drawer-head{display:flex;flex-direction:column;gap:2px;margin-bottom:8px;}
 .report-kpis-inline{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:12.5px;color:var(--text-secondary);}
+.report-certificate{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:12px;font-size:12.5px;color:var(--text-secondary);}
 .report-drawer-table{font-size:13px;}
 </style>

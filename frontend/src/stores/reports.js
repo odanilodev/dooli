@@ -160,13 +160,15 @@ export const useReportsStore = defineStore('reports', () => {
     const { data } = await api.get('/admin/reports/export', {
       params: params(),
       responseType: 'blob',
-      headers: { Accept: 'text/csv' },
+      headers: { Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
     });
 
-    const url = URL.createObjectURL(new Blob([data], { type: 'text/csv;charset=utf-8' }));
+    const url = URL.createObjectURL(new Blob([data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `relatorio-progresso-${groupBy.value}.csv`;
+    link.download = `relatorio-progresso-${groupBy.value}.xlsx`;
     document.body.appendChild(link);
     link.click();
     link.remove();
