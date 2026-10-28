@@ -105,6 +105,62 @@ class StudentLiveClassTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_live_class_already_in_progress_is_visible(): void
+    {
+        $team = $this->team();
+        $liveClass = LiveClass::factory()->create([
+            'company_id' => $this->company->id,
+            'name' => 'Em andamento',
+            'starts_at' => now()->subMinutes(30),
+            'duration' => 60,
+        ]);
+
+        $this->attach($team, $liveClass);
+        $this->enroll($team);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/live-classes')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Em andamento');
+    }
+
+    public function test_past_live_classes_are_not_visible(): void
+    {
+        $team = $this->team();
+        $liveClass = LiveClass::factory()->create([
+            'company_id' => $this->company->id,
+            'name' => 'Encerrada',
+            'starts_at' => now()->subHours(2),
+            'duration' => 60,
+        ]);
+
+        $this->attach($team, $liveClass);
+        $this->enroll($team);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/live-classes')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_live_classes_are_limited_to_ten(): void
+    {
+        $team = $this->team();
+
+        LiveClass::factory()->count(12)->create([
+            'company_id' => $this->company->id,
+            'starts_at' => now()->addDay(),
+        ])->each(fn (LiveClass $liveClass) => $this->attach($team, $liveClass));
+
+        $this->enroll($team);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/live-classes')
+            ->assertOk()
+            ->assertJsonCount(10, 'data');
+    }
+
     public function test_guest_cannot_list_live_classes(): void
     {
         $this->getJson('/api/v1/me/live-classes')->assertStatus(401);

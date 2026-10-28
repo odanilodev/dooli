@@ -1,7 +1,8 @@
 <template>
   <header class="topbar">
     <div class="topbar-left">
-      <button class="hamburger" aria-label="Abrir menu" @click="toggle">
+      <button class="hamburger" :aria-label="hasLive ? 'Abrir menu — aula ao vivo em andamento' : 'Abrir menu'" @click="toggle">
+        <span v-if="hasLive" class="hamburger-live" aria-hidden="true"></span>
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
       <label class="search">
@@ -86,6 +87,7 @@ import { useTheme } from '../composables/useTheme';
 import { useSidebar } from '../composables/useSidebar';
 import { useSearch } from '../composables/useSearch';
 import { useAuthStore } from '../stores/auth';
+import { useLiveClassesStore } from '../stores/liveClasses';
 import { useNotificationsStore } from '../stores/notifications';
 import { resetUserStores } from '../stores/resetUserStores';
 import TeamSwitcher from './TeamSwitcher.vue';
@@ -93,12 +95,14 @@ import TeamSwitcher from './TeamSwitcher.vue';
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
+const live = useLiveClassesStore();
 const notifications = useNotificationsStore();
 const { toggleTheme } = useTheme();
 const { toggle } = useSidebar();
 const { query } = useSearch();
 
 const unreadCount = computed(() => notifications.unreadCount);
+const hasLive = computed(() => !auth.canAccessAdmin && live.hasLiveNow);
 
 const placeholder = computed(() => route.meta?.searchPlaceholder || 'Buscar cursos, aulas ou temas...');
 

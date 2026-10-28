@@ -18,9 +18,19 @@
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/></svg>
           <span>Meus cursos</span>
         </router-link>
-        <router-link to="/aulas-ao-vivo" class="nav-link" :class="{ active: $route.name === 'aulas-ao-vivo' }" @click="close">
+        <router-link
+          to="/aulas-ao-vivo"
+          class="nav-link"
+          :class="{ active: $route.name === 'aulas-ao-vivo', 'has-live': studentLive }"
+          :aria-label="studentLive ? 'Aulas ao vivo — transmissão em andamento' : undefined"
+          @click="close"
+        >
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2.5"/><path d="m16 10 6-3v10l-6-3z"/><circle cx="7" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
           <span>Aulas ao vivo</span>
+          <span v-if="studentLive" class="nav-live-badge">
+            <span class="nav-live-dot" aria-hidden="true"></span>
+            AO VIVO
+          </span>
         </router-link>
         <router-link to="/certificados" class="nav-link" :class="{ active: ['certs', 'certificado'].includes($route.name) }" @click="close">
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.5 7 21l5-2.5L17 21l-1.5-7.5"/></svg>
@@ -49,10 +59,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useSidebar } from '../composables/useSidebar';
 import { useAuthStore } from '../stores/auth';
+import { useLiveClassesStore } from '../stores/liveClasses';
 import { useMenusStore } from '../stores/menus';
 import { useNavMenu } from '../composables/useNavMenu';
 import BrandLogo from './BrandLogo.vue';
@@ -60,9 +71,12 @@ import NavItem from './NavItem.vue';
 
 const { isOpen, close } = useSidebar();
 const auth = useAuthStore();
+const live = useLiveClassesStore();
 const menus = useMenusStore();
 const route = useRoute();
 const { openPath, isActive } = useNavMenu();
+
+const studentLive = computed(() => !auth.canAccessAdmin && live.hasLiveNow);
 
 const FALLBACK_MENU = [
   { id: 'fb-dashboard', name: 'Dashboard', type: 'link', depth: 0, link: '/inicio', icon: 'dashboard', children: [] },
@@ -179,9 +193,26 @@ watch(
   { immediate: true },
 );
 
+function refreshLiveOnVisible() {
+  if (document.visibilityState === 'visible') {
+    live.fetch(true);
+  }
+}
+
 onMounted(() => {
   if (auth.canAccessAdmin && !menus.loaded) {
     menus.fetchMyMenus();
   }
+
+  if (!auth.canAccessAdmin) {
+    live.fetch();
+    live.startClock();
+    document.addEventListener('visibilitychange', refreshLiveOnVisible);
+  }
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', refreshLiveOnVisible);
+  live.stopClock();
 });
 </script>

@@ -124,7 +124,6 @@ const live = useLiveClassesStore();
 store.fetchHome();
 shop.fetchProducts({ per_page: 12 });
 banners.fetchBanners();
-live.fetch();
 
 const homeTeams = computed(() => store.homeSections);
 const multiTeam = computed(() => homeTeams.value.length > 1);

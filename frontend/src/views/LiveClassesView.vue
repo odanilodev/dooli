@@ -11,58 +11,51 @@
     <p v-if="store.loading && !store.loaded" class="page-subtitle">Carregando...</p>
 
     <template v-else>
-      <div v-if="store.items.length === 0" class="empty-state">
+      <div v-if="store.upcoming.length === 0" class="empty-state">
         <strong>Nenhuma aula ao vivo por aqui</strong>
         <span>Quando sua turma tiver uma transmissão, ela aparecerá nesta página.</span>
       </div>
 
-      <template v-else>
-        <section v-if="store.upcoming.length" class="section">
-          <div class="section-head"><h2 class="section-title">Próximas</h2></div>
-          <div class="live-grid">
-            <article v-for="item in store.upcoming" :key="item.id" class="live-card">
-              <div class="live-cover" :style="coverStyle(item)">
-                <span v-if="item.isLive" class="live-badge">AO VIVO</span>
-                <span v-else class="live-soon-badge">EM BREVE</span>
-              </div>
-              <div class="live-body">
-                <h3 class="live-title">{{ item.title }}</h3>
-                <p v-if="item.description" class="live-desc">{{ item.description }}</p>
-                <span class="live-meta">{{ formatDateTime(item.startsAt) }}<template v-if="item.duration"> · {{ item.duration }} min</template></span>
-              </div>
-              <a class="btn btn-primary live-action" :href="item.link" target="_blank" rel="noopener">
-                {{ item.isLive ? 'Entrar na sala' : 'Acessar link' }}
-              </a>
-            </article>
-          </div>
-        </section>
-
-        <section v-if="store.past.length" class="section">
-          <div class="section-head"><h2 class="section-title">Anteriores</h2></div>
-          <div class="live-grid">
-            <article v-for="item in store.past" :key="item.id" class="live-card is-past">
-              <div class="live-cover" :style="coverStyle(item)"></div>
-              <div class="live-body">
-                <h3 class="live-title">{{ item.title }}</h3>
-                <p v-if="item.description" class="live-desc">{{ item.description }}</p>
-                <span class="live-meta">{{ formatDateTime(item.startsAt) }}</span>
-              </div>
-              <a class="btn btn-outline live-action" :href="item.link" target="_blank" rel="noopener">Acessar link</a>
-            </article>
-          </div>
-        </section>
-      </template>
+      <section v-else class="section">
+        <div class="section-head"><h2 class="section-title">{{ sectionTitle }}</h2></div>
+        <div class="live-grid">
+          <article v-for="item in store.upcoming" :key="item.id" class="live-card">
+            <div class="live-cover" :style="coverStyle(item)">
+              <span v-if="store.isLive(item)" class="live-badge">AO VIVO</span>
+              <span v-else class="live-soon-badge">EM BREVE</span>
+            </div>
+            <div class="live-body">
+              <h3 class="live-title">{{ item.title }}</h3>
+              <p v-if="item.description" class="live-desc">{{ item.description }}</p>
+              <span class="live-meta">{{ formatDateTime(item.startsAt) }}<template v-if="item.duration"> · {{ item.duration }} min</template></span>
+            </div>
+            <a class="btn btn-primary live-action" :href="item.link" target="_blank" rel="noopener">
+              {{ store.isLive(item) ? 'Entrar na sala' : 'Acessar link' }}
+            </a>
+          </article>
+        </div>
+      </section>
     </template>
 
   </main>
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { formatDateTime } from '../utils/format';
 import { useLiveClassesStore } from '../stores/liveClasses';
 
 const store = useLiveClassesStore();
+
+const sectionTitle = computed(() => {
+  const liveCount = store.liveNow.length;
+
+  if (liveCount === 0) {
+    return 'Próximas';
+  }
+
+  return liveCount === store.upcoming.length ? 'Acontecendo agora' : 'Ao vivo e próximas';
+});
 
 function coverStyle(item) {
   if (item.image) {
@@ -83,7 +76,6 @@ onMounted(() => store.fetch());
   display:flex;flex-direction:column;background:var(--bg-card);border:1px solid var(--border);
   border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);
 }
-.live-card.is-past{opacity:.72;}
 .live-cover{position:relative;height:132px;background-size:cover;background-position:center;}
 .live-soon-badge{position:absolute;top:12px;right:12px;z-index:2;background:#f59e0b;color:#1a1205;font-size:11px;font-weight:800;letter-spacing:.06em;padding:4px 9px;border-radius:4px;}
 .live-body{display:flex;flex-direction:column;gap:6px;padding:16px 16px 8px;flex:1;}

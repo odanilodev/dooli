@@ -169,6 +169,26 @@ class BannerManagementTest extends TestCase
             ->assertJsonPath('data.1.title', 'B');
     }
 
+    public function test_public_banners_endpoint_is_limited_to_five(): void
+    {
+        for ($i = 0; $i < 7; $i++) {
+            Banner::query()->create([
+                'company_id' => $this->company->id,
+                'name' => "Banner {$i}",
+                'title' => "Título {$i}",
+                'sort_order' => $i,
+                'status' => GeneralStatus::Active->value,
+            ]);
+        }
+
+        $this->withHeaders(['X-Company' => (string) $this->company->id])
+            ->getJson('/api/v1/banners')
+            ->assertOk()
+            ->assertJsonCount(5, 'data')
+            ->assertJsonPath('data.0.title', 'Título 0')
+            ->assertJsonPath('data.4.title', 'Título 4');
+    }
+
     public function test_public_banners_endpoint_requires_a_tenant(): void
     {
         $this->getJson('/api/v1/banners')->assertStatus(400);

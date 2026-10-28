@@ -169,6 +169,56 @@ class StudentHomeTest extends TestCase
         $this->assertEquals(0, $sections[$teamB->id]['courses'][0]['percentage']);
     }
 
+    public function test_home_limits_courses_per_team_but_exposes_all_course_ids(): void
+    {
+        $team = Team::factory()->create(['company_id' => $this->company->id, 'status' => 'active']);
+
+        $courseIds = [];
+
+        for ($i = 0; $i < 8; $i++) {
+            $data = $this->buildCourse($this->company->id);
+            $courseIds[] = $data['course']->id;
+            $team->courses()->attach($data['course']->id, ['company_id' => $this->company->id, 'status' => 'active']);
+        }
+
+        $team->users()->attach($this->student->id, ['company_id' => $this->company->id, 'status' => 'active', 'expired_at' => null]);
+
+        $response = $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/home')
+            ->assertOk()
+            ->assertJsonCount(6, 'data.0.courses')
+            ->assertJsonCount(8, 'data.0.course_ids');
+
+        $this->assertEqualsCanonicalizing($courseIds, $response->json('data.0.course_ids'));
+    }
+
+    public function test_home_limits_continue_watching_per_team(): void
+    {
+        $team = Team::factory()->create(['company_id' => $this->company->id, 'status' => 'active']);
+        $team->users()->attach($this->student->id, ['company_id' => $this->company->id, 'status' => 'active', 'expired_at' => null]);
+
+        $token = $this->apiLogin($this->student);
+
+        for ($i = 0; $i < 6; $i++) {
+            $data = $this->buildCourse($this->company->id);
+            $team->courses()->attach($data['course']->id, ['company_id' => $this->company->id, 'status' => 'active']);
+            Lesson::factory()->create(['company_id' => $this->company->id, 'topic_id' => $data['topic']->id, 'sort_order' => 1]);
+
+            $this->withToken($token)
+                ->postJson('/api/v1/me/progress/complete', [
+                    'lesson_id' => $data['lesson']->id,
+                    'course_id' => $data['course']->id,
+                    'team_id' => $team->id,
+                    'module_id' => $data['module']->id,
+                ])
+                ->assertOk();
+        }
+
+        $sections = collect($this->withToken($token)->getJson('/api/v1/me/home')->json('data'))->keyBy('id');
+
+        $this->assertCount(4, $sections[$team->id]['continue_watching']);
+    }
+
     public function test_home_uses_a_bounded_number_of_queries(): void
     {
         for ($t = 0; $t < 5; $t++) {

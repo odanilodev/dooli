@@ -17,6 +17,10 @@ use Illuminate\Database\Eloquent\Collection;
 
 class StudentHomeService
 {
+    private const HOME_COURSES_LIMIT = 6;
+
+    private const CONTINUE_WATCHING_LIMIT = 4;
+
     public function __construct(
         private readonly StudentCourseService $studentCourses,
         private readonly LessonRepository $lessons,
@@ -66,6 +70,7 @@ class StudentHomeService
 
         return $teams->map(function (Team $team) use ($coursesByTeam, $totals, $completed, $completedKeys, $resumes, $lessonsByCourse, $completedAction) {
             $teamCourses = collect($coursesByTeam[$team->id] ?? []);
+            $allCourseIds = $teamCourses->pluck('id')->unique()->values()->all();
 
             $homeCourses = $teamCourses->map(function (Course $course) use ($team, $totals, $completed, $completedKeys) {
                 $total = (int) ($totals[$course->id] ?? 0);
@@ -87,9 +92,10 @@ class StudentHomeService
                 ]);
 
                 return $clone;
-            });
+            })->take(self::HOME_COURSES_LIMIT)->values();
 
             $team->setRelation('homeCourses', $homeCourses);
+            $team->setAttribute('course_ids', $allCourseIds);
             $team->setAttribute(
                 'continue_watching',
                 $completedAction
@@ -120,6 +126,10 @@ class StudentHomeService
         $shelf = [];
 
         foreach ($teamCourses as $course) {
+            if (count($shelf) >= self::CONTINUE_WATCHING_LIMIT) {
+                break;
+            }
+
             $total = (int) ($totals[$course->id] ?? 0);
 
             if ($total === 0) {

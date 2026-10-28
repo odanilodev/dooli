@@ -1,7 +1,7 @@
 <template>
   <router-link :to="to" class="card" style="display:block;">
     <div class="card-thumb" :style="{ background: grad }">
-      <img v-if="image" class="card-img" :src="image" :alt="title">
+      <img v-if="image" class="card-img" :src="image" :alt="title" loading="lazy" decoding="async">
       <template v-else>
         <span class="glow"></span>
         <svg class="icon" width="30" height="30" viewBox="0 0 24 24"><path :d="icon" /></svg>

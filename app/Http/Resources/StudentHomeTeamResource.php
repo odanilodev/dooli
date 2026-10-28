@@ -13,6 +13,7 @@ class StudentHomeTeamResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'sort_order' => $this->sort_order,
+            'course_ids' => $this->course_ids ?? [],
             'courses' => StudentCourseResource::collection($this->homeCourses),
             'continue_watching' => $this->continue_watching ?? [],
         ];

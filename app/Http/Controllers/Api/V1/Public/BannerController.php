@@ -12,6 +12,8 @@ use Illuminate\Http\JsonResponse;
 
 class BannerController extends ApiController
 {
+    private const MAX_ITEMS = 5;
+
     public function index(): JsonResponse
     {
         $banners = Banner::query()
@@ -19,6 +21,7 @@ class BannerController extends ApiController
             ->where('status', GeneralStatus::Active->value)
             ->orderBy('sort_order')
             ->orderBy('id')
+            ->limit(self::MAX_ITEMS)
             ->get();
 
         return ApiResponse::success(BannerResource::collection($banners));

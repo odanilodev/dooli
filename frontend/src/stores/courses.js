@@ -77,7 +77,9 @@ export const useCoursesStore = defineStore('courses', () => {
   );
 
   const homeCourseIds = computed(
-    () => new Set(homeTeams.value.flatMap((team) => (team.courses ?? []).map((course) => course.id))),
+    () => new Set(homeTeams.value.flatMap(
+      (team) => team.course_ids ?? (team.courses ?? []).map((course) => course.id),
+    )),
   );
 
   const completedCount = computed(() => cards.value.filter((c) => c.status === 'concluido').length);
