@@ -626,7 +626,25 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 /* ==========================================================================
    Auth pages (login / cadastro)
    ========================================================================== */
-.auth-shell{min-height:100vh;display:flex;}
+.auth-shell{
+  --bg-page:#0b1420;
+  --bg-sidebar:#0d1627;
+  --bg-header:#0b1420;
+  --bg-card:#141f30;
+  --bg-card-alt:#1a2537;
+  --bg-input:#101a29;
+  --border:#22304a;
+  --text-primary:#eef2f7;
+  --text-secondary:#95a3b8;
+  --text-muted:#5b6b83;
+  --shadow:0 14px 32px rgba(0,0,0,.38);
+  --shadow-sm:0 3px 10px rgba(0,0,0,.28);
+  --hero-quote:#c7d2de;
+  --ring:#0b1420;
+  --scrim:rgba(6,10,18,.6);
+  color-scheme:dark;
+  min-height:100vh;display:flex;background:var(--bg-page);color:var(--text-primary);
+}
 .auth-visual{
   flex:1;position:relative;display:flex;flex-direction:column;justify-content:space-between;
   padding:48px;background:linear-gradient(150deg,#0a1e2a 0%,#0d372f 55%,#10392a 100%);color:#fff;overflow:hidden;
@@ -641,7 +659,6 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 .auth-head{display:flex;flex-direction:column;gap:6px;}
 .auth-head h1{font-size:22px;font-weight:800;}
 .auth-head p{font-size:13px;color:var(--text-secondary);}
-.auth-theme-toggle{position:absolute;top:24px;right:24px;}
 
 .form-group{display:flex;flex-direction:column;gap:6px;}
 .form-group label{font-size:12.5px;font-weight:700;color:var(--text-secondary);}

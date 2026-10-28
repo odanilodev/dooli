@@ -66,8 +66,22 @@
     <div class="form-check terms-check">
       <input id="reg-terms" type="checkbox" v-model="form.terms" :disabled="auth.loading">
       <label class="terms-copy" for="reg-terms">
-        Concordo com os <a href="#" class="terms-link" @click.prevent>termos de uso</a> e a
-        <a href="#" class="terms-link" @click.prevent>política de privacidade</a>.
+        Li e aceito os
+        <router-link
+          :to="termsLink('#termos')"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="terms-link"
+          @click.stop
+        >Termos de Uso</router-link>
+        e a
+        <router-link
+          :to="termsLink('#privacidade')"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="terms-link"
+          @click.stop
+        >Política de Privacidade</router-link>.
       </label>
     </div>
 
@@ -114,6 +128,12 @@ const nextUrl = computed(() => {
 
   return value.startsWith('/') && !value.startsWith('//') ? value : null;
 });
+
+function termsLink(hash) {
+  const target = publicRoute('public-termos');
+
+  return hash ? { ...target, hash } : target;
+}
 
 async function submit() {
   const name = form.name.trim();
@@ -169,4 +189,5 @@ async function submit() {
 .terms-check input{margin-top:2px;flex-shrink:0;}
 .terms-copy{cursor:pointer;}
 .terms-link{color:var(--accent);font-weight:700;}
+.terms-link:hover{text-decoration:underline;}
 </style>

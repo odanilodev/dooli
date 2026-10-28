@@ -9,6 +9,7 @@ const LEGACY_ROUTES = {
   'public-pedido': 'legacy-pedido',
   'public-compras': 'legacy-compras',
   'public-assinaturas': 'legacy-assinaturas',
+  'public-termos': 'legacy-termos',
   'public-login': 'legacy-login',
   'public-cadastro': 'legacy-cadastro',
 };
@@ -48,12 +49,14 @@ export function useTenant() {
     return tenant.isDomainMode ? { name: 'public-login' } : { name: 'login' };
   }
 
-  function registerRoute() {
+  function registerRoute(query = {}) {
     if (isLegacy.value) {
-      return publicRoute('public-cadastro');
+      return publicRoute('public-cadastro', {}, query);
     }
 
-    return tenant.isDomainMode ? { name: 'public-cadastro' } : { name: 'login' };
+    return tenant.isDomainMode
+      ? { name: 'public-cadastro', ...(Object.keys(query).length ? { query } : {}) }
+      : { name: 'login', ...(Object.keys(query).length ? { query } : {}) };
   }
 
   return {

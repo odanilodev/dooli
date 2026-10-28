@@ -27,7 +27,7 @@
       {{ auth.loading ? 'Entrando...' : 'Entrar' }}
     </button>
 
-    <p v-if="isTenant" class="auth-switch"><router-link :to="publicRoute('public-loja')">Criar uma conta</router-link></p>
+    <p v-if="isTenant" class="auth-switch"><router-link :to="registerTarget">Criar uma conta</router-link></p>
     <p v-else class="auth-switch">Para criar uma conta, use o link da sua empresa.</p>
   </form>
 </template>
@@ -43,13 +43,23 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const toast = useToast();
-const { legacySlug, isTenant, publicRoute } = useTenant();
+const { legacySlug, isTenant, publicRoute, registerRoute } = useTenant();
 
 const companySlug = computed(() => legacySlug.value);
 const forgotRoute = computed(() => ({
   path: '/recuperar-senha',
   query: legacySlug.value ? { company: legacySlug.value } : {},
 }));
+const registerTarget = computed(() => {
+  const redirect = route.query.redirect;
+  const next = typeof redirect === 'string'
+    && redirect.startsWith('/')
+    && !redirect.startsWith('//')
+    ? { next: redirect }
+    : {};
+
+  return registerRoute(next);
+});
 
 const form = reactive({ email: '', password: '', remember: false });
 

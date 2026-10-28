@@ -20,6 +20,7 @@ import PublicProductView from '../views/PublicProductView.vue';
 import PublicCheckoutView from '../views/PublicCheckoutView.vue';
 import PublicOrderView from '../views/PublicOrderView.vue';
 import PublicSubscriptionsView from '../views/PublicSubscriptionsView.vue';
+import TermsView from '../views/TermsView.vue';
 import StudentOrdersView from '../views/StudentOrdersView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import SettingsView from '../views/SettingsView.vue';
@@ -95,6 +96,12 @@ const routes = [
         name: 'public-assinaturas',
         component: PublicSubscriptionsView,
         meta: { title: 'Minhas assinaturas', requiresCompanyAuth: true },
+      },
+      {
+        path: 'termos',
+        name: 'public-termos',
+        component: TermsView,
+        meta: { title: 'Termos e privacidade' },
       },
     ],
   },
@@ -244,6 +251,12 @@ const routes = [
         component: PublicSubscriptionsView,
         meta: { title: 'Minhas assinaturas', requiresCompanyAuth: true },
       },
+      {
+        path: 'termos',
+        name: 'legacy-termos',
+        component: TermsView,
+        meta: { title: 'Termos e privacidade' },
+      },
     ],
   },
   {
@@ -279,7 +292,15 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior() {
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition;
+    }
+
+    if (typeof to.hash === 'string' && to.hash.startsWith('#') && !to.hash.startsWith('#/')) {
+      return { el: to.hash, top: 96, behavior: 'smooth' };
+    }
+
     return { top: 0 };
   },
 });
@@ -310,6 +331,7 @@ const PUBLIC_ONLY_ROUTES = new Set([
   'public-checkout',
   'public-pedido',
   'public-assinaturas',
+  'public-termos',
   'public-login',
   'public-cadastro',
 ]);
@@ -351,14 +373,6 @@ router.beforeEach(async (to) => {
     return auth.isAuthenticated
       ? { name: 'dashboard' }
       : { name: 'public-login', query: to.query };
-  }
-
-  if (to.name === 'public-cadastro' && typeof to.query.next !== 'string') {
-    return { name: 'public-loja' };
-  }
-
-  if (to.name === 'legacy-cadastro' && typeof to.query.next !== 'string') {
-    return { name: 'legacy-loja', params: { companySlug: to.params.companySlug } };
   }
 
   if (to.meta?.requiresCompanyAuth && !auth.isAuthenticated) {

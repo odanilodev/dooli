@@ -82,6 +82,10 @@
     <footer v-if="storefront.company" class="public-footer">
       <div class="public-footer-inner">
         <span>{{ storefront.company.name }}</span>
+        <nav class="public-footer-nav" aria-label="Documentos legais">
+          <router-link :to="legalRoute('#termos')">Termos de uso</router-link>
+          <router-link :to="legalRoute('#privacidade')">Política de privacidade</router-link>
+        </nav>
         <span>{{ footerNote }}</span>
       </div>
     </footer>
@@ -141,6 +145,12 @@ async function logout() {
   await auth.logout();
   resetUserStores();
   await router.push(publicRoute('public-loja'));
+}
+
+function legalRoute(hash) {
+  const target = publicRoute('public-termos');
+
+  return hash ? { ...target, hash } : target;
 }
 
 function onClickOutside(event) {
@@ -203,9 +213,12 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside));
 .public-footer{border-top:1px solid color-mix(in srgb,var(--border) 72%,transparent);background:color-mix(in srgb,var(--bg-card) 55%,var(--bg-page));}
 .public-footer-inner{
   width:100%;max-width:var(--public-max);margin:0 auto;padding:26px var(--public-gutter);
-  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap;
   color:var(--text-muted);font-size:12.5px;
 }
+.public-footer-nav{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+.public-footer-nav a{color:var(--text-secondary);font-size:12.5px;font-weight:700;text-decoration:none;transition:color .15s ease;}
+.public-footer-nav a:hover{color:var(--accent);}
 @media(max-width:1000px){
   .public-header-inner{flex-wrap:wrap;gap:8px 16px;padding-top:10px;padding-bottom:8px;min-height:0;}
   .public-brand{flex:1;}
