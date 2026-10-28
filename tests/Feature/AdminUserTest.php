@@ -5,9 +5,11 @@ namespace Tests\Feature;
 use App\Enums\UserRegistrationSource;
 use App\Models\Team;
 use App\Models\User;
+use App\Notifications\EmailVerificationCode as EmailVerificationCodeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
@@ -69,6 +71,8 @@ class AdminUserTest extends TestCase
 
     public function test_admin_can_create_a_user_with_hashed_password(): void
     {
+        Notification::fake();
+
         $this->withToken($this->apiLogin($this->admin))
             ->postJson('/api/v1/admin/users', [
                 'name' => 'Novo Usuário',
@@ -89,6 +93,8 @@ class AdminUserTest extends TestCase
         $this->assertTrue(Hash::check('secret-password', $user->password));
         $this->assertSame(UserRegistrationSource::Manual->value, $user->registration_source);
         $this->assertSame($this->company->id, $user->company_id);
+        $this->assertNotNull($user->email_verified_at);
+        Notification::assertNotSentTo($user, EmailVerificationCodeNotification::class);
     }
 
     public function test_admin_can_upload_a_user_image(): void

@@ -14,12 +14,14 @@ use App\Support\CompanyContext;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Throwable;
 
 class AuthService
 {
     public function __construct(
         private readonly UserRepository $users,
         private readonly DatalogService $audit,
+        private readonly EmailVerificationService $emailVerification,
     ) {}
 
     /**
@@ -33,38 +35,18 @@ class AuthService
             throw new ApiException('Credenciais inválidas.', 401, 'invalid_credentials');
         }
 
-        // Inactive accounts/companies are rejected with the same generic
-        // response as invalid credentials to avoid account enumeration.
-        if ($user->status !== GeneralStatus::Active->value) {
-            $this->audit->log('auth', 'login_blocked', 'user', 'Login bloqueado: conta inativa', $user->id);
+        $this->assertCanAuthenticate($user);
 
-            throw new ApiException('Credenciais inválidas.', 401, 'invalid_credentials');
-        }
-
-        if ($user->company && $user->company->status !== GeneralStatus::Active->value) {
-            $this->audit->log('auth', 'login_blocked', 'user', 'Login bloqueado: empresa inativa', $user->id);
-
-            throw new ApiException('Credenciais inválidas.', 401, 'invalid_credentials');
-        }
-
-        $abilities = $user->hasRole(UserTypeCode::Admin->value, UserTypeCode::Instructor->value)
-            ? ['admin']
-            : ['student'];
-
-        $token = $user->createToken($dto->deviceName, $abilities)->plainTextToken;
-
-        $this->audit->log('auth', 'login', 'user', 'Login realizado', $user->id);
-
-        return ['user' => $user->load('userType'), 'token' => $token];
+        return $this->authenticate($user, $dto->deviceName);
     }
 
     /**
-     * Registers a new student inside the current tenant and signs them in.
+     * Registers a new student inside the current tenant and sends the e-mail
+     * confirmation code. The account is not authenticated until verified.
      *
-     * @param  array{name: string, email: string, password: string, device_name?: string}  $data
-     * @return array{user: User, token: string}
+     * @param  array{name: string, email: string, password: string}  $data
      */
-    public function register(array $data): array
+    public function register(array $data): User
     {
         $companyId = (int) app(CompanyContext::class)->id();
 
@@ -84,16 +66,58 @@ class AuthService
             'name' => $data['name'],
             'username' => $this->uniqueUsername($data['email'], $companyId),
             'email' => $data['email'],
+            'email_verified_at' => null,
             'password' => $data['password'],
             'status' => GeneralStatus::Active->value,
             'registration_source' => UserRegistrationSource::Store->value,
         ]);
 
-        $token = $user->createToken($data['device_name'] ?? 'api', ['student'])->plainTextToken;
-
         $this->audit->log('auth', 'register', 'user', 'Novo aluno cadastrado', $user->id);
 
-        return ['user' => $user->load('userType'), 'token' => $token];
+        try {
+            $this->emailVerification->sendCode($user);
+        } catch (Throwable $e) {
+            report($e);
+
+            $this->audit->log(
+                'auth',
+                'email_verification_failed',
+                'user',
+                'Falha ao enviar o código de confirmação de e-mail',
+                $user->id,
+            );
+        }
+
+        return $user->load('userType');
+    }
+
+    /**
+     * Verifies the e-mail code and signs the user in.
+     *
+     * @param  array{email: string, code: string, device_name?: string}  $data
+     * @return array{user: User, token: string}
+     */
+    public function verifyEmail(array $data): array
+    {
+        $companyId = (int) app(CompanyContext::class)->id();
+
+        $user = $this->emailVerification->verifyForEmail(
+            $data['email'],
+            $data['code'],
+            $companyId,
+        );
+
+        $this->assertCanAuthenticate($user);
+
+        return $this->authenticate($user, $data['device_name'] ?? 'api');
+    }
+
+    public function resendVerification(string $email): void
+    {
+        $this->emailVerification->resendForEmail(
+            $email,
+            (int) app(CompanyContext::class)->id(),
+        );
     }
 
     public function logout(User $user): void
@@ -108,6 +132,51 @@ class AuthService
         $user->tokens()->delete();
 
         $this->audit->log('auth', 'logout_all', 'user', 'Logout em todos os dispositivos', $user->id);
+    }
+
+    /**
+     * Inactive accounts/companies and unverified e-mails cannot receive a token.
+     * The first two cases use the generic credentials error to avoid enumeration.
+     */
+    private function assertCanAuthenticate(User $user): void
+    {
+        if ($user->status !== GeneralStatus::Active->value) {
+            $this->audit->log('auth', 'login_blocked', 'user', 'Login bloqueado: conta inativa', $user->id);
+
+            throw new ApiException('Credenciais inválidas.', 401, 'invalid_credentials');
+        }
+
+        if ($user->company && $user->company->status !== GeneralStatus::Active->value) {
+            $this->audit->log('auth', 'login_blocked', 'user', 'Login bloqueado: empresa inativa', $user->id);
+
+            throw new ApiException('Credenciais inválidas.', 401, 'invalid_credentials');
+        }
+
+        if ($user->email_verified_at === null) {
+            $this->audit->log('auth', 'login_blocked', 'user', 'Login bloqueado: e-mail não verificado', $user->id);
+
+            throw new ApiException(
+                'Confirme seu e-mail para entrar.',
+                403,
+                'email_not_verified',
+            );
+        }
+    }
+
+    /**
+     * @return array{user: User, token: string}
+     */
+    private function authenticate(User $user, string $deviceName): array
+    {
+        $abilities = $user->hasRole(UserTypeCode::Admin->value, UserTypeCode::Instructor->value)
+            ? ['admin']
+            : ['student'];
+
+        $token = $user->createToken($deviceName, $abilities)->plainTextToken;
+
+        $this->audit->log('auth', 'login', 'user', 'Login realizado', $user->id);
+
+        return ['user' => $user->load('userType'), 'token' => $token];
     }
 
     private function uniqueUsername(string $email, int $companyId): string

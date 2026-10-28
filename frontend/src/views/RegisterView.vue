@@ -110,24 +110,14 @@ const {
   isTenant,
   publicRoute,
   loginRoute: tenantLoginRoute,
+  verifyEmailRoute,
+  safeNext,
 } = useTenant();
 const form = reactive({ name: '', email: '', password: '', passwordConfirm: '', terms: false });
 const mismatch = computed(() => form.password && form.passwordConfirm && form.password !== form.passwordConfirm);
 const companySlug = computed(() => legacySlug.value);
 const loginRoute = computed(() => tenantLoginRoute());
-const nextUrl = computed(() => {
-  const value = route.query.next;
-
-  if (!isTenant.value || typeof value !== 'string') {
-    return null;
-  }
-
-  if (legacySlug.value) {
-    return value.startsWith(`/e/${legacySlug.value}/`) ? value : null;
-  }
-
-  return value.startsWith('/') && !value.startsWith('//') ? value : null;
-});
+const nextUrl = computed(() => safeNext(route.query.next));
 
 function termsLink(hash) {
   const target = publicRoute('public-termos');
@@ -160,7 +150,7 @@ async function submit() {
   }
 
   try {
-    await auth.register({
+    const result = await auth.register({
       name,
       email,
       password: form.password,
@@ -168,15 +158,13 @@ async function submit() {
       terms: true,
     }, companySlug.value);
 
-    toast.success('Conta criada! Bem-vindo(a).');
+    toast.success('Conta criada! Confirme seu e-mail para entrar.');
 
-    if (nextUrl.value) {
-      await router.push(nextUrl.value);
-    } else if (isTenant.value) {
-      await router.push(publicRoute('public-loja'));
-    } else {
-      await router.push({ name: 'dashboard' });
-    }
+    await router.push(verifyEmailRoute({
+      email: result?.user?.email ?? email,
+      sent: '1',
+      ...(nextUrl.value ? { next: nextUrl.value } : {}),
+    }));
   } catch (e) {
     const firstError = e?.errors ? Object.values(e.errors).flat()[0] : null;
     toast.error(firstError || e?.message || 'Não foi possível criar a conta.');

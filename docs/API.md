@@ -78,6 +78,7 @@ Authorization: Bearer {token}
 | Limiter   | Limite         | Chave                | Aplicado a |
 | --------- | -------------- | -------------------- | ---------- |
 | `auth`    | 5/min          | login/e-mail + IP    | `POST /auth/login` e `POST /auth/register` (anti brute force) |
+| `verification` | 5/min    | e-mail + IP          | Confirmação e reenvio de código de e-mail |
 | `public`  | 60/min         | IP                   | Rotas públicas (loja, verify, página do certificado) |
 | `api`     | 120/min        | usuário (ou IP)      | Rotas autenticadas |
 | `admin`   | 300/min        | usuário              | Rotas administrativas |
@@ -108,11 +109,11 @@ Aceita `email` ou `username` (um dos dois é obrigatório).
   }
 }
 ```
-**Erros:** `401 invalid_credentials` (usado também para conta/empresa inativa, para evitar enumeração), `422`, `429`.
+**Erros:** `401 invalid_credentials` (usado também para conta/empresa inativa, para evitar enumeração), `403 email_not_verified` (senha correta, mas e-mail pendente), `422`, `429`.
 
-### POST /api/v1/auth/register
-**Objetivo:** criar uma conta de aluno e autenticar automaticamente.
-**Auth:** não. **Rate limit:** `auth`. **Header:** `X-Company` obrigatório.
+### POST /api/v1/public/companies/{companySlug}/auth/register
+**Objetivo:** criar uma conta de aluno e enviar o código de confirmação de e-mail.
+**Auth:** não. **Rate limit:** `auth`. No domínio da empresa, use `POST /api/v1/public/tenant/auth/register`.
 **Body:**
 ```json
 {
@@ -120,13 +121,36 @@ Aceita `email` ou `username` (um dos dois é obrigatório).
   "email": "novo.aluno@example.com",
   "password": "senha-segura",
   "password_confirmation": "senha-segura",
-  "terms": true,
-  "device_name": "web"
+  "terms": true
 }
 ```
-O `username` é gerado automaticamente a partir do e-mail (com sufixo numérico em caso de conflito). O tipo de usuário é sempre `student`, vinculado à empresa do header.
-**Sucesso 201:** mesmo payload do login (`user`, `token`, `token_type`).
+O `username` é gerado automaticamente a partir do e-mail (com sufixo numérico em caso de conflito). O tipo de usuário é sempre `student`, vinculado à empresa do header. Contas criadas pelo admin manualmente são verificadas automaticamente e não recebem código.
+**Sucesso 201:**
+```json
+{
+  "success": true,
+  "data": {
+    "user": { "id": 1, "name": "Novo Aluno", "email": "novo.aluno@example.com" },
+    "verification_required": true
+  }
+}
+```
+A conta ainda **não** está autenticada; nenhum token é retornado antes da confirmação.
 **Erros:** `400 company_required`, `422` (e-mail duplicado, senha/confirmação inválida ou termos não aceitos), `429`.
+
+### POST /api/v1/public/companies/{companySlug}/auth/verify-email
+**Objetivo:** confirmar o código de 6 dígitos e autenticar o aluno.
+**Auth:** não. **Rate limit:** `verification`. No domínio da empresa, use `POST /api/v1/public/tenant/auth/verify-email`.
+**Body:** `{ "email": "novo.aluno@example.com", "code": "123456", "device_name": "web" }`
+**Sucesso 200:** mesmo payload do login (`user`, `token`, `token_type`).
+**Erros:** `422 invalid_verification_code` (código inválido, expirado ou com tentativas esgotadas), `429`.
+
+### POST /api/v1/public/companies/{companySlug}/auth/resend-verification
+**Objetivo:** reenviar o código de confirmação.
+**Auth:** não. **Rate limit:** `verification`. No domínio da empresa, use `POST /api/v1/public/tenant/auth/resend-verification`.
+**Body:** `{ "email": "novo.aluno@example.com" }`
+**Sucesso 200:** resposta genérica, exista ou não a conta. O servidor aplica cooldown de 60 segundos e gira o código anterior.
+**Erros:** `429`.
 
 ### GET /api/v1/auth/me
 **Auth:** Bearer. Retorna o usuário autenticado com `user_type` e `teams`.
@@ -485,10 +509,10 @@ Verifica a **assinatura** conforme o adapter do gateway (sem segredo configurado
 | ---- | ---- | ------ |
 | 400 | `company_required` | rota pública/webhook sem `X-Company` |
 | 401 | `unauthenticated`, `invalid_credentials`, `invalid_webhook_signature` | não autenticado / login inválido / assinatura de webhook inválida |
-| 403 | `forbidden`, `unauthorized_course_access` | sem permissão / sem matrícula |
+| 403 | `forbidden`, `unauthorized_course_access`, `email_not_verified` | sem permissão / sem matrícula / e-mail pendente de confirmação |
 | 404 | `resource_not_found`, `course_not_found`, `company_not_found` | inexistente, de outra empresa ou empresa inativa |
 | 409 | `duplicate_resource`, `resource_conflict` | registro duplicado (ex.: avaliação repetida) / registro com vínculos |
-| 422 | `invalid_coupon`, `certificate_not_available`, `business_rule`, `payment_error` | regra de negócio/validação |
+| 422 | `invalid_coupon`, `certificate_not_available`, `business_rule`, `payment_error`, `invalid_verification_code` | regra de negócio/validação / código de e-mail inválido ou expirado |
 | 429 | `too_many_requests` | rate limit |
 
 > Exclusões administrativas retornam **204 No Content**.
@@ -500,6 +524,7 @@ Verifica a **assinatura** conforme o adapter do gateway (sem segredo configurado
 - Credenciais de gateway cifradas e nunca serializadas.
 - Validação sempre no backend; valores de desconto/total recalculados no servidor.
 - Conclusão de aula e emissão de certificado validados no backend (nunca por payload do frontend).
+- Confirmação de e-mail com código de 6 dígitos, hash no banco, validade de 15 minutos e máximo de 5 tentativas.
 - Webhooks: assinatura obrigatória (falha fechada sem segredo configurado), tenant derivado do pagamento e idempotentes.
 
 ## Loja publica por empresa
@@ -511,10 +536,12 @@ Cada empresa possui um `slug` unico. A loja publica resolve o tenant pela URL, s
 - `GET /api/v1/public/companies/{companySlug}/store/products/{productSlug}`
 - `POST /api/v1/public/companies/{companySlug}/auth/login`
 - `POST /api/v1/public/companies/{companySlug}/auth/register`
+- `POST /api/v1/public/companies/{companySlug}/auth/verify-email`
+- `POST /api/v1/public/companies/{companySlug}/auth/resend-verification`
 - `POST /api/v1/public/companies/{companySlug}/auth/forgot-password`
 - `POST /api/v1/public/companies/{companySlug}/auth/reset-password`
 
-O cadastro cria sempre um aluno da empresa do slug. O mesmo e-mail pode existir em empresas diferentes; a unicidade e `(company_id, email)` e `(company_id, username)`.
+O cadastro cria sempre um aluno da empresa do slug. O mesmo e-mail pode existir em empresas diferentes; a unicidade e `(company_id, email)` e `(company_id, username)`. Alunos cadastrados pelo site só entram após confirmar o código de 6 dígitos.
 
 `GET /api/v1/public/companies/{companySlug}` inclui `storefront.settings` e `storefront.banners` com os banners ativos de `placement=store`, permitindo que a loja pública renderize o carrossel e os textos configurados pelo admin sem requisições adicionais.
 
@@ -527,6 +554,8 @@ Cada empresa pode ter um `domain` unico. O host e a chave do tenant: a loja abre
 - `GET /api/v1/public/tenant/store/products/{productSlug}`
 - `POST /api/v1/public/tenant/auth/login`
 - `POST /api/v1/public/tenant/auth/register`
+- `POST /api/v1/public/tenant/auth/verify-email`
+- `POST /api/v1/public/tenant/auth/resend-verification`
 - `POST /api/v1/public/tenant/auth/forgot-password`
 - `POST /api/v1/public/tenant/auth/reset-password`
 

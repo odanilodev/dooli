@@ -46,7 +46,8 @@ paths:
   /api/v1/auth/register:
     post:
       tags: [Auth]
-      summary: Cria uma conta de aluno e retorna um token
+      summary: Cria uma conta de aluno e envia o código de confirmação
+      description: A conta não é autenticada até a confirmação do código de 6 dígitos.
       security: []
       parameters:
         - $ref: '#/components/parameters/XCompany'
@@ -66,12 +67,55 @@ paths:
                 device_name: { type: string, maxLength: 100 }
       responses:
         '201':
-          description: Conta criada e autenticada
+          description: Conta criada com confirmação de e-mail pendente
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Success' }
-        '400': { description: Empresa nÃ£o informada }
+        '400': { description: Empresa não informada }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/v1/public/tenant/auth/verify-email:
+    post:
+      tags: [Auth]
+      summary: Confirma o código de e-mail e autentica o aluno
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XCompanyDomain'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email: { type: string, format: email }
+                code: { type: string, pattern: '^[0-9]{6}$' }
+                device_name: { type: string, maxLength: 100 }
+      responses:
+        '200': { description: E-mail confirmado e token emitido }
+        '422': { description: Código inválido, expirado ou tentativas esgotadas }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/v1/public/tenant/auth/resend-verification:
+    post:
+      tags: [Auth]
+      summary: Reenvia o código de confirmação de e-mail
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XCompanyDomain'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200': { description: Resposta genérica; o código só é reenviado se necessário }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /api/v1/auth/me:
@@ -765,11 +809,12 @@ paths:
     post:
       tags: [Auth]
       summary: Cadastro de aluno na empresa resolvida pelo dominio
+      description: O aluno só é autenticado após confirmar o código enviado por e-mail.
       security: []
       parameters:
         - $ref: '#/components/parameters/XCompanyDomain'
       responses:
-        '201': { description: Aluno criado e autenticado }
+        '201': { description: Aluno criado com confirmação de e-mail pendente }
         '404': { description: Empresa inexistente ou inativa }
   /api/v1/public/tenant/auth/forgot-password:
     post:

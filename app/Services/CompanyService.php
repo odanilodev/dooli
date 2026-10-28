@@ -51,6 +51,7 @@ class CompanyService
                     'name' => $data['admin_name'],
                     'username' => $data['admin_username'],
                     'email' => $data['admin_email'],
+                    'email_verified_at' => now(),
                     'password' => $data['admin_password'],
                     'status' => GeneralStatus::Active->value,
                     'registration_source' => UserRegistrationSource::Manual->value,

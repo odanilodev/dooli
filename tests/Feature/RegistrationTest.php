@@ -5,10 +5,13 @@ namespace Tests\Feature;
 use App\Enums\GeneralStatus;
 use App\Enums\UserRegistrationSource;
 use App\Enums\UserTypeCode;
+use App\Models\EmailVerificationCode;
 use App\Models\User;
 use App\Models\UserType;
+use App\Notifications\EmailVerificationCode as EmailVerificationCodeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
@@ -21,9 +24,10 @@ class RegistrationTest extends TestCase
     {
         parent::setUp();
         $this->buildTenant();
+        Notification::fake();
     }
 
-    public function test_student_can_register_and_is_signed_in(): void
+    public function test_student_can_register_and_receives_verification_code(): void
     {
         $response = $this->register([
             'name' => 'Novo Aluno',
@@ -38,19 +42,41 @@ class RegistrationTest extends TestCase
             ->assertJsonPath('data.user.company_id', $this->company->id)
             ->assertJsonPath('data.user.user_type.code', UserTypeCode::Student->value)
             ->assertJsonPath('data.user.registration_source', UserRegistrationSource::Store->value)
-            ->assertJsonStructure(['data' => ['token', 'token_type', 'user' => ['id', 'name', 'email']]]);
+            ->assertJsonPath('data.verification_required', true)
+            ->assertJsonStructure(['data' => ['user' => ['id', 'name', 'email'], 'verification_required']]);
+
+        $this->assertArrayNotHasKey('token', $response->json('data'));
 
         $user = User::query()->where('email', 'novo.aluno@example.com')->firstOrFail();
 
         $this->assertSame(GeneralStatus::Active->value, $user->status);
         $this->assertSame(UserRegistrationSource::Store->value, $user->registration_source);
         $this->assertSame('novoaluno', $user->username);
+        $this->assertNull($user->email_verified_at);
         $this->assertTrue(Hash::check('password123', $user->password));
 
-        $this->withToken($response->json('data.token'))
-            ->getJson('/api/v1/auth/me')
-            ->assertOk()
-            ->assertJsonPath('data.id', $user->id);
+        Notification::assertSentTo($user, EmailVerificationCodeNotification::class);
+
+        $record = EmailVerificationCode::query()
+            ->withoutGlobalScope('company')
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        $this->assertSame(0, $record->attempts);
+        $this->assertTrue($record->expires_at->isFuture());
+        $this->assertNotSame('', $record->code_hash);
+    }
+
+    public function test_registration_blocks_login_until_email_is_confirmed(): void
+    {
+        $this->register();
+
+        $this->postJson('/api/v1/public/companies/'.$this->company->slug.'/auth/login', [
+            'email' => 'novo.aluno@example.com',
+            'password' => 'password123',
+        ])
+            ->assertStatus(403)
+            ->assertJsonPath('code', 'email_not_verified');
     }
 
     public function test_registration_requires_a_unique_email(): void

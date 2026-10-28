@@ -49,6 +49,7 @@ import AdminPaymentsView from '../views/AdminPaymentsView.vue';
 import AdminSubscriptionsView from '../views/AdminSubscriptionsView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
+import VerifyEmailView from '../views/VerifyEmailView.vue';
 import ForgotPasswordView from '../views/ForgotPasswordView.vue';
 import ResetPasswordView from '../views/ResetPasswordView.vue';
 import NotFoundView from '../views/NotFoundView.vue';
@@ -128,6 +129,16 @@ const routes = [
           title: 'Criar conta',
           quote: 'Seu próximo passo começa com uma conta e um curso escolhido por você.',
           quoteHighlight: 'Estude no seu ritmo e evolua sempre.',
+        },
+      },
+      {
+        path: 'confirmar-email',
+        name: 'public-confirmar-email',
+        component: VerifyEmailView,
+        meta: {
+          title: 'Confirmar e-mail',
+          quote: 'Confirme seu e-mail e comece a estudar com',
+          quoteHighlight: 'uma conta segura e pronta para evoluir.',
         },
       },
       {
@@ -283,6 +294,16 @@ const routes = [
           quoteHighlight: 'Estude no seu ritmo e evolua sempre.',
         },
       },
+      {
+        path: 'confirmar-email',
+        name: 'legacy-confirmar-email',
+        component: VerifyEmailView,
+        meta: {
+          title: 'Confirmar e-mail',
+          quote: 'Confirme seu e-mail e comece a estudar com',
+          quoteHighlight: 'uma conta segura e pronta para evoluir.',
+        },
+      },
     ],
   },
 
@@ -334,6 +355,7 @@ const PUBLIC_ONLY_ROUTES = new Set([
   'public-termos',
   'public-login',
   'public-cadastro',
+  'public-confirmar-email',
 ]);
 
 router.beforeEach(async (to) => {

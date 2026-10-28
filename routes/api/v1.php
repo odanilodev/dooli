@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\V1\Admin\UserTypeController as AdminUserTypeControl
 use App\Http\Controllers\Api\V1\Admin\VideoController as AdminVideoController;
 use App\Http\Controllers\Api\V1\Admin\VideoPlatformController as AdminVideoPlatformController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\Auth\EmailVerificationController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\MyMenuController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -82,6 +83,8 @@ Route::prefix('public/tenant')
 
         Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth');
         Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:auth');
+        Route::post('auth/verify-email', [EmailVerificationController::class, 'verify'])->middleware('throttle:verification');
+        Route::post('auth/resend-verification', [EmailVerificationController::class, 'resend'])->middleware('throttle:verification');
         Route::post('auth/forgot-password', [PasswordResetController::class, 'sendLink'])->middleware('throttle:password');
         Route::post('auth/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:password');
     });
@@ -100,6 +103,8 @@ Route::prefix('public/companies/{companySlug}')
 
         Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth');
         Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:auth');
+        Route::post('auth/verify-email', [EmailVerificationController::class, 'verify'])->middleware('throttle:verification');
+        Route::post('auth/resend-verification', [EmailVerificationController::class, 'resend'])->middleware('throttle:verification');
         Route::post('auth/forgot-password', [PasswordResetController::class, 'sendLink'])->middleware('throttle:password');
         Route::post('auth/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:password');
     });

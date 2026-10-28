@@ -43,7 +43,14 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const toast = useToast();
-const { legacySlug, isTenant, publicRoute, registerRoute } = useTenant();
+const {
+  legacySlug,
+  isTenant,
+  publicRoute,
+  registerRoute,
+  verifyEmailRoute,
+  safeNext,
+} = useTenant();
 
 const companySlug = computed(() => legacySlug.value);
 const forgotRoute = computed(() => ({
@@ -51,14 +58,9 @@ const forgotRoute = computed(() => ({
   query: legacySlug.value ? { company: legacySlug.value } : {},
 }));
 const registerTarget = computed(() => {
-  const redirect = route.query.redirect;
-  const next = typeof redirect === 'string'
-    && redirect.startsWith('/')
-    && !redirect.startsWith('//')
-    ? { next: redirect }
-    : {};
+  const next = safeNext(route.query.redirect);
 
-  return registerRoute(next);
+  return registerRoute(next ? { next } : {});
 });
 
 const form = reactive({ email: '', password: '', remember: false });
@@ -82,6 +84,19 @@ async function submit() {
         : { name: 'dashboard' };
     setTimeout(() => router.push(redirect), 500);
   } catch (e) {
+    if (e?.code === 'email_not_verified') {
+      const next = safeNext(route.query.redirect);
+
+      toast.info('Confirme seu e-mail para continuar.');
+
+      await router.push(verifyEmailRoute({
+        email: form.email.trim(),
+        ...(next ? { next } : {}),
+      }));
+
+      return;
+    }
+
     toast.error(e?.message || 'Não foi possível entrar.');
   }
 }

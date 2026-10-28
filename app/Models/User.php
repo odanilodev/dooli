@@ -12,12 +12,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable([
-    'name', 'username', 'email', 'password', 'status', 'registration_source',
+    'name', 'username', 'email', 'email_verified_at', 'password', 'status', 'registration_source',
     'user_type_id', 'company_id', 'image', 'phone', 'address', 'city',
 ])]
 #[Hidden(['password', 'remember_token'])]
@@ -31,6 +32,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_super_admin' => 'boolean',
         ];
@@ -61,6 +63,11 @@ class User extends Authenticatable
     public function teamLinks(): HasMany
     {
         return $this->hasMany(TeamUser::class);
+    }
+
+    public function emailVerificationCode(): HasOne
+    {
+        return $this->hasOne(EmailVerificationCode::class);
     }
 
     public function orders(): HasMany

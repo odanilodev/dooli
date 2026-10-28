@@ -6,7 +6,9 @@
 - Sanctum com tokens por dispositivo; logout revoga o token atual; `logout-all` revoga todos.
 - Tokens recebem abilities (`admin` para admin/instrutor, `student` para alunos); expiração opcional via `SANCTUM_EXPIRATION`.
 - Bloqueio de usuário/empresa inativos no login retorna a **mesma** resposta genérica de credenciais inválidas (anti-enumeração), com auditoria do bloqueio.
-- Rate limit restritivo no login (`5/min` por login+IP) contra brute force.
+- Alunos cadastrados pelo site só recebem token após confirmar um código de 6 dígitos enviado por e-mail. O código é salvo com hash, expira em 15 minutos e aceita no máximo 5 tentativas.
+- Contas criadas manualmente pelo admin já nascem verificadas e não recebem código. Contas existentes foram marcadas como verificadas na migration.
+- Rate limit restritivo no login (`5/min` por login+IP) contra brute force e no fluxo de confirmação/reenvio (`5/min` por e-mail+IP).
 
 ### Autorização
 - Policies por recurso + middleware `role:admin` nas rotas administrativas.
@@ -68,8 +70,9 @@
 - Broken access control: rotas admin protegidas por `role:admin`; aluno isolado; comentários/avaliações exigem matrícula.
 - Mass assignment: `#[Fillable]`.
 - SQL injection: uso exclusivo de Query Builder/Eloquent com bindings.
-- Enumeração de contas: forgot-password sempre `200`; login inativo com resposta genérica.
-- Rate limit: por tipo de endpoint (auth/public/api/admin/webhooks).
+- Enumeração de contas: forgot-password e reenvio de confirmação sempre `200`; login inativo com resposta genérica.
+- Confirmação de e-mail: código hasheado, curto prazo, tentativas limitadas e invalidação após o uso.
+- Rate limit: por tipo de endpoint (auth/verification/public/api/admin/webhooks).
 - Vazamento de credenciais/PII: cifra + ocultação + resources reduzidos.
 - Erros de integridade (unique/FK): tratados como `409` em vez de `500`.
 - Idempotência de webhook: garantida por unique + `NULL` quando não há `external_id`.

@@ -26,6 +26,7 @@ class DemoUserSeeder extends Seeder
             [
                 'name' => 'Administrador',
                 'username' => 'admin',
+                'email_verified_at' => now(),
                 'password' => Hash::make('password'),
                 'status' => GeneralStatus::Active->value,
                 'registration_source' => UserRegistrationSource::Manual->value,
@@ -41,6 +42,7 @@ class DemoUserSeeder extends Seeder
             [
                 'name' => 'Super Administrador',
                 'username' => 'super',
+                'email_verified_at' => now(),
                 'password' => Hash::make('password'),
                 'status' => GeneralStatus::Active->value,
                 'registration_source' => UserRegistrationSource::Manual->value,
@@ -56,6 +58,7 @@ class DemoUserSeeder extends Seeder
             [
                 'name' => 'Instrutor Demo',
                 'username' => 'instrutor',
+                'email_verified_at' => now(),
                 'password' => Hash::make('password'),
                 'status' => GeneralStatus::Active->value,
                 'registration_source' => UserRegistrationSource::Manual->value,
@@ -71,6 +74,7 @@ class DemoUserSeeder extends Seeder
             [
                 'name' => 'Aluno Demo',
                 'username' => 'aluno',
+                'email_verified_at' => now(),
                 'password' => Hash::make('password'),
                 'status' => GeneralStatus::Active->value,
                 'registration_source' => UserRegistrationSource::Store->value,

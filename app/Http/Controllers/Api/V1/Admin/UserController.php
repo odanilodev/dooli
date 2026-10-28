@@ -53,6 +53,7 @@ class UserController extends ApiController
         $data = $request->validated();
         unset($data['image_file']);
         $data['registration_source'] = UserRegistrationSource::Manual->value;
+        $data['email_verified_at'] = now();
 
         if ($image = $request->file('image_file')) {
             $data['image'] = $this->images->store($image, 'users', (int) app(CompanyContext::class)->id());

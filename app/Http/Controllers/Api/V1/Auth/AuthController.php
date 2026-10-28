@@ -29,12 +29,11 @@ class AuthController extends ApiController
 
     public function register(RegisterRequest $request): JsonResponse
     {
-        $result = $this->auth->register($request->validated());
+        $user = $this->auth->register($request->validated());
 
         return ApiResponse::success([
-            'user' => new UserResource($result['user']),
-            'token' => $result['token'],
-            'token_type' => 'Bearer',
+            'user' => new UserResource($user),
+            'verification_required' => true,
         ], 201);
     }
 

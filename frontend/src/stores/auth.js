@@ -90,10 +90,35 @@ export const useAuthStore = defineStore('auth', () => {
         device_name: 'web',
       });
 
+      return data.data;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function verifyEmail(payload, companySlug = null) {
+    loading.value = true;
+
+    try {
+      const endpoint = tenantEndpoint(companySlug, 'verify-email');
+
+      const { data } = await api.post(endpoint, {
+        ...payload,
+        device_name: 'web',
+      });
+
       return applySession(data.data);
     } finally {
       loading.value = false;
     }
+  }
+
+  async function resendVerification(email, companySlug = null) {
+    const endpoint = tenantEndpoint(companySlug, 'resend-verification');
+
+    const { data } = await api.post(endpoint, { email });
+
+    return data;
   }
 
   async function forgotPassword(email, companySlug = null) {
@@ -168,6 +193,8 @@ export const useAuthStore = defineStore('auth', () => {
     initials,
     login,
     register,
+    verifyEmail,
+    resendVerification,
     forgotPassword,
     resetPassword,
     fetchMe,

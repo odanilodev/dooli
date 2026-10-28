@@ -12,6 +12,7 @@ const LEGACY_ROUTES = {
   'public-termos': 'legacy-termos',
   'public-login': 'legacy-login',
   'public-cadastro': 'legacy-cadastro',
+  'public-confirmar-email': 'legacy-confirmar-email',
 };
 
 export function useTenant() {
@@ -59,6 +60,30 @@ export function useTenant() {
       : { name: 'login', ...(Object.keys(query).length ? { query } : {}) };
   }
 
+  function verifyEmailRoute(query = {}) {
+    if (isLegacy.value) {
+      return publicRoute('public-confirmar-email', {}, query);
+    }
+
+    return tenant.isDomainMode
+      ? { name: 'public-confirmar-email', ...(Object.keys(query).length ? { query } : {}) }
+      : { name: 'login', ...(Object.keys(query).length ? { query } : {}) };
+  }
+
+  function safeNext(value) {
+    if (!isTenant.value || typeof value !== 'string') {
+      return null;
+    }
+
+    if (isLegacy.value) {
+      const base = `/e/${legacySlug.value}`;
+
+      return value === base || value.startsWith(`${base}/`) ? value : null;
+    }
+
+    return value.startsWith('/') && !value.startsWith('//') ? value : null;
+  }
+
   return {
     tenant,
     legacySlug,
@@ -68,6 +93,8 @@ export function useTenant() {
     publicRoute,
     loginRoute,
     registerRoute,
+    verifyEmailRoute,
+    safeNext,
     dashboardRoute: { name: 'dashboard' },
   };
 }

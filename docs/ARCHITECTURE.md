@@ -22,7 +22,7 @@ Route → Middleware → FormRequest → Controller → Service → Repository �
 
 | Tema | Decisão |
 | ---- | ------- |
-| Auth | Sanctum (Bearer token), login por `email` **ou** `username` |
+| Auth | Sanctum (Bearer token), login por `email` **ou** `username`; cadastro pelo site exige código de 6 dígitos (`email_verified_at` + `email_verification_codes`) |
 | Multi-tenancy | `CompanyContext` (singleton) + trait `BelongsToCompany` (global scope + auto-fill de `company_id`) |
 | Tenant público/webhook | Header `X-Company` (id) com middleware `company.required` |
 | Perfis | `user_types.code` (`admin`/`instructor`/`student`) via middleware `role:` e Policies |
@@ -58,7 +58,7 @@ O padrão do projeto é **rota = tabela**: tabela plural snake_case, model singu
 
 ## Inconsistências encontradas e soluções
 
-1. **`users` sem `email_verified_at`/`remember_token`** e factory incompatível → model/factory ajustados.
+1. **`users` sem `email_verified_at`/`remember_token`** e factory incompatível → model/factory ajustados; confirmação por código para cadastros do site.
 2. **`email`/`username` sem unique** → migration aditiva `add_unique_index_to_users_email_username`.
 3. **`notifications` sem destinatário/leitura** → tabela aditiva `notification_users` (`read_at`).
 4. **`actions` sem código estável** → coluna aditiva `actions.code` + seeder.
