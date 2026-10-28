@@ -28,6 +28,14 @@
             <strong>{{ orderTypeLabel(order.type) }}</strong>
           </div>
           <div>
+            <span class="admin-sub">Origem do pedido</span>
+            <span class="status-pill" :class="originClass(order.source)">{{ originLabel(order.source) }}</span>
+          </div>
+          <div>
+            <span class="admin-sub">Origem do cadastro</span>
+            <span class="status-pill" :class="originClass(order.user?.registration_source)">{{ originLabel(order.user?.registration_source) }}</span>
+          </div>
+          <div>
             <span class="admin-sub">Criado em</span>
             <strong>{{ formatDateTime(order.created_at) }}</strong>
           </div>
@@ -106,6 +114,7 @@ import { ref, watch } from 'vue';
 import { api } from '../../api/http';
 import { formatCurrency, formatDateTime } from '../../utils/format';
 import { orderStatusClass, orderStatusLabel, orderTypeLabel } from '../../utils/orderStatus';
+import { originClass, originLabel } from '../../utils/origin';
 import OrderTimeline from '../OrderTimeline.vue';
 import PaymentDetailsCard from '../PaymentDetailsCard.vue';
 

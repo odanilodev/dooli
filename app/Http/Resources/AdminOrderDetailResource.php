@@ -21,6 +21,7 @@ class AdminOrderDetailResource extends JsonResource
             'subscription_id' => $this->subscription_id,
             'type' => $this->subscription_id ? 'subscription' : 'one_time',
             'status' => $this->status,
+            'source' => $this->source,
             'subtotal' => $this->subtotal,
             'discount' => $this->discount,
             'total' => $this->total,

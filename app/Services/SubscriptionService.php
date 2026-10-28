@@ -7,6 +7,7 @@ use App\Enums\BillingType;
 use App\Enums\GeneralStatus;
 use App\Enums\OrderEventActorType;
 use App\Enums\OrderEventType;
+use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\SubscriptionStatus;
@@ -218,6 +219,7 @@ class SubscriptionService
             'user_id' => $subscription->user_id,
             'subscription_id' => $subscription->id,
             'status' => OrderStatus::Pending->value,
+            'source' => OrderSource::Store->value,
             'subtotal' => $subscription->amount,
             'discount' => 0,
             'total' => $subscription->amount,

@@ -28,7 +28,7 @@
     <div v-else class="admin-table-wrap">
       <table class="admin-table">
         <thead>
-          <tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Valor</th><th>Pagamento</th><th>Status</th><th>Data</th><th></th></tr>
+          <tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Origem</th><th>Valor</th><th>Pagamento</th><th>Status</th><th>Data</th><th></th></tr>
         </thead>
         <tbody>
           <tr v-for="order in orders" :key="order.id">
@@ -38,6 +38,7 @@
               <span v-if="order.user?.email" class="admin-sub">{{ order.user.email }}</span>
             </td>
             <td class="admin-muted">{{ orderTypeLabel(order.type) }}</td>
+            <td><span class="status-pill" :class="originClass(order.source)">{{ originLabel(order.source) }}</span></td>
             <td>{{ formatCurrency(order.total) }}</td>
             <td class="admin-muted">
               <span v-if="order.latest_payment">
@@ -71,6 +72,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '../api/http';
 import { formatCurrency, formatDateTime } from '../utils/format';
+import { originClass, originLabel } from '../utils/origin';
 import {
   orderStatusClass,
   orderStatusLabel,

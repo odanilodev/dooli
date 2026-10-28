@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Enums\GeneralStatus;
+use App\Enums\UserRegistrationSource;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Requests\Admin\BulkUserRequest;
 use App\Http\Requests\Admin\StoreUserRequest;
@@ -31,7 +32,7 @@ class UserController extends ApiController
     {
         $this->authorize('viewAny', User::class);
 
-        $filters = $request->only(['search', 'status', 'user_type_id', 'exclude_team_id', 'sort', 'direction']);
+        $filters = $request->only(['search', 'status', 'registration_source', 'user_type_id', 'exclude_team_id', 'sort', 'direction']);
 
         // Super admins are platform-level and must stay invisible to everyone else.
         $filters['exclude_super_admins'] = ! $request->user()->isSuperAdmin();
@@ -51,6 +52,7 @@ class UserController extends ApiController
 
         $data = $request->validated();
         unset($data['image_file']);
+        $data['registration_source'] = UserRegistrationSource::Manual->value;
 
         if ($image = $request->file('image_file')) {
             $data['image'] = $this->images->store($image, 'users', (int) app(CompanyContext::class)->id());

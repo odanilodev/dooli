@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\GeneralStatus;
+use App\Enums\UserRegistrationSource;
 use App\Enums\UserTypeCode;
 use App\Models\Company;
 use App\Models\User;
@@ -25,6 +26,7 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'password' => static::$password ??= Hash::make('password'),
             'status' => GeneralStatus::Active->value,
+            'registration_source' => UserRegistrationSource::Unknown->value,
             'company_id' => Company::factory(),
             'user_type_id' => UserType::factory(),
             'phone' => fake()->optional()->phoneNumber(),

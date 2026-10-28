@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\DTO\LoginDTO;
 use App\Enums\GeneralStatus;
+use App\Enums\UserRegistrationSource;
 use App\Enums\UserTypeCode;
 use App\Exceptions\ApiException;
 use App\Models\User;
@@ -85,6 +86,7 @@ class AuthService
             'email' => $data['email'],
             'password' => $data['password'],
             'status' => GeneralStatus::Active->value,
+            'registration_source' => UserRegistrationSource::Store->value,
         ]);
 
         $token = $user->createToken($data['device_name'] ?? 'api', ['student'])->plainTextToken;

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Models\Company;
 use App\Models\Order;
@@ -19,6 +20,7 @@ class OrderFactory extends Factory
             'company_id' => Company::factory(),
             'user_id' => User::factory(),
             'status' => OrderStatus::Pending->value,
+            'source' => OrderSource::Unknown->value,
             'subtotal' => 100,
             'discount' => 0,
             'total' => 100,

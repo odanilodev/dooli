@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\GeneralStatus;
+use App\Enums\UserRegistrationSource;
 use App\Enums\UserTypeCode;
 use App\Models\User;
 use App\Models\UserType;
@@ -36,11 +37,13 @@ class RegistrationTest extends TestCase
             ->assertJsonPath('data.user.email', 'novo.aluno@example.com')
             ->assertJsonPath('data.user.company_id', $this->company->id)
             ->assertJsonPath('data.user.user_type.code', UserTypeCode::Student->value)
+            ->assertJsonPath('data.user.registration_source', UserRegistrationSource::Store->value)
             ->assertJsonStructure(['data' => ['token', 'token_type', 'user' => ['id', 'name', 'email']]]);
 
         $user = User::query()->where('email', 'novo.aluno@example.com')->firstOrFail();
 
         $this->assertSame(GeneralStatus::Active->value, $user->status);
+        $this->assertSame(UserRegistrationSource::Store->value, $user->registration_source);
         $this->assertSame('novoaluno', $user->username);
         $this->assertTrue(Hash::check('password123', $user->password));
 

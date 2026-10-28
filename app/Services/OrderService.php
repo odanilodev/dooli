@@ -6,6 +6,7 @@ use App\DTO\ApplyCouponDTO;
 use App\DTO\CreateOrderDTO;
 use App\Enums\GeneralStatus;
 use App\Enums\OrderEventType;
+use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Order;
@@ -87,6 +88,7 @@ class OrderService
                 'user_id' => $dto->userId,
                 'coupon_id' => $coupon?->id,
                 'status' => OrderStatus::Pending->value,
+                'source' => OrderSource::Store->value,
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'total' => round(max($subtotal - $discount, 0), 2),

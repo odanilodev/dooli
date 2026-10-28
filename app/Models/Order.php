@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['company_id', 'user_id', 'coupon_id', 'subscription_id', 'status', 'subtotal', 'discount', 'total', 'period_start', 'period_end'])]
+#[Fillable(['company_id', 'user_id', 'coupon_id', 'subscription_id', 'status', 'source', 'subtotal', 'discount', 'total', 'period_start', 'period_end'])]
 class Order extends Model
 {
     use BelongsToCompany, HasFactory;

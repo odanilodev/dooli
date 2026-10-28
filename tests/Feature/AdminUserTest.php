@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRegistrationSource;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,6 +43,22 @@ class AdminUserTest extends TestCase
             ->assertJsonPath('data.0.id', $this->student->id);
     }
 
+    public function test_admin_can_filter_users_by_registration_source(): void
+    {
+        $storeUser = User::factory()->create([
+            'company_id' => $this->company->id,
+            'user_type_id' => $this->student->user_type_id,
+            'registration_source' => UserRegistrationSource::Store->value,
+        ]);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson('/api/v1/admin/users?registration_source='.UserRegistrationSource::Store->value)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $storeUser->id)
+            ->assertJsonPath('data.0.registration_source', UserRegistrationSource::Store->value);
+    }
+
     public function test_admin_can_filter_users_by_type(): void
     {
         $this->withToken($this->apiLogin($this->admin))
@@ -63,12 +80,14 @@ class AdminUserTest extends TestCase
             ])
             ->assertCreated()
             ->assertJsonPath('data.email', 'novo@cursos.test')
-            ->assertJsonPath('data.user_type.id', $this->student->user_type_id);
+            ->assertJsonPath('data.user_type.id', $this->student->user_type_id)
+            ->assertJsonPath('data.registration_source', UserRegistrationSource::Manual->value);
 
         $user = User::query()->where('email', 'novo@cursos.test')->first();
 
         $this->assertNotNull($user);
         $this->assertTrue(Hash::check('secret-password', $user->password));
+        $this->assertSame(UserRegistrationSource::Manual->value, $user->registration_source);
         $this->assertSame($this->company->id, $user->company_id);
     }
 

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\GatewayCode;
 use App\Enums\OrderEventActorType;
 use App\Enums\OrderEventType;
+use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentEventStatus;
 use App\Enums\PaymentStatus;
@@ -130,6 +131,7 @@ class OrderSeeder extends Seeder
                     'coupon_id' => $data['coupon_id'],
                 ],
                 [
+                    'source' => OrderSource::Store->value,
                     'subtotal' => $data['subtotal'],
                     'discount' => $data['discount'],
                     'total' => $data['total'],

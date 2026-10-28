@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\GeneralStatus;
+use App\Enums\UserRegistrationSource;
 use App\Enums\UserTypeCode;
 use App\Models\Company;
 use App\Models\User;
@@ -27,6 +28,7 @@ class DemoUserSeeder extends Seeder
                 'username' => 'admin',
                 'password' => Hash::make('password'),
                 'status' => GeneralStatus::Active->value,
+                'registration_source' => UserRegistrationSource::Manual->value,
                 'company_id' => $company->id,
                 'user_type_id' => $adminType->id,
             ],
@@ -41,6 +43,7 @@ class DemoUserSeeder extends Seeder
                 'username' => 'super',
                 'password' => Hash::make('password'),
                 'status' => GeneralStatus::Active->value,
+                'registration_source' => UserRegistrationSource::Manual->value,
                 'company_id' => $company->id,
                 'user_type_id' => $adminType->id,
             ],
@@ -55,6 +58,7 @@ class DemoUserSeeder extends Seeder
                 'username' => 'instrutor',
                 'password' => Hash::make('password'),
                 'status' => GeneralStatus::Active->value,
+                'registration_source' => UserRegistrationSource::Manual->value,
                 'company_id' => $company->id,
                 'user_type_id' => $instructorType->id,
                 'phone' => '+55 11 98888-0001',
@@ -69,6 +73,7 @@ class DemoUserSeeder extends Seeder
                 'username' => 'aluno',
                 'password' => Hash::make('password'),
                 'status' => GeneralStatus::Active->value,
+                'registration_source' => UserRegistrationSource::Store->value,
                 'company_id' => $company->id,
                 'user_type_id' => $studentType->id,
             ],

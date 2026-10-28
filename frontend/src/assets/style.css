@@ -898,6 +898,9 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 .status-pill.inactive,.status-pill.expired{background:rgba(148,163,184,.18);color:#94a3b8;}
 .status-pill.pending,.status-pill.past_due{background:rgba(234,179,8,.14);color:#d9a514;}
 .status-pill.canceled,.status-pill.refunded,.status-pill.failed{background:rgba(255,107,107,.14);color:#ff6b6b;}
+.status-pill.store{background:rgba(59,130,246,.14);color:#3b82f6;}
+.status-pill.manual{background:rgba(148,163,184,.18);color:#94a3b8;}
+.status-pill.unknown{background:rgba(148,163,184,.1);color:#94a3b8;}
 .admin-back{font-size:12.5px;font-weight:700;color:var(--text-muted);display:inline-block;margin-bottom:4px;}
 .admin-back:hover{color:var(--accent);}
 .admin-head-actions{display:flex;gap:10px;flex-wrap:wrap;}

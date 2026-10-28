@@ -113,6 +113,12 @@
           <option value="active">Ativos</option>
           <option value="inactive">Inativos</option>
         </select>
+        <select class="form-control filter-select" v-model="originFilter" @change="applyFilters">
+          <option value="">Todas as origens</option>
+          <option value="store">Loja</option>
+          <option value="manual">Manual</option>
+          <option value="unknown">Não identificado</option>
+        </select>
         <button class="btn btn-outline btn-sm" type="submit">Buscar</button>
       </form>
     </div>
@@ -149,7 +155,7 @@
                 @change="toggleAll(pageIds, $event.target.checked)"
               >
             </th>
-            <th>Usuário</th><th>E-mail</th><th>Tipo</th><th>Status</th><th></th>
+            <th>Usuário</th><th>E-mail</th><th>Tipo</th><th>Origem</th><th>Status</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -177,6 +183,7 @@
             </td>
             <td class="admin-muted">{{ user.email }}</td>
             <td class="admin-muted">{{ user.user_type?.name || '—' }}</td>
+            <td><span class="status-pill" :class="originClass(user.registration_source)">{{ originLabel(user.registration_source) }}</span></td>
             <td><span class="status-pill" :class="user.status">{{ statusLabel(user.status) }}</span></td>
             <td class="admin-actions">
               <button class="btn btn-outline btn-sm" @click="openEdit(user)">Editar</button>
@@ -220,6 +227,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
 import { useBulkSelection } from '../composables/useBulkSelection';
+import { originClass, originLabel } from '../utils/origin';
 import { useAuthStore } from '../stores/auth';
 import { useUsersStore } from '../stores/users';
 import { useUserTypesStore } from '../stores/userTypes';
@@ -244,6 +252,7 @@ const pageIds = computed(() => users.items.map((user) => user.id));
 const search = ref('');
 const typeFilter = ref('');
 const statusFilter = ref('');
+const originFilter = ref('');
 
 const form = reactive({
   name: '',
@@ -316,6 +325,7 @@ function load(page = 1) {
     search: search.value.trim() || undefined,
     user_type_id: typeFilter.value || undefined,
     status: statusFilter.value || undefined,
+    registration_source: originFilter.value || undefined,
   });
 }
 

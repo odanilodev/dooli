@@ -11,7 +11,7 @@ class UserRepository extends BaseRepository
 {
     protected array $searchable = ['name', 'email', 'username'];
 
-    protected array $filterable = ['status', 'user_type_id', 'company_id'];
+    protected array $filterable = ['status', 'registration_source', 'user_type_id', 'company_id'];
 
     protected string $defaultSort = 'id';
 

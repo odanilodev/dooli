@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\OrderSource;
 use App\Models\Company;
 use App\Models\Order;
 use App\Models\StoreProduct;
@@ -46,7 +47,9 @@ class AdminOrderTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('meta.total', 1)
             ->assertJsonPath('data.0.user.name', $this->student->name)
-            ->assertJsonPath('data.0.type', 'one_time');
+            ->assertJsonPath('data.0.user.registration_source', $this->student->registration_source)
+            ->assertJsonPath('data.0.type', 'one_time')
+            ->assertJsonPath('data.0.source', OrderSource::Store->value);
     }
 
     public function test_admin_can_show_an_order(): void
@@ -64,6 +67,7 @@ class AdminOrderTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.id', $orderId)
             ->assertJsonPath('data.user.name', $this->student->name)
+            ->assertJsonPath('data.source', OrderSource::Store->value)
             ->assertJsonPath('data.timeline.0.type', 'order.created');
     }
 

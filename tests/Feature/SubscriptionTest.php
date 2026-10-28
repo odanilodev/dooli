@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\OrderSource;
 use App\Enums\SubscriptionStatus;
 use App\Models\Gateway;
 use App\Models\StoreProduct;
@@ -70,6 +71,10 @@ class SubscriptionTest extends TestCase
         $subscription->refresh();
 
         $this->assertSame(SubscriptionStatus::Active->value, $subscription->status);
+        $this->assertDatabaseHas('orders', [
+            'subscription_id' => $subscription->id,
+            'source' => OrderSource::Store->value,
+        ]);
         $this->assertSame('2026-10-19 12:00:00', $subscription->current_period_start?->toDateTimeString());
         $this->assertSame('2026-11-19 12:00:00', $subscription->current_period_end?->toDateTimeString());
 

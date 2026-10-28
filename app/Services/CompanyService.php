@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\GeneralStatus;
+use App\Enums\UserRegistrationSource;
 use App\Enums\UserTypeCode;
 use App\Models\Company;
 use App\Models\User;
@@ -52,6 +53,7 @@ class CompanyService
                     'email' => $data['admin_email'],
                     'password' => $data['admin_password'],
                     'status' => GeneralStatus::Active->value,
+                    'registration_source' => UserRegistrationSource::Manual->value,
                 ]);
 
                 return [$company, $admin];
