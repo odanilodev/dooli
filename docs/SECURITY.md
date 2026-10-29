@@ -27,6 +27,14 @@
 - Exceção: a página pública do certificado (`/public/certificates/{uuid}`) resolve a empresa pelo UUID e não aceita header de tenant; o código é não sequencial e só retorna certificados válidos.
 - O tenant do webhook é derivado do **pagamento resolvido**, não do header enviado.
 
+### Vendedores e comissões
+- Vendedores e comissões são restritos ao admin da empresa (`SellerPolicy`/`SellerCommissionPolicy`); instrutores e alunos recebem `403`.
+- O kit público usa token aleatório de 48 caracteres, pode ser rotacionado e não expõe comissões, vendas ou clientes. Vendedor inativo retorna `404`.
+- O código `?ref` é validado no backend por empresa e status; pedidos não confiam no código para definir preço ou desconto.
+- Comissões são geradas apenas na confirmação do pagamento, com idempotência, e ajustadas pelos estornos. O cliente não envia valor de comissão.
+- A atribuição anônima fica no `localStorage` por 30 dias; é controlada pelo navegador e adequada a vendedores internos. Para programa público de afiliados, evoluir para clique registrado no servidor com token assinado.
+- O kit responde com `noindex, nofollow` no frontend e usa `throttle:public`.
+
 ### Mass assignment
 - Todos os models usam `#[Fillable]` explícito; nenhum `$guarded = []`.
 

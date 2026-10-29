@@ -20,6 +20,9 @@ Migrations originais já indexam `status` e chaves estrangeiras (InnoDB). A migr
 - `lessons(topic_id, status, sort_order)`
 - `lessons(module_id, status, sort_order)`
 - `store_products(company_id, status, release_at)`
+- `sellers(company_id, status)` + unique `(company_id, code)` e `share_token`
+- `orders(seller_id)` e `subscriptions(seller_id)`
+- `seller_commissions(company_id, seller_id, status)` e `(seller_id, created_at)`
 
 ### Processamento assíncrono
 - Webhooks processados por `ProcessPaymentWebhookJob` (fila), tirando o processamento pesado do ciclo HTTP.

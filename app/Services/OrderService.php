@@ -24,6 +24,7 @@ class OrderService
         private readonly CouponService $coupons,
         private readonly DatalogService $audit,
         private readonly OrderEventService $events,
+        private readonly SellerAttributionService $sellerAttribution,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -31,7 +32,7 @@ class OrderService
         return $this->orders->paginate(
             perPage: $perPage,
             filters: $filters,
-            with: ['items.storeProduct', 'latestPayment', 'user'],
+            with: ['items.storeProduct', 'latestPayment', 'user', 'seller'],
             sort: $filters['sort'] ?? null,
             direction: $filters['direction'] ?? 'desc',
             withCount: ['items'],
@@ -48,6 +49,8 @@ class OrderService
         return DB::transaction(function () use ($dto) {
             $items = [];
             $subtotal = 0.0;
+            $user = User::query()->findOrFail($dto->userId);
+            $seller = $this->sellerAttribution->resolveForUser($user, $dto->referralCode);
 
             foreach ($dto->items as $item) {
                 $storeProduct = $this->storeProducts->find((int) $item['store_product_id']);
@@ -76,7 +79,7 @@ class OrderService
             if ($dto->couponCode) {
                 $result = $this->coupons->validate(
                     new ApplyCouponDTO($dto->couponCode, $dto->items),
-                    User::query()->findOrFail($dto->userId),
+                    $user,
                 );
 
                 $coupon = $result['coupon'];
@@ -87,6 +90,9 @@ class OrderService
             $order = $this->orders->create([
                 'user_id' => $dto->userId,
                 'coupon_id' => $coupon?->id,
+                'seller_id' => $seller?->id,
+                'referral_code' => $seller?->code,
+                'commission_percent' => $seller?->commission_percent,
                 'status' => OrderStatus::Pending->value,
                 'source' => OrderSource::Store->value,
                 'subtotal' => $subtotal,
@@ -111,12 +117,14 @@ class OrderService
                     'discount' => (float) $order->discount,
                     'total' => (float) $order->total,
                     'coupon_code' => $coupon?->code,
+                    'seller_id' => $seller?->id,
+                    'seller_code' => $seller?->code,
                 ],
             ]);
 
             $this->audit->log('order', 'create', 'order', "Pedido criado: {$order->id}", $dto->userId);
 
-            return $order->load(['items.storeProduct', 'coupon']);
+            return $order->load(['items.storeProduct', 'coupon', 'seller']);
         });
     }
 

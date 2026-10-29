@@ -22,6 +22,12 @@ class OrderResource extends JsonResource
             'period_start' => $this->period_start?->toIso8601String(),
             'period_end' => $this->period_end?->toIso8601String(),
             'coupon' => new CouponResource($this->whenLoaded('coupon')),
+            'seller' => $this->whenLoaded('seller', fn () => $this->seller ? [
+                'id' => $this->seller->id,
+                'name' => $this->seller->name,
+                'code' => $this->seller->code,
+            ] : null),
+            'referral_code' => $this->referral_code,
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
             'items_count' => $this->whenCounted('items'),
             'payments' => PaymentResource::collection($this->whenLoaded('payments')),

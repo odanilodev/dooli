@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Company;
+use App\Models\Seller;
 use App\Models\StoreProduct;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -145,22 +146,47 @@ class DomainTenantTest extends TestCase
         $this->company->update(['domain' => 'ourovelho.test']);
 
         $this->assertSame('https://ourovelho.test/', $this->company->publicStoreUrl());
+        $this->assertSame('https://ourovelho.test/?ref=joao123', $this->company->publicStoreUrl('joao123'));
+        $this->assertSame('https://ourovelho.test/produto/curso-php?ref=joao123', $this->company->publicProductUrl('curso-php', 'joao123'));
+        $this->assertSame('https://ourovelho.test/vendedor/token-123', $this->company->sellerKitUrl('token-123'));
         $this->assertSame('https://ourovelho.test/pedido/42', $this->company->publicOrderUrl(42));
         $this->assertSame('https://ourovelho.test/minhas-assinaturas', $this->company->publicSubscriptionsUrl());
 
         $this->company->update(['domain' => null]);
 
         $this->assertSame(
-            'http://localhost:5174/#/e/'.$this->company->slug.'/loja',
+            'http://localhost:5174/e/'.$this->company->slug.'/loja',
             $this->company->publicStoreUrl(),
         );
         $this->assertSame(
-            'http://localhost:5174/#/e/'.$this->company->slug.'/pedido/42',
+            'http://localhost:5174/e/'.$this->company->slug.'/loja/curso-php?ref=joao123',
+            $this->company->publicProductUrl('curso-php', 'joao123'),
+        );
+        $this->assertSame(
+            'http://localhost:5174/e/'.$this->company->slug.'/vendedor/token-123',
+            $this->company->sellerKitUrl('token-123'),
+        );
+        $this->assertSame(
+            'http://localhost:5174/e/'.$this->company->slug.'/pedido/42',
             $this->company->publicOrderUrl(42),
         );
         $this->assertSame(
-            'http://localhost:5174/#/e/'.$this->company->slug.'/assinaturas',
+            'http://localhost:5174/e/'.$this->company->slug.'/assinaturas',
             $this->company->publicSubscriptionsUrl(),
         );
+    }
+
+    public function test_seller_kit_resolves_the_tenant_by_domain(): void
+    {
+        $this->company->update(['domain' => 'vendas.test']);
+
+        $seller = Seller::factory()->create([
+            'company_id' => $this->company->id,
+        ]);
+
+        $this->withHeader('X-Company-Domain', 'vendas.test')
+            ->getJson('/api/v1/public/tenant/seller-kits/'.$seller->share_token)
+            ->assertOk()
+            ->assertJsonPath('data.seller.name', $seller->name);
     }
 }

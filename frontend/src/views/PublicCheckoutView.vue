@@ -225,6 +225,7 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api/http';
 import { paletteAt } from '../data/palette';
+import { useReferral } from '../composables/useReferral';
 import { useTenant } from '../composables/useTenant';
 import { useAuthStore } from '../stores/auth';
 import { useStorefrontStore } from '../stores/storefront';
@@ -236,6 +237,7 @@ const router = useRouter();
 const auth = useAuthStore();
 const storefront = useStorefrontStore();
 const toast = useToast();
+const referral = useReferral();
 const { companySlug, publicRoute } = useTenant();
 
 const product = ref(null);
@@ -309,6 +311,7 @@ async function submit() {
       const { data } = await api.post('/me/subscriptions', {
         store_product_id: product.value.id,
         gateway_id: gateway.value.id,
+        referral_code: referral.current(companySlug.value) || null,
       });
 
       if (data.data?.checkout_url) {
@@ -328,6 +331,7 @@ async function submit() {
     const order = await api.post('/me/orders', {
       items: [{ store_product_id: product.value.id, quantity: 1 }],
       coupon_code: coupon.value.trim() || null,
+      referral_code: referral.current(companySlug.value) || null,
     });
 
     orderId.value = order.data.data.id;

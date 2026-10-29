@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['company_id', 'order_id', 'store_product_id', 'product_title', 'product_access_label', 'quantity', 'unit_price', 'total'])]
 class OrderItem extends Model
@@ -30,5 +31,10 @@ class OrderItem extends Model
     public function storeProduct(): BelongsTo
     {
         return $this->belongsTo(StoreProduct::class);
+    }
+
+    public function sellerCommission(): HasOne
+    {
+        return $this->hasOne(SellerCommission::class);
     }
 }

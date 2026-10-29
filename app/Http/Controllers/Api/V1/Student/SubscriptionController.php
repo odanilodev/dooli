@@ -33,7 +33,12 @@ class SubscriptionController extends ApiController
         $product = StoreProduct::query()->findOrFail((int) $request->validated('store_product_id'));
         $gateway = Gateway::query()->findOrFail((int) $request->validated('gateway_id'));
 
-        $result = $this->subscriptions->start($request->user(), $product, $gateway);
+        $result = $this->subscriptions->start(
+            $request->user(),
+            $product,
+            $gateway,
+            $request->validated('referral_code'),
+        );
 
         return ApiResponse::success([
             'subscription' => new SubscriptionResource($result['subscription']),

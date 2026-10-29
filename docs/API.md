@@ -121,10 +121,12 @@ Aceita `email` ou `username` (um dos dois é obrigatório).
   "email": "novo.aluno@example.com",
   "password": "senha-segura",
   "password_confirmation": "senha-segura",
-  "terms": true
+  "terms": true,
+  "referral_code": "joao123"
 }
 ```
 O `username` é gerado automaticamente a partir do e-mail (com sufixo numérico em caso de conflito). O tipo de usuário é sempre `student`, vinculado à empresa do header. Contas criadas pelo admin manualmente são verificadas automaticamente e não recebem código.
+`referral_code` Ǹ opcional e registra a atribui��ǜo ao vendedor por 30 dias.
 **Sucesso 201:**
 ```json
 {
@@ -328,6 +330,7 @@ Lista notificações do aluno. `POST /api/v1/me/notifications/{notification}/rea
 { "items": [ { "store_product_id": 1, "quantity": 1 } ], "coupon_code": "DESC10" }
 ```
 - `GET /api/v1/me/orders/{order}` — detalhe (apenas do próprio aluno)
+
 - `POST /api/v1/me/orders/{order}/cancel` — cancela pedido pendente
 
 ### Comentários e avaliações
@@ -399,6 +402,25 @@ CRUD. Campos: `title`, `slug`, `description`, `tags[]`, `price`, `sale`, `status
 ### Pedidos (`orders`)
 - `GET /orders` — lista os pedidos da empresa (filtros: `status`, `user_id`, `search`, `sort`, `direction`)
 - `GET /orders/{order}` — detalhe do pedido (itens, pagamentos, cupom, cliente)
+- Filtro adicional em `GET /orders`: `seller_id`.
+
+### Vendedores (`sellers`)
+- `GET /sellers` - lista com métricas (filtros: `search`, `status`, `sort`, `direction`)
+- `POST /sellers` - cria vendedor (`name`, `email?`, `phone?`, `user_id?`, `code?`, `commission_percent`, `status?`, `notes?`)
+- `GET /sellers/{seller}` - detalhe com métricas, vendas por produto e pedidos recentes
+- `PUT /sellers/{seller}` - atualiza vendedor
+- `DELETE /sellers/{seller}` - exclui apenas vendedor sem histórico
+- `POST /sellers/{seller}/rotate-kit` - rotaciona o token do kit de links
+
+### Comissões (`commissions`)
+- `GET /commissions` - extrato por item (filtros: `search`, `status`, `seller_id`, `product_id`, `order_id`, `date_from`, `date_to`)
+- `GET /commissions/summary` - totais de a pagar, pagas, estornadas e geradas
+- `GET /commissions/export` - exporta XLSX com os mesmos filtros
+- `POST /commissions/{commission}/pay` - marca uma comissão como paga (`paid_at?`, `payment_reference?`, `payment_notes?`)
+- `POST /commissions/bulk-pay` - marca várias comissões como pagas (`ids[]`)
+
+> Regras completas de atribuição, kit de links, congelamento de percentual e estornos em [`SELLERS.md`](SELLERS.md).
+
 
 ### Certificados emitidos (`certificate-users`)
 - `GET /certificate-users` — lista os certificados **emitidos** (filtros: `user_id`, `team_id`, `certificate_id`, `course_id`); cada item inclui `modules` com a grade congelada e `status` (`valid`, `replaced` ou `revoked`)
@@ -534,6 +556,7 @@ Cada empresa possui um `slug` unico. A loja publica resolve o tenant pela URL, s
 - `GET /api/v1/public/companies/{companySlug}`
 - `GET /api/v1/public/companies/{companySlug}/store/products`
 - `GET /api/v1/public/companies/{companySlug}/store/products/{productSlug}`
+- `GET /api/v1/public/companies/{companySlug}/seller-kits/{token}`
 - `POST /api/v1/public/companies/{companySlug}/auth/login`
 - `POST /api/v1/public/companies/{companySlug}/auth/register`
 - `POST /api/v1/public/companies/{companySlug}/auth/verify-email`
@@ -552,6 +575,7 @@ Cada empresa pode ter um `domain` unico. O host e a chave do tenant: a loja abre
 - `GET /api/v1/public/tenant` - empresa, branding, storefront e banners
 - `GET /api/v1/public/tenant/store/products`
 - `GET /api/v1/public/tenant/store/products/{productSlug}`
+- `GET /api/v1/public/tenant/seller-kits/{token}`
 - `POST /api/v1/public/tenant/auth/login`
 - `POST /api/v1/public/tenant/auth/register`
 - `POST /api/v1/public/tenant/auth/verify-email`
@@ -567,7 +591,7 @@ Headers:
 
 Dominios centrais da plataforma (super admin) ficam em `PLATFORM_DOMAINS` (virgula). Eles nunca sao resolvidos como tenant. As rotas antigas `/public/companies/{companySlug}` permanecem como fallback local/legado.
 
-Reset de senha, retorno de pagamento MercadoPago, assinaturas e certificados usam `https://{domain}/...` quando a empresa tem dominio; sem dominio, usam o fallback `FRONTEND_URL` com rotas `/#/e/{slug}/...`.
+Reset de senha usa `https://{domain}/reset-password` quando a empresa tem dominio; sem dominio, usa `FRONTEND_URL/#/reset-password`. Links publicos de loja, produto, pedido, assinatura e kit de vendedor usam `https://{domain}/...` ou o fallback `FRONTEND_URL/e/{slug}/...`.
 
 ### Produto
 

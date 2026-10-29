@@ -94,19 +94,22 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import BrandLogo from '../components/BrandLogo.vue';
+import { useReferral } from '../composables/useReferral';
 import { useTenant } from '../composables/useTenant';
 import { useTheme } from '../composables/useTheme';
 import { useAuthStore } from '../stores/auth';
 import { resetUserStores } from '../stores/resetUserStores';
 import { useStorefrontStore } from '../stores/storefront';
 
+const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const storefront = useStorefrontStore();
 const { toggleTheme } = useTheme();
 const { tenant, companySlug, publicRoute } = useTenant();
+const referral = useReferral();
 
 const userMenuOpen = ref(false);
 const userMenuRef = ref(null);
@@ -126,6 +129,22 @@ watch(
       await storefront.loadCompany(slug);
     } catch (e) {
       /* the error is rendered above */
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  [() => route.query.ref, companySlug, () => storefront.company?.slug],
+  ([ref, slug, companySlugFallback]) => {
+    if (typeof ref !== 'string' || ref === '') {
+      return;
+    }
+
+    const company = slug || companySlugFallback;
+
+    if (company) {
+      referral.capture(company, ref);
     }
   },
   { immediate: true },

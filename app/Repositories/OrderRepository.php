@@ -10,7 +10,7 @@ class OrderRepository extends BaseRepository
 {
     protected array $searchable = ['status'];
 
-    protected array $filterable = ['status', 'user_id', 'company_id', 'coupon_id'];
+    protected array $filterable = ['status', 'user_id', 'company_id', 'coupon_id', 'seller_id'];
 
     protected string $defaultSort = 'id';
 
@@ -29,6 +29,8 @@ class OrderRepository extends BaseRepository
                 'payments.refunds',
                 'coupon',
                 'user',
+                'seller',
+                'sellerCommissions.seller',
             ])
             ->findOrFail($id);
     }

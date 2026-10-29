@@ -31,12 +31,13 @@ class SubscriptionService
         private readonly AccessGrantService $accessGrants,
         private readonly DatalogService $audit,
         private readonly OrderEventService $orderEvents,
+        private readonly SellerAttributionService $sellerAttribution,
     ) {}
 
     /**
      * @return array{subscription: Subscription, checkout_url: string|null}
      */
-    public function start(User $user, StoreProduct $product, Gateway $gateway): array
+    public function start(User $user, StoreProduct $product, Gateway $gateway, ?string $referralCode = null): array
     {
         if ($product->billing_type !== BillingType::Subscription->value) {
             throw new BusinessRuleException('Este produto não é uma assinatura.', 'product_not_subscription');
@@ -60,11 +61,16 @@ class SubscriptionService
             throw new BusinessRuleException('Você já possui uma assinatura para este produto.', 'subscription_already_active');
         }
 
+        $seller = $this->sellerAttribution->resolveForUser($user, $referralCode);
+
         $subscription = Subscription::query()->create([
             'company_id' => $product->company_id,
             'user_id' => $user->id,
             'store_product_id' => $product->id,
             'gateway_id' => $gateway->id,
+            'seller_id' => $seller?->id,
+            'referral_code' => $seller?->code,
+            'commission_percent' => $seller?->commission_percent,
             'status' => SubscriptionStatus::Pending->value,
             'amount' => $product->effectivePrice(),
         ]);
@@ -218,6 +224,9 @@ class SubscriptionService
             'company_id' => $subscription->company_id,
             'user_id' => $subscription->user_id,
             'subscription_id' => $subscription->id,
+            'seller_id' => $subscription->seller_id,
+            'referral_code' => $subscription->referral_code,
+            'commission_percent' => $subscription->commission_percent,
             'status' => OrderStatus::Pending->value,
             'source' => OrderSource::Store->value,
             'subtotal' => $subscription->amount,

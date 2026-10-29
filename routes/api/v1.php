@@ -23,6 +23,8 @@ use App\Http\Controllers\Api\V1\Admin\PaymentController as AdminPaymentControlle
 use App\Http\Controllers\Api\V1\Admin\RatingController as AdminRatingController;
 use App\Http\Controllers\Api\V1\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Api\V1\Admin\ScheduleController as AdminScheduleController;
+use App\Http\Controllers\Api\V1\Admin\SellerCommissionController as AdminSellerCommissionController;
+use App\Http\Controllers\Api\V1\Admin\SellerController as AdminSellerController;
 use App\Http\Controllers\Api\V1\Admin\StorefrontSettingController as AdminStorefrontSettingController;
 use App\Http\Controllers\Api\V1\Admin\StoreProductController as AdminStoreProductController;
 use App\Http\Controllers\Api\V1\Admin\SubscriptionController as AdminSubscriptionController;
@@ -41,6 +43,7 @@ use App\Http\Controllers\Api\V1\Public\BannerController as PublicBannerControlle
 use App\Http\Controllers\Api\V1\Public\BrandingController as PublicBrandingController;
 use App\Http\Controllers\Api\V1\Public\CertificateVerifyController;
 use App\Http\Controllers\Api\V1\Public\CompanyController as PublicCompanyController;
+use App\Http\Controllers\Api\V1\Public\SellerKitController;
 use App\Http\Controllers\Api\V1\Public\StoreController;
 use App\Http\Controllers\Api\V1\Public\StorefrontController as PublicStorefrontController;
 use App\Http\Controllers\Api\V1\Student\CertificateController as StudentCertificateController;
@@ -80,6 +83,8 @@ Route::prefix('public/tenant')
         Route::get('/', [PublicCompanyController::class, 'show']);
         Route::get('store/products', [StoreController::class, 'index']);
         Route::get('store/products/{productSlug}', [StoreController::class, 'showPublic']);
+        Route::get('seller-kits/{token}', [SellerKitController::class, 'show'])
+            ->where('token', '[A-Za-z0-9]+');
 
         Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth');
         Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:auth');
@@ -100,6 +105,8 @@ Route::prefix('public/companies/{companySlug}')
         Route::get('/', [PublicCompanyController::class, 'show']);
         Route::get('store/products', [StoreController::class, 'index']);
         Route::get('store/products/{productSlug}', [StoreController::class, 'showPublic']);
+        Route::get('seller-kits/{token}', [SellerKitController::class, 'show'])
+            ->where('token', '[A-Za-z0-9]+');
 
         Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth');
         Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:auth');
@@ -281,6 +288,15 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::post('payments/{payment}/refund', [AdminPaymentController::class, 'refund']);
 
         Route::apiResource('orders', AdminOrderController::class)->only(['index', 'show']);
+
+        Route::apiResource('sellers', AdminSellerController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
+        Route::post('sellers/{seller}/rotate-kit', [AdminSellerController::class, 'rotateKit']);
+
+        Route::get('commissions/summary', [AdminSellerCommissionController::class, 'summary']);
+        Route::get('commissions/export', [AdminSellerCommissionController::class, 'export']);
+        Route::get('commissions', [AdminSellerCommissionController::class, 'index']);
+        Route::post('commissions/bulk-pay', [AdminSellerCommissionController::class, 'bulkMarkPaid']);
+        Route::post('commissions/{commission}/pay', [AdminSellerCommissionController::class, 'markPaid']);
 
         Route::get('company/public-link', [AdminCompanyLinkController::class, 'show']);
         Route::apiResource('subscriptions', AdminSubscriptionController::class)->only(['index', 'show']);

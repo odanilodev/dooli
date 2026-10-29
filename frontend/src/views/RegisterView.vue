@@ -95,19 +95,22 @@
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useReferral } from '../composables/useReferral';
 import { useTenant } from '../composables/useTenant';
 import { useToast } from '../composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
+const referral = useReferral();
 const toast = useToast();
 const {
   legacySlug,
   isTenant,
+  companySlug: tenantCompanySlug,
   publicRoute,
   loginRoute: tenantLoginRoute,
   verifyEmailRoute,
@@ -116,6 +119,17 @@ const {
 const form = reactive({ name: '', email: '', password: '', passwordConfirm: '', terms: false });
 const mismatch = computed(() => form.password && form.passwordConfirm && form.password !== form.passwordConfirm);
 const companySlug = computed(() => legacySlug.value);
+const referralCompany = computed(() => tenantCompanySlug.value);
+
+watch(
+  () => route.query.ref,
+  (ref) => {
+    if (typeof ref === 'string' && ref !== '' && referralCompany.value) {
+      referral.capture(referralCompany.value, ref);
+    }
+  },
+  { immediate: true },
+);
 const loginRoute = computed(() => tenantLoginRoute());
 const nextUrl = computed(() => safeNext(route.query.next));
 
@@ -156,6 +170,7 @@ async function submit() {
       password: form.password,
       password_confirmation: form.passwordConfirm,
       terms: true,
+      referral_code: referral.current(referralCompany.value) || null,
     }, companySlug.value);
 
     toast.success('Conta criada! Confirme seu e-mail para entrar.');

@@ -50,7 +50,7 @@ class Company extends Model
 
     /**
      * Resolve a frontend path using the company domain when available, or the
-     * legacy slug-based hash route as a fallback.
+     * slug-based route as a fallback.
      */
     public function frontendPath(string $path = ''): string
     {
@@ -61,17 +61,36 @@ class Company extends Model
         }
 
         return $this->frontendUrl()
-            .'/#/e/'.rawurlencode((string) $this->slug)
+            .'/e/'.rawurlencode((string) $this->slug)
             .($path === '' ? '' : '/'.$path);
     }
 
-    public function publicStoreUrl(): string
+    public function publicStoreUrl(?string $ref = null): string
     {
-        if (filled($this->domain)) {
-            return $this->frontendUrl().'/';
-        }
+        $url = filled($this->domain)
+            ? $this->frontendUrl().'/'
+            : $this->frontendPath('loja');
 
-        return $this->frontendPath('loja');
+        return $this->appendReferral($url, $ref);
+    }
+
+    public function publicProductUrl(string $productSlug, ?string $ref = null): string
+    {
+        $slug = rawurlencode($productSlug);
+        $url = filled($this->domain)
+            ? $this->frontendUrl().'/produto/'.$slug
+            : $this->frontendPath('loja/'.$slug);
+
+        return $this->appendReferral($url, $ref);
+    }
+
+    public function sellerKitUrl(string $token): string
+    {
+        $token = rawurlencode($token);
+
+        return filled($this->domain)
+            ? $this->frontendUrl().'/vendedor/'.$token
+            : $this->frontendPath('vendedor/'.$token);
     }
 
     public function publicOrderUrl(int $orderId): string
@@ -86,6 +105,17 @@ class Company extends Model
         }
 
         return $this->frontendPath('assinaturas');
+    }
+
+    private function appendReferral(string $url, ?string $ref): string
+    {
+        $ref = Seller::normalizeCode($ref);
+
+        if ($ref === null) {
+            return $url;
+        }
+
+        return $url.(str_contains($url, '?') ? '&' : '?').'ref='.rawurlencode($ref);
     }
 
     public static function normalizeDomain(?string $value): ?string
@@ -144,5 +174,10 @@ class Company extends Model
     public function settings(): HasMany
     {
         return $this->hasMany(CompanySetting::class);
+    }
+
+    public function sellers(): HasMany
+    {
+        return $this->hasMany(Seller::class);
     }
 }

@@ -27,6 +27,7 @@ class StoreSubscriptionRequest extends FormRequest
                     ->where('company_id', (int) $this->user()?->company_id)
                     ->where('status', 'active'),
             ],
+            'referral_code' => ['nullable', 'string', 'max:32'],
         ];
     }
 }

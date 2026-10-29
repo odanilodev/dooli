@@ -9,6 +9,7 @@ const LEGACY_ROUTES = {
   'public-pedido': 'legacy-pedido',
   'public-compras': 'legacy-compras',
   'public-assinaturas': 'legacy-assinaturas',
+  'public-vendedor': 'legacy-vendedor',
   'public-termos': 'legacy-termos',
   'public-login': 'legacy-login',
   'public-cadastro': 'legacy-cadastro',

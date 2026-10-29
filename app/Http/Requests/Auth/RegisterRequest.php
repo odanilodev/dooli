@@ -20,6 +20,7 @@ class RegisterRequest extends FormRequest
         $this->merge([
             'name' => is_string($this->name) ? trim($this->name) : $this->name,
             'email' => is_string($this->email) ? Str::lower(trim($this->email)) : $this->email,
+            'referral_code' => is_string($this->referral_code) ? Str::lower(trim($this->referral_code)) : $this->referral_code,
         ]);
     }
 
@@ -36,6 +37,7 @@ class RegisterRequest extends FormRequest
             ],
             'password' => ['required', 'confirmed', Password::defaults()],
             'terms' => ['required', 'accepted'],
+            'referral_code' => ['nullable', 'string', 'max:32'],
             'device_name' => ['sometimes', 'string', 'max:100'],
         ];
     }

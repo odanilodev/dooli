@@ -22,6 +22,7 @@ class AuthService
         private readonly UserRepository $users,
         private readonly DatalogService $audit,
         private readonly EmailVerificationService $emailVerification,
+        private readonly SellerAttributionService $sellerAttribution,
     ) {}
 
     /**
@@ -44,7 +45,7 @@ class AuthService
      * Registers a new student inside the current tenant and sends the e-mail
      * confirmation code. The account is not authenticated until verified.
      *
-     * @param  array{name: string, email: string, password: string}  $data
+     * @param  array{name: string, email: string, password: string, referral_code?: string|null}  $data
      */
     public function register(array $data): User
     {
@@ -71,6 +72,8 @@ class AuthService
             'status' => GeneralStatus::Active->value,
             'registration_source' => UserRegistrationSource::Store->value,
         ]);
+
+        $this->sellerAttribution->rememberFromCode($user, $data['referral_code'] ?? null);
 
         $this->audit->log('auth', 'register', 'user', 'Novo aluno cadastrado', $user->id);
 

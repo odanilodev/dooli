@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'company_id', 'user_id', 'store_product_id', 'gateway_id',
+    'seller_id', 'referral_code', 'commission_percent',
     'provider_subscription_id', 'status', 'amount',
     'current_period_start', 'current_period_end', 'grace_ends_at',
     'next_billing_at', 'canceled_at', 'metadata',
@@ -26,6 +27,7 @@ class Subscription extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'commission_percent' => 'decimal:2',
             'current_period_start' => 'datetime',
             'current_period_end' => 'datetime',
             'grace_ends_at' => 'datetime',
@@ -48,6 +50,11 @@ class Subscription extends Model
     public function gateway(): BelongsTo
     {
         return $this->belongsTo(Gateway::class);
+    }
+
+    public function seller(): BelongsTo
+    {
+        return $this->belongsTo(Seller::class);
     }
 
     public function orders(): HasMany

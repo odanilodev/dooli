@@ -19,7 +19,8 @@ use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable([
     'name', 'username', 'email', 'email_verified_at', 'password', 'status', 'registration_source',
-    'user_type_id', 'company_id', 'image', 'phone', 'address', 'city',
+    'user_type_id', 'company_id', 'referred_seller_id', 'referral_expires_at',
+    'image', 'phone', 'address', 'city',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -33,6 +34,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'referral_expires_at' => 'datetime',
             'password' => 'hashed',
             'is_super_admin' => 'boolean',
         ];
@@ -51,6 +53,11 @@ class User extends Authenticatable
     public function userType(): BelongsTo
     {
         return $this->belongsTo(UserType::class);
+    }
+
+    public function referredSeller(): BelongsTo
+    {
+        return $this->belongsTo(Seller::class, 'referred_seller_id');
     }
 
     public function teams(): BelongsToMany

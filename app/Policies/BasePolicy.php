@@ -47,6 +47,11 @@ abstract class BasePolicy
         return $this->canManage($user);
     }
 
+    public function updateAny(User $user): bool
+    {
+        return $this->canManage($user);
+    }
+
     public function update(User $user, mixed $model): bool
     {
         return $this->canManage($user) && $this->sameCompany($user, $model);

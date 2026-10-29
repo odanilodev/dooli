@@ -11,6 +11,7 @@ class CreateOrderDTO
         public readonly int $userId,
         public readonly array $items,
         public readonly ?string $couponCode = null,
+        public readonly ?string $referralCode = null,
     ) {}
 
     public static function fromArray(array $data, int $userId): self
@@ -19,6 +20,7 @@ class CreateOrderDTO
             userId: $userId,
             items: $data['items'],
             couponCode: $data['coupon_code'] ?? null,
+            referralCode: $data['referral_code'] ?? null,
         );
     }
 }

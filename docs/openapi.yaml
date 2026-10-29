@@ -1,4 +1,4 @@
-﻿openapi: 3.0.3
+openapi: 3.0.3
 info:
   title: Cursos API
   description: API REST da plataforma de cursos (Laravel 13 + Sanctum, multi-tenant).
@@ -904,6 +904,148 @@ paths:
         - { name: gateway, in: path, required: true, schema: { type: string } }
       responses:
         '202': { description: Processado }
+  /api/v1/admin/sellers:
+    get:
+      tags: [Admin]
+      summary: Lista vendedores com métricas
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string, enum: [active, inactive] } }
+      responses:
+        '200': { description: Lista paginada }
+        '403': { description: Apenas admin da empresa }
+    post:
+      tags: [Admin]
+      summary: Cria vendedor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, commission_percent]
+              properties:
+                name: { type: string, maxLength: 255 }
+                email: { type: string, format: email, nullable: true }
+                phone: { type: string, maxLength: 40, nullable: true }
+                user_id: { type: integer, nullable: true }
+                code: { type: string, maxLength: 32, nullable: true }
+                commission_percent: { type: number, minimum: 0, maximum: 100 }
+                status: { type: string, enum: [active, inactive] }
+                notes: { type: string, nullable: true }
+      responses:
+        '201': { description: Vendedor criado }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /api/v1/admin/sellers/{seller}:
+    parameters:
+      - { name: seller, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Admin]
+      summary: Detalhe do vendedor com métricas, produtos e pedidos recentes
+      responses:
+        '200': { description: Detalhe }
+        '404': { description: Vendedor não encontrado }
+    put:
+      tags: [Admin]
+      summary: Atualiza vendedor
+      responses:
+        '200': { description: Vendedor atualizado }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Admin]
+      summary: Exclui vendedor sem histórico
+      responses:
+        '204': { description: Excluído }
+        '422': { description: Vendedor possui histórico; inative em vez de excluir }
+  /api/v1/admin/sellers/{seller}/rotate-kit:
+    post:
+      tags: [Admin]
+      summary: Gera novo token do kit
+      parameters:
+        - { name: seller, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: Novo link do kit }
+  /api/v1/admin/commissions:
+    get:
+      tags: [Admin]
+      summary: Lista comissões por item
+      parameters:
+        - { name: seller_id, in: query, schema: { type: integer } }
+        - { name: product_id, in: query, schema: { type: integer } }
+        - { name: status, in: query, schema: { type: string, enum: [approved, paid, reversed] } }
+        - { name: date_from, in: query, schema: { type: string, format: date } }
+        - { name: date_to, in: query, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Lista paginada }
+  /api/v1/admin/commissions/summary:
+    get:
+      tags: [Admin]
+      summary: Totais de comissões
+      responses:
+        '200': { description: Totais }
+  /api/v1/admin/commissions/export:
+    get:
+      tags: [Admin]
+      summary: Exporta comissões em XLSX
+      responses:
+        '200': { description: Arquivo XLSX }
+  /api/v1/admin/commissions/{commission}/pay:
+    post:
+      tags: [Admin]
+      summary: Marca uma comissão como paga
+      parameters:
+        - { name: commission, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paid_at: { type: string, format: date-time, nullable: true }
+                payment_reference: { type: string, nullable: true }
+                payment_notes: { type: string, nullable: true }
+      responses:
+        '200': { description: Comissão paga }
+        '422': { description: Comissão não pagável }
+  /api/v1/admin/commissions/bulk-pay:
+    post:
+      tags: [Admin]
+      summary: Marca várias comissões como pagas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids: { type: array, items: { type: integer } }
+      responses:
+        '200': { description: Quantidade atualizada }
+  /api/v1/public/companies/{companySlug}/seller-kits/{token}:
+    get:
+      tags: [Store]
+      summary: Kit público de links do vendedor por slug
+      security: []
+      parameters:
+        - { name: companySlug, in: path, required: true, schema: { type: string } }
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Kit com produtos e links com ref }
+        '404': { description: Kit indisponível }
+  /api/v1/public/tenant/seller-kits/{token}:
+    get:
+      tags: [Store]
+      summary: Kit público de links do vendedor por domínio
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XCompanyDomain'
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Kit com produtos e links com ref }
+        '404': { description: Kit indisponível }
+
 components:
   securitySchemes:
     bearerAuth:

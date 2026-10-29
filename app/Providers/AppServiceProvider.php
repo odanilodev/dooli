@@ -21,6 +21,8 @@ use App\Repositories\ModuleRepository;
 use App\Repositories\NotificationRepository;
 use App\Repositories\OrderRepository;
 use App\Repositories\PaymentRepository;
+use App\Repositories\SellerCommissionRepository;
+use App\Repositories\SellerRepository;
 use App\Repositories\StoreProductRepository;
 use App\Repositories\StudentLessonProgressRepository;
 use App\Repositories\TeamRepository;
@@ -63,6 +65,8 @@ class AppServiceProvider extends ServiceProvider
         NotificationRepository::class,
         OrderRepository::class,
         PaymentRepository::class,
+        SellerCommissionRepository::class,
+        SellerRepository::class,
         CourseRepository::class,
         StoreProductRepository::class,
         StudentLessonProgressRepository::class,

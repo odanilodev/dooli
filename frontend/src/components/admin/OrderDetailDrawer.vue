@@ -47,6 +47,11 @@
             <span class="admin-sub">Estornado</span>
             <strong class="refunded-value">{{ formatCurrency(order.refunded_total) }}</strong>
           </div>
+          <div v-if="order.seller">
+            <span class="admin-sub">Vendedor</span>
+            <strong>{{ order.seller.name }}</strong>
+            <span class="admin-muted">{{ order.seller.code }}</span>
+          </div>
         </div>
 
         <div v-if="order.period_start || order.period_end" class="order-period">
@@ -82,6 +87,29 @@
           </span>
           <span class="total">Total <strong>{{ formatCurrency(order.total) }}</strong></span>
         </div>
+
+        <section v-if="order.seller || order.commissions?.length" class="order-detail-section">
+          <h3>Vendedor e comissão</h3>
+          <div v-if="order.seller" class="order-seller-line">
+            <span><strong>{{ order.seller.name }}</strong> <span class="admin-muted">{{ order.seller.code }}</span></span>
+            <span class="admin-muted">Código do link: {{ order.referral_code || '—' }} · Percentual: {{ Number(order.commission_percent || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) }}%</span>
+          </div>
+          <div v-if="order.commissions?.length" class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Produto</th><th>Base</th><th>Comissão</th><th>Estornado</th><th>Líquido</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr v-for="commission in order.commissions" :key="commission.id">
+                  <td>{{ commission.product?.title || 'Produto' }}</td>
+                  <td>{{ formatCurrency(commission.base_amount) }}</td>
+                  <td>{{ formatCurrency(commission.amount) }}</td>
+                  <td>{{ formatCurrency(commission.refunded_amount) }}</td>
+                  <td>{{ formatCurrency(commission.net_amount) }}</td>
+                  <td><span class="status-pill" :class="commissionStatusClass(commission.status)">{{ commissionStatusLabel(commission.status) }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <section class="order-detail-section">
           <div class="order-detail-section-head">
@@ -147,6 +175,14 @@ watch(() => [props.open, props.orderId], async ([open, id]) => {
   }
 }, { immediate: true });
 
+function commissionStatusLabel(status) {
+  return { approved: 'A pagar', paid: 'Paga', reversed: 'Estornada' }[status] || status;
+}
+
+function commissionStatusClass(status) {
+  return { approved: 'pending', paid: 'paid', reversed: 'refunded' }[status] || status;
+}
+
 function close() {
   emit('close');
 }
@@ -170,6 +206,7 @@ function close() {
 .order-detail-totals .total strong{font-size:19px;color:var(--accent);}
 .order-detail-totals small{padding:2px 6px;border-radius:6px;background:var(--bg-card-alt);}
 .order-detail-payments{display:flex;flex-direction:column;gap:12px;}
+.order-seller-line{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;padding:12px 14px;border-radius:12px;background:var(--bg-card-alt);font-size:12.5px;}
 @media(max-width:560px){
   .order-detail-totals{justify-content:flex-start;}
 }

@@ -17,6 +17,16 @@
         <option value="canceled">Cancelado</option>
         <option value="refunded">Estornado</option>
       </select>
+      <SearchSelect
+        v-model="filters.seller_id"
+        :options="sellerOptions"
+        :loading="sellersLoading"
+        remote
+        allow-clear
+        clear-label="Todos os vendedores"
+        placeholder="Todos os vendedores"
+        @search="loadSellers"
+      />
       <input v-model="filters.date_from" class="form-control" type="date" aria-label="Data inicial">
       <input v-model="filters.date_to" class="form-control" type="date" aria-label="Data final">
       <button class="btn btn-primary btn-sm" type="submit">Filtrar</button>
@@ -28,7 +38,7 @@
     <div v-else class="admin-table-wrap">
       <table class="admin-table">
         <thead>
-          <tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Origem</th><th>Valor</th><th>Pagamento</th><th>Status</th><th>Data</th><th></th></tr>
+          <tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Origem</th><th>Vendedor</th><th>Valor</th><th>Pagamento</th><th>Status</th><th>Data</th><th></th></tr>
         </thead>
         <tbody>
           <tr v-for="order in orders" :key="order.id">
@@ -39,6 +49,10 @@
             </td>
             <td class="admin-muted">{{ orderTypeLabel(order.type) }}</td>
             <td><span class="status-pill" :class="originClass(order.source)">{{ originLabel(order.source) }}</span></td>
+            <td>
+              <span v-if="order.seller">{{ order.seller.name }}</span>
+              <span v-else class="admin-muted">—</span>
+            </td>
             <td>{{ formatCurrency(order.total) }}</td>
             <td class="admin-muted">
               <span v-if="order.latest_payment">
@@ -81,6 +95,7 @@ import {
   paymentStatusLabel,
 } from '../utils/orderStatus';
 import OrderDetailDrawer from '../components/admin/OrderDetailDrawer.vue';
+import SearchSelect from '../components/admin/SearchSelect.vue';
 
 const route = useRoute();
 const orders = ref([]);
@@ -88,18 +103,43 @@ const meta = ref({ current_page: 1, last_page: 1 });
 const loading = ref(true);
 const drawerOpen = ref(false);
 const selectedOrderId = ref(null);
+const sellerOptions = ref([]);
+const sellersLoading = ref(false);
 const filters = reactive({
   search: route.query.search ? String(route.query.search) : '',
   status: '',
+  seller_id: '',
   date_from: '',
   date_to: '',
 });
 
 const hasFilters = computed(() => Boolean(
-  filters.search || filters.status || filters.date_from || filters.date_to,
+  filters.search || filters.status || filters.seller_id || filters.date_from || filters.date_to,
 ));
 
-onMounted(load);
+onMounted(() => {
+  loadSellers('');
+  load();
+});
+
+async function loadSellers(search = '') {
+  sellersLoading.value = true;
+
+  try {
+    const { data } = await api.get('/admin/sellers', {
+      params: { search: search || undefined, per_page: 30 },
+    });
+    sellerOptions.value = (data.data ?? []).map((seller) => ({
+      value: seller.id,
+      label: seller.name,
+      sub: seller.code,
+    }));
+  } catch (e) {
+    sellerOptions.value = [];
+  } finally {
+    sellersLoading.value = false;
+  }
+}
 
 async function load() {
   loading.value = true;
@@ -111,6 +151,7 @@ async function load() {
         per_page: 20,
         search: filters.search || undefined,
         status: filters.status || undefined,
+        seller_id: filters.seller_id || undefined,
         date_from: filters.date_from || undefined,
         date_to: filters.date_to || undefined,
       },
@@ -135,6 +176,7 @@ function go(page) {
 function clearFilters() {
   filters.search = '';
   filters.status = '';
+  filters.seller_id = '';
   filters.date_from = '';
   filters.date_to = '';
   reload();

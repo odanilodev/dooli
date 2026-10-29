@@ -33,6 +33,7 @@ class PaymentService
         private readonly EnrollmentService $enrollments,
         private readonly DatalogService $audit,
         private readonly OrderEventService $orderEvents,
+        private readonly SellerCommissionService $sellerCommissions,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -260,6 +261,8 @@ class PaymentService
                 );
             }
 
+            $this->sellerCommissions->recordForOrder($order, $payment);
+
             PaymentEvent::query()->create([
                 'payment_id' => $payment->id,
                 'status' => PaymentEventStatus::Processed->value,
@@ -348,6 +351,8 @@ class PaymentService
                 $order->update(['status' => OrderStatus::Refunded->value]);
             }
 
+            $this->sellerCommissions->applyOrderRefunds($order->refresh());
+
             PaymentEvent::query()->create([
                 'payment_id' => $payment->id,
                 'status' => PaymentEventStatus::Processed->value,
@@ -418,6 +423,8 @@ class PaymentService
             'status' => PaymentStatus::Refunded->value,
         ]);
         $order->update(['status' => OrderStatus::Refunded->value]);
+
+        $this->sellerCommissions->applyOrderRefunds($order->refresh());
 
         $this->orderEvents->record($order, OrderEventType::PaymentRefunded, [
             'payment_id' => $payment->id,

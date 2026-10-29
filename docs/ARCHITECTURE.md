@@ -37,6 +37,7 @@ Route → Middleware → FormRequest → Controller → Service → Repository �
 | Loja | Banners usam `placement` (`home`/`store`); textos da vitrine ficam em `company_settings` na chave JSON `storefront` e são expostos por `/admin/storefront`, `/storefront` e pelo payload público da empresa |
 | Respostas | Envelope `success/data/meta/errors` + exceções centralizadas em `bootstrap/app.php` |
 | Erros | `ApiException` e filhas; handler mapeia validação/auth/404/429 |
+| Vendedores | `sellers` independentes de `users`; kit publico por `share_token`, atribuicao por `?ref` e comissao por item em `seller_commissions` (detalhes em [`SELLERS.md`](SELLERS.md)) |
 
 ## Nomenclatura
 
@@ -79,6 +80,9 @@ O padrão do projeto é **rota = tabela**: tabela plural snake_case, model singu
 
 ### Compra → acesso
 `Order` → `Payment` (gateway) → confirmação (webhook/manual) → `EnrollmentService::grantAccessForOrder` → cria `team_courses` + `team_users` a partir de `store_product_teams` (turmas inativas são ignoradas).
+
+### Venda com vendedor
+O frontend captura `?ref` por 30 dias. Cadastro, pedido e assinatura enviam o codigo; `SellerAttributionService` valida vendedor ativo da empresa e grava a atribuicao no usuario. `orders`/`subscriptions` guardam `seller_id`, `referral_code` e o percentual congelado. Na confirmacao do pagamento, `SellerCommissionService` cria uma comissao por item, rateando o desconto. Estornos recalculam o valor estornado e renovacoes de assinatura repetem a comissao com o percentual da assinatura.
 
 ### Conclusão → certificado
 `ProgressService::completeLesson` grava `timelines` (unique de banco) + snapshot e, quando o aluno atinge o total atual de aulas, registra ou avança a **conclusão** em `course_completions`. Só então chama `CertificateService::issueIfEligible` (fora da transação). Se ainda não existe certificado, ele é emitido com o snapshot da conclusão. Se já existe e o curso ganhou aulas, o certificado atual permanece válido até o aluno concluir todas; nesse momento um novo certificado é emitido com o total e a grade atuais, o antigo é invalidado como **Substituído** e ambos os snapshots ficam no histórico. Módulos/novas aulas só entram no novo documento depois de concluídos.

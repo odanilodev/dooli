@@ -20,7 +20,7 @@ class OrderController extends ApiController
         $this->authorize('viewAny', Order::class);
 
         $paginator = $this->orders->paginate(
-            filters: $request->only(['search', 'status', 'user_id', 'date_from', 'date_to', 'sort', 'direction']),
+            filters: $request->only(['search', 'status', 'user_id', 'seller_id', 'date_from', 'date_to', 'sort', 'direction']),
             perPage: $this->perPage($request),
         );
 

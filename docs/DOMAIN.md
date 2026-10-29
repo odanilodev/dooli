@@ -131,6 +131,21 @@ Referências: `app/Services/EnrollmentService.php`, `app/Services/PaymentService
 
 ---
 
+## 3.1 Vendedores e indicação
+
+```
+Seller (vendedor)  →  orders.seller_id / subscriptions.seller_id  →  seller_commissions
+       ↓
+share_token do kit  →  links ?ref=code  →  atribuição por 30 dias
+```
+
+- **Vendedor não é usuário.** `sellers` guarda código, percentual, status e token do kit; o vínculo opcional `user_id` serve apenas para identificar a pessoa e não concede login nem permissão.
+- O vendedor não precisa de conta para compartilhar produtos. O admin envia o kit secreto e o vendedor copia os links com `?ref=code`.
+- A atribuição é capturada no navegador por 30 dias, enviada no cadastro/pedido/assinatura e validada no backend. O último código válido vence.
+- Pedidos e assinaturas congelam `seller_id`, `referral_code` e `commission_percent`. Assinaturas renovam a comissão em cada cobrança.
+- A comissão é um extrato por item (`seller_commissions`); a base é o valor após desconto rateado, e estornos ajustam ou revertem o valor.
+- O vendedor pode ser inativado; o kit deixa de responder e novos códigos não são atribuídos, mas o histórico permanece.
+
 ## 4. Como as três se conectam
 
 ```mermaid
