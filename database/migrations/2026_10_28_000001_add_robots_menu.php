@@ -16,12 +16,12 @@ return new class extends Migration
             return;
         }
 
-        $analysis = DB::table('menus')->where('name', 'Análise')->where('type', 'section')->first();
-        $analysisId = $analysis?->id;
+        $tools = DB::table('menus')->where('name', 'Ferramentas')->where('type', 'section')->first();
+        $toolsId = $tools?->id;
 
-        if (! $analysisId) {
-            $analysisId = DB::table('menus')->insertGetId([
-                'name' => 'Análise',
+        if (! $toolsId) {
+            $toolsId = DB::table('menus')->insertGetId([
+                'name' => 'Ferramentas',
                 'type' => 'section',
                 'link' => null,
                 'icon' => null,
@@ -34,11 +34,11 @@ return new class extends Migration
             // Entra logo depois do Dashboard e empurra o restante.
             $position = 1;
 
-            foreach (DB::table('menus')->whereNull('sub')->where('id', '!=', $analysisId)->orderBy('sort_order')->orderBy('id')->get() as $menu) {
+            foreach (DB::table('menus')->whereNull('sub')->where('id', '!=', $toolsId)->orderBy('sort_order')->orderBy('id')->get() as $menu) {
                 DB::table('menus')->where('id', $menu->id)->update(['sort_order' => $position++, 'updated_at' => now()]);
 
                 if ($menu->link === '/inicio') {
-                    DB::table('menus')->where('id', $analysisId)->update(['sort_order' => $position++]);
+                    DB::table('menus')->where('id', $toolsId)->update(['sort_order' => $position++]);
                 }
             }
         }
@@ -49,7 +49,7 @@ return new class extends Migration
             'link' => '/robos/delta-screener',
             'icon' => 'robots',
             'sort_order' => 1,
-            'sub' => (string) $analysisId,
+            'sub' => (string) $toolsId,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -58,7 +58,7 @@ return new class extends Migration
     public function down(): void
     {
         DB::table('menus')->where('link', '/robos/delta-screener')->delete();
-        DB::table('menus')->where('name', 'Análise')->where('type', 'section')
+        DB::table('menus')->where('name', 'Ferramentas')->where('type', 'section')
             ->whereNotExists(fn ($q) => $q->selectRaw(1)->from('menus as c')->whereColumn('c.sub', 'menus.id'))
             ->delete();
     }
