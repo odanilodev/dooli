@@ -46,7 +46,8 @@ class MenuSeeder extends Seeder
     {
         $names = [
             'Dashboard',
-            'Robôs',
+            'Análise',
+            'DeltaStats',
             'Administração',
             'Conta',
             ...array_column(self::ADMIN_ITEMS, 0),
@@ -63,12 +64,20 @@ class MenuSeeder extends Seeder
             'sub' => null,
         ]);
 
-        $this->menu('Robôs', [
-            'type' => 'link',
-            'link' => '/robos',
-            'icon' => 'robots',
+        $analysis = $this->menu('Análise', [
+            'type' => 'section',
+            'link' => null,
+            'icon' => null,
             'sort_order' => 2,
             'sub' => null,
+        ]);
+
+        $this->menu('DeltaStats', [
+            'type' => 'link',
+            'link' => '/robos/delta-screener',
+            'icon' => 'robots',
+            'sort_order' => 1,
+            'sub' => (string) $analysis->id,
         ]);
 
         $admin = $this->menu('Administração', [
