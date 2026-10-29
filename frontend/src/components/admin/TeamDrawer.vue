@@ -274,7 +274,8 @@
                 <button class="btn btn-outline btn-sm" :disabled="busyId === `at${r.id}`" @click="addTool(r)">Liberar</button>
               </div>
             </div>
-            <p v-else class="form-hint">Todas as ferramentas já estão liberadas para esta turma.</p>
+            <p v-else-if="allTools.length" class="form-hint">Todas as ferramentas já estão liberadas para esta turma.</p>
+            <p v-else class="form-hint">Nenhuma ferramenta cadastrada para esta empresa. Rode as migrations (php artisan migrate) ou o RobotSeeder.</p>
           </div>
         </template>
 
