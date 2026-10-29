@@ -36,10 +36,6 @@
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.5 7 21l5-2.5L17 21l-1.5-7.5"/></svg>
           <span>Meus certificados</span>
         </router-link>
-        <router-link to="/robos" class="nav-link" :class="{ active: ['robos', 'robo'].includes($route.name) }" @click="close">
-          <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
-          <span>Robôs</span>
-        </router-link>
         <router-link to="/perfil" class="nav-link" :class="{ active: $route.name === 'perfil' }" @click="close">
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
           <span>Meu perfil</span>
