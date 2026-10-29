@@ -46,6 +46,7 @@ class MenuSeeder extends Seeder
     {
         $names = [
             'Dashboard',
+            'Robôs',
             'Administração',
             'Conta',
             ...array_column(self::ADMIN_ITEMS, 0),
@@ -62,11 +63,19 @@ class MenuSeeder extends Seeder
             'sub' => null,
         ]);
 
+        $this->menu('Robôs', [
+            'type' => 'link',
+            'link' => '/robos',
+            'icon' => 'robots',
+            'sort_order' => 2,
+            'sub' => null,
+        ]);
+
         $admin = $this->menu('Administração', [
             'type' => 'section',
             'link' => null,
             'icon' => null,
-            'sort_order' => 2,
+            'sort_order' => 3,
             'sub' => null,
         ]);
 
@@ -84,7 +93,7 @@ class MenuSeeder extends Seeder
             'type' => 'section',
             'link' => null,
             'icon' => null,
-            'sort_order' => 3,
+            'sort_order' => 4,
             'sub' => null,
         ]);
 

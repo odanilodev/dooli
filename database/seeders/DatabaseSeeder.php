@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             NotificationSeeder::class,
             OrderSeeder::class,
             EngagementSeeder::class,
+            RobotSeeder::class,
             AccessTokenSeeder::class,
         ]);
     }
