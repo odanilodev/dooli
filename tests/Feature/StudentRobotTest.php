@@ -2,10 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Enums\GeneralStatus;
 use App\Models\MarketAsset;
 use App\Models\MarketCandle;
 use App\Models\Robot;
+use App\Models\Team;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
 
@@ -13,16 +17,31 @@ class StudentRobotTest extends TestCase
 {
     use BuildsTenant, RefreshDatabase;
 
+    private Robot $robot;
+
+    /** Turma que libera a ferramenta, com o aluno matriculado (acesso ativo). */
+    private function grantAccess($user, ?string $expiredAt = null): Team
+    {
+        $team = Team::factory()->create(['company_id' => $this->company->id, 'status' => GeneralStatus::Active->value]);
+        $team->robots()->attach($this->robot->id, ['company_id' => $this->company->id]);
+        $team->users()->attach($user->id, ['company_id' => $this->company->id, 'status' => GeneralStatus::Active->value, 'expired_at' => $expiredAt]);
+
+        return $team;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->buildTenant();
 
-        Robot::withoutGlobalScopes()->create([
+        $robot = Robot::withoutGlobalScopes()->create([
             'company_id' => $this->company->id,
             'slug' => 'delta-screener',
             'name' => 'DeltaStats',
         ]);
+
+        $this->robot = $robot;
+        $this->grantAccess($this->student);
 
         $asset = MarketAsset::query()->create(['market' => 'b3', 'symbol' => 'PETR4']);
 
@@ -129,5 +148,42 @@ class StudentRobotTest extends TestCase
             ->getJson('/api/v1/me/robots')
             ->assertOk()
             ->assertJsonCount(0, 'data');
+    }
+
+    public function test_student_without_access_does_not_see_the_robot(): void
+    {
+        $other = User::factory()->create([
+            'company_id' => $this->company->id,
+            'user_type_id' => $this->student->user_type_id,
+        ]);
+        $token = $this->apiLogin($other);
+
+        $this->withToken($token)->getJson('/api/v1/me/robots')->assertOk()->assertJsonCount(0, 'data');
+        $this->withToken($token)->getJson('/api/v1/me/robots/delta-screener')->assertNotFound();
+        $this->withToken($token)->postJson('/api/v1/me/robots/delta-screener/run', $this->params())->assertNotFound();
+    }
+
+    public function test_expired_team_membership_removes_access(): void
+    {
+        DB::table('team_users')->where('user_id', $this->student->id)
+            ->update(['expired_at' => now()->subDay()]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/robots')->assertOk()->assertJsonCount(0, 'data');
+    }
+
+    public function test_inactive_membership_removes_access(): void
+    {
+        DB::table('team_users')->where('user_id', $this->student->id)
+            ->update(['status' => GeneralStatus::Inactive->value]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/robots')->assertOk()->assertJsonCount(0, 'data');
+    }
+
+    public function test_admin_sees_every_robot_without_a_team(): void
+    {
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson('/api/v1/me/robots')->assertOk()->assertJsonPath('data.0.slug', 'delta-screener');
     }
 }

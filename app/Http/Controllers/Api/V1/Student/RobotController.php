@@ -17,15 +17,17 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Robôs liberados para todo aluno ativo da plataforma (o acesso já vem com a compra).
+ * Ferramentas do aluno: só aparecem as ligadas a uma turma em que ele tem acesso ativo
+ * (compra de curso, assinatura ou liberação manual). Administradores veem todas.
  */
 class RobotController extends ApiController
 {
     public function __construct(private readonly RobotManager $robots) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $robots = Robot::query()
+            ->accessibleTo($request->user())
             ->where('status', 'active')
             ->orderBy('sort_order')
             ->orderBy('id')
@@ -36,9 +38,9 @@ class RobotController extends ApiController
         return ApiResponse::success(RobotResource::collection($robots));
     }
 
-    public function show(string $slug): JsonResponse
+    public function show(Request $request, string $slug): JsonResponse
     {
-        $robot = $this->find($slug);
+        $robot = $this->find($request, $slug);
 
         return ApiResponse::success(
             (new RobotResource($robot))->resolve() + [
@@ -49,14 +51,14 @@ class RobotController extends ApiController
 
     public function run(Request $request, string $slug): JsonResponse
     {
-        $implementation = $this->implementation($this->find($slug));
+        $implementation = $this->implementation($this->find($request, $slug));
 
         return ApiResponse::success($implementation->run($this->params($request, $implementation)));
     }
 
     public function detail(Request $request, string $slug): JsonResponse
     {
-        $implementation = $this->implementation($this->find($slug));
+        $implementation = $this->implementation($this->find($request, $slug));
 
         $params = $this->params($request, $implementation);
         $symbol = (string) $request->validate(['symbol' => ['required', 'string', 'max:30']])['symbol'];
@@ -67,7 +69,7 @@ class RobotController extends ApiController
     /** Aluno digita um ativo que ainda não está na base: valida na fonte e já baixa o histórico. */
     public function addAsset(Request $request, string $slug, MarketAssetRegistrar $registrar): JsonResponse
     {
-        $this->find($slug);
+        $this->find($request, $slug);
 
         $data = $request->validate([
             'market' => ['required', 'in:b3,us,crypto'],
@@ -95,9 +97,9 @@ class RobotController extends ApiController
         return $this->robots->make($robot->slug);
     }
 
-    private function find(string $slug): Robot
+    private function find(Request $request, string $slug): Robot
     {
-        $robot = Robot::query()->where('slug', $slug)->where('status', 'active')->first();
+        $robot = Robot::query()->accessibleTo($request->user())->where('slug', $slug)->where('status', 'active')->first();
 
         if (! $robot || ! $this->robots->supports($robot->slug)) {
             throw new ResourceNotFoundException('Robô não encontrado.');

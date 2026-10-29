@@ -245,6 +245,39 @@
           </template>
         </template>
 
+        <!-- FERRAMENTAS -->
+        <template v-else-if="tab === 'tools'">
+          <div class="form-group">
+            <label>Ferramentas liberadas pela turma ({{ teamTools.length }})</label>
+            <div v-if="teamTools.length" class="td-list">
+              <div v-for="r in teamTools" :key="r.id" class="td-row">
+                <span class="td-info">
+                  <span class="td-name">{{ r.name }}</span>
+                  <span class="td-sub">{{ r.description }}</span>
+                </span>
+                <button class="btn btn-danger btn-sm" :disabled="busyId === `rt${r.id}`" @click="removeTool(r)">Remover</button>
+              </div>
+            </div>
+            <p v-else class="form-hint">Nenhuma ferramenta liberada. Alunos desta turma não veem o menu Ferramentas.</p>
+          </div>
+
+          <div class="drawer-divider"></div>
+
+          <div class="form-group">
+            <label>Liberar ferramenta</label>
+            <div v-if="availableTools.length" class="td-list">
+              <div v-for="r in availableTools" :key="r.id" class="td-row">
+                <span class="td-info">
+                  <span class="td-name">{{ r.name }}</span>
+                  <span class="td-sub">{{ r.description }}</span>
+                </span>
+                <button class="btn btn-outline btn-sm" :disabled="busyId === `at${r.id}`" @click="addTool(r)">Liberar</button>
+              </div>
+            </div>
+            <p v-else class="form-hint">Todas as ferramentas já estão liberadas para esta turma.</p>
+          </div>
+        </template>
+
         <!-- CURSOS -->
         <template v-else-if="tab === 'courses'">
           <div class="form-group">
@@ -320,8 +353,8 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved', 'changed']);
 const toast = useToast();
 
-const tabs = ['details', 'students', 'courses', 'schedules'];
-const tabLabels = { details: 'Detalhes', students: 'Alunos', courses: 'Cursos', schedules: 'Agendamentos' };
+const tabs = ['details', 'students', 'courses', 'tools', 'schedules'];
+const tabLabels = { details: 'Detalhes', students: 'Alunos', courses: 'Cursos', tools: 'Ferramentas', schedules: 'Agendamentos' };
 
 const tab = ref(tabs.includes(props.initialTab) ? props.initialTab : 'details');
 const form = reactive({ name: '', status: 'active', sort_order: 0 });
@@ -590,6 +623,54 @@ async function loadCourses() {
     courseResults.value = courseResults.value.filter((c) => !linked.has(c.id));
   } catch (e) {
     toast.error(e?.message || 'Não foi possível carregar os cursos.');
+  }
+}
+
+const teamTools = ref([]);
+const allTools = ref([]);
+const availableTools = computed(() => {
+  const linked = new Set(teamTools.value.map((r) => r.id));
+  return allTools.value.filter((r) => !linked.has(r.id));
+});
+
+async function loadTools() {
+  try {
+    const [mine, all] = await Promise.all([
+      api.get(`/admin/teams/${props.team.id}/robots`),
+      api.get('/admin/robots'),
+    ]);
+    teamTools.value = mine.data.data ?? [];
+    allTools.value = all.data.data ?? [];
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível carregar as ferramentas.');
+  }
+}
+
+async function addTool(robot) {
+  busyId.value = `at${robot.id}`;
+
+  try {
+    await api.post(`/admin/teams/${props.team.id}/robots`, { robot_id: robot.id });
+    await loadTools();
+    toast.success('Ferramenta liberada para a turma.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível liberar a ferramenta.');
+  } finally {
+    busyId.value = null;
+  }
+}
+
+async function removeTool(robot) {
+  busyId.value = `rt${robot.id}`;
+
+  try {
+    await api.delete(`/admin/teams/${props.team.id}/robots/${robot.id}`);
+    await loadTools();
+    toast.success('Ferramenta removida da turma.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível remover a ferramenta.');
+  } finally {
+    busyId.value = null;
   }
 }
 
@@ -913,6 +994,10 @@ watch(() => props.team?.id, () => {
 });
 
 watch(tab, (value) => {
+  if (value === 'tools') {
+    loadTools();
+  }
+
   if (value === 'schedules' && !schedulesLoaded) {
     schedulesLoaded = true;
     loadSchedules();

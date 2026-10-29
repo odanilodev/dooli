@@ -72,6 +72,10 @@ class EnrollmentService
                 continue;
             }
 
+            if (! $storeProduct->course_id) {
+                continue; // produto só de ferramenta: não há curso para ligar à turma
+            }
+
             $team->courses()->syncWithoutDetaching([
                 $storeProduct->course_id => [
                     'company_id' => $team->company_id,

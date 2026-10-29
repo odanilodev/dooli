@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\Admin\StorefrontSettingController as AdminStoref
 use App\Http\Controllers\Api\V1\Admin\StoreProductController as AdminStoreProductController;
 use App\Http\Controllers\Api\V1\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Api\V1\Admin\TeamController as AdminTeamController;
+use App\Http\Controllers\Api\V1\Admin\TeamRobotController as AdminTeamRobotController;
 use App\Http\Controllers\Api\V1\Admin\TopicController as AdminTopicController;
 use App\Http\Controllers\Api\V1\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\V1\Admin\UserTypeController as AdminUserTypeController;
@@ -270,6 +271,10 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::get('teams/{team}/courses', [AdminTeamController::class, 'courses']);
         Route::post('teams/{team}/courses', [AdminTeamController::class, 'attachCourse']);
         Route::delete('teams/{team}/courses/{course}', [AdminTeamController::class, 'detachCourse'])->whereNumber('course');
+        Route::get('robots', [AdminTeamRobotController::class, 'index']);
+        Route::get('teams/{team}/robots', [AdminTeamRobotController::class, 'robots']);
+        Route::post('teams/{team}/robots', [AdminTeamRobotController::class, 'attach']);
+        Route::delete('teams/{team}/robots/{robot}', [AdminTeamRobotController::class, 'detach'])->whereNumber('robot');
         Route::get('teams/{team}/schedules', [AdminScheduleController::class, 'index']);
         Route::put('teams/{team}/schedules', [AdminScheduleController::class, 'upsert']);
 
