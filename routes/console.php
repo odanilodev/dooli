@@ -29,15 +29,3 @@ Schedule::command('market:collect-intraday us')->weekdays()->at('14:30');
 Schedule::command('market:collect-intraday us')->weekdays()->at('16:30');
 Schedule::command('market:collect-intraday us')->weekdays()->at('18:00');
 Schedule::command('market:collect-intraday crypto')->everyFourHours();
-
-/*
-| Candles de 15min guardados no banco ao longo do dia (incremental: cada execução
-| continua do último candle salvo). A última rodada de cada mercado fecha o dia.
-*/
-foreach (['10:30', '12:30', '14:30', '16:30', '17:45'] as $time) {
-    Schedule::command('market:collect-intraday b3')->weekdays()->at($time);
-}
-foreach (['12:00', '14:30', '16:30', '18:00'] as $time) {
-    Schedule::command('market:collect-intraday us')->weekdays()->at($time);
-}
-Schedule::command('market:collect-intraday crypto')->everyFourHours();
