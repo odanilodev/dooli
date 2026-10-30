@@ -500,7 +500,7 @@ CRUD dos templates por curso (`name`, `title`, `course_id`, `version`, `time`). 
 
 O super admin é o usuário com a flag `users.is_super_admin = true` (mantém `user_type = admin`, então herda todo o acesso administrativo normal). A flag **não** é mass-assignable: só é concedida por seeder ou pelo bootstrap de empresa. Ela é exposta em leitura (`/auth/me`, resources de usuário).
 
-> **UI do super admin:** para reduzir ruído, o menu lateral do super admin mostra apenas **Empresas**, **Menus** e **Conta** (Meu perfil, Configurações) — a identidade visual por empresa fica dentro de Empresas. As páginas de empresa (`/admin/cursos`, `/admin/turmas`, `/admin/videos`, `/admin/usuarios` etc.) são bloqueadas por rota no frontend e redirecionam para Empresas. Isso é uma limitação de **interface**: no backend o super admin continua sendo admin.
+> **UI do super admin:** para reduzir ruído, o menu lateral do super admin mostra apenas **Sistema > Empresas/Menus** e **Conta** (Meu perfil, Configurações) — a identidade visual por empresa fica dentro de Empresas. As páginas de empresa (`/admin/cursos`, `/admin/turmas`, `/admin/videos`, `/admin/usuarios` etc.) são bloqueadas por rota no frontend e redirecionam para Empresas. Isso é uma limitação de **interface**: no backend o super admin continua sendo admin.
 
 Recursos restritos a super admin (middleware `super.admin` + policies; um admin comum recebe **403**):
 

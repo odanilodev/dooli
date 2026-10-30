@@ -73,6 +73,30 @@ class MyMenuTest extends TestCase
             ->assertJsonPath('data.1.name', 'Cursos');
     }
 
+    public function test_user_sees_dropdown_ancestors_for_permitted_link(): void
+    {
+        $section = $this->menu(['name' => 'Administração', 'type' => 'section', 'link' => null]);
+        $group = $this->menu([
+            'name' => 'Conteúdo',
+            'type' => 'dropdown',
+            'link' => null,
+            'sub' => (string) $section->id,
+        ]);
+        $link = $this->menu([
+            'name' => 'Cursos',
+            'link' => '/admin/cursos',
+            'sub' => (string) $group->id,
+        ]);
+
+        $this->withToken($this->apiLogin($this->permittedUser([$link->id])))
+            ->getJson('/api/v1/me/menus')
+            ->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('data.0.name', 'Administração')
+            ->assertJsonPath('data.1.name', 'Conteúdo')
+            ->assertJsonPath('data.2.name', 'Cursos');
+    }
+
     public function test_admin_sees_all_menus(): void
     {
         $this->menu(['name' => 'Dashboard', 'link' => '/']);
@@ -84,7 +108,7 @@ class MyMenuTest extends TestCase
             ->assertJsonCount(2, 'data');
     }
 
-    public function test_admin_sees_payment_menus_from_seeder(): void
+    public function test_seeded_admin_menu_is_grouped_into_categories(): void
     {
         $this->seed(MenuSeeder::class);
 
@@ -93,23 +117,51 @@ class MyMenuTest extends TestCase
             ->where('type', 'section')
             ->firstOrFail();
 
-        $links = Menu::query()
+        $groups = Menu::query()
             ->where('sub', (string) $adminSection->id)
+            ->where('type', 'dropdown')
             ->orderBy('sort_order')
-            ->pluck('link')
+            ->pluck('name')
             ->all();
 
-        $products = array_search('/admin/produtos', $links, true);
+        $this->assertSame([
+            'Conteúdo',
+            'Alunos',
+            'Loja e vendas',
+            'Financeiro',
+            'Sistema',
+        ], $groups);
+
+        $expectedParents = [
+            '/admin/cursos' => 'Conteúdo',
+            '/admin/certificados' => 'Alunos',
+            '/admin/produtos' => 'Loja e vendas',
+            '/admin/pedidos' => 'Financeiro',
+            '/admin/usuarios' => 'Sistema',
+        ];
+
+        foreach ($expectedParents as $link => $parentName) {
+            $item = Menu::query()->where('link', $link)->firstOrFail();
+            $parent = Menu::query()->find($item->sub);
+
+            $this->assertSame($parentName, $parent?->name);
+        }
+
+        $finance = Menu::query()
+            ->where('name', 'Financeiro')
+            ->where('type', 'dropdown')
+            ->firstOrFail();
 
         $this->assertSame([
-            '/admin/produtos',
-            '/admin/loja',
-            '/admin/gateways',
             '/admin/pedidos',
             '/admin/pagamentos',
             '/admin/assinaturas',
-            '/admin/certificados',
-        ], array_slice($links, $products, 7));
+            '/admin/gateways',
+        ], Menu::query()
+            ->where('sub', (string) $finance->id)
+            ->orderBy('sort_order')
+            ->pluck('link')
+            ->all());
 
         $names = collect(
             $this->withToken($this->apiLogin($this->admin))
@@ -118,9 +170,11 @@ class MyMenuTest extends TestCase
                 ->json('data'),
         )->pluck('name');
 
+        $this->assertTrue($names->contains('Conteúdo'));
+        $this->assertTrue($names->contains('Financeiro'));
         $this->assertTrue($names->contains('Gateways'));
         $this->assertTrue($names->contains('Pedidos'));
-        $this->assertTrue($names->contains('Assinaturas'));
+        $this->assertTrue($names->contains('Vendedores'));
     }
 
     public function test_guest_cannot_list_my_menus(): void

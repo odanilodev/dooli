@@ -4,14 +4,17 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Menus</h1>
-        <p class="page-subtitle">{{ menus.items.length }} item(ns) — controlam o menu lateral do administrador.</p>
+        <p class="page-subtitle">{{ groupCount }} categoria(s) · {{ linkCount }} link(s) — controlam o menu lateral do administrador.</p>
       </div>
-      <button class="btn btn-primary" @click="openCreate">{{ showForm ? 'Cancelar' : 'Novo item' }}</button>
+      <div class="admin-head-actions">
+        <button class="btn btn-outline" @click="openCreateGroup">Nova categoria</button>
+        <button class="btn btn-primary" @click="openCreate">{{ showForm ? 'Cancelar' : 'Novo item' }}</button>
+      </div>
     </div>
 
     <form v-if="showForm" class="panel" @submit.prevent="save">
-      <h2 class="panel-title">{{ editingId ? `Editar item #${editingId}` : 'Novo item' }}</h2>
-      <p class="panel-desc">Seção (marcação) mostra os filhos sempre visíveis; Dropdown abre/fecha os filhos; Link é um item simples.</p>
+      <h2 class="panel-title">{{ formTitle }}</h2>
+      <p class="panel-desc">{{ formDescription }}</p>
 
       <div class="form-row">
         <div class="form-group">
@@ -43,9 +46,15 @@
       </div>
 
       <div class="form-row">
-        <div class="form-group">
+        <div v-if="!isGroupType" class="form-group">
           <label for="m-link">Link (rota)</label>
-          <input id="m-link" class="form-control" v-model="form.link" placeholder="/admin/relatorios">
+          <input
+            id="m-link"
+            class="form-control"
+            v-model="form.link"
+            placeholder="/admin/relatorios"
+            :required="form.type === 'link'"
+          >
         </div>
         <div class="form-group">
           <label for="m-icon">Ícone</label>
@@ -55,6 +64,10 @@
           </select>
         </div>
       </div>
+
+      <p v-if="isGroupType" class="form-hint">
+        Categorias não possuem rota própria: elas apenas agrupam os links filhos no menu lateral.
+      </p>
 
       <div class="form-group">
         <label>Pré-visualização</label>
@@ -97,13 +110,15 @@
               >
                 <NavIcon :name="menu.icon" />
                 <span>{{ menu.name }}</span>
+                <span v-if="isGroup(menu)" class="menu-count">{{ childCount(menu) }}</span>
               </span>
             </td>
             <td><span class="type-pill" :class="`type-${menu.type || 'link'}`">{{ typeLabel(menu.type) }}</span></td>
             <td class="admin-muted">{{ parentName(menu.sub) }}</td>
-            <td class="admin-muted">{{ menu.link || '—' }}</td>
+            <td class="admin-muted menu-link">{{ menu.link || '—' }}</td>
             <td class="admin-muted">{{ menu.sort_order }}</td>
             <td class="admin-actions">
+              <button v-if="isGroup(menu)" class="btn btn-outline btn-sm" @click="openCreateChild(menu)">+ Item</button>
               <button class="btn btn-outline btn-sm" @click="openEdit(menu)">Editar</button>
               <button class="btn btn-danger btn-sm" :disabled="busyId === menu.id" @click="remove(menu)">Excluir</button>
             </td>
@@ -152,6 +167,22 @@ const TYPE_LABELS = {
   dropdown: 'Dropdown',
 };
 
+const isGroupType = computed(() => ['section', 'dropdown'].includes(form.type));
+const groupCount = computed(() => menus.items.filter((menu) => isGroup(menu)).length);
+const linkCount = computed(() => menus.items.filter((menu) => menu.type === 'link').length);
+const formTitle = computed(() => {
+  if (editingId.value) {
+    return `Editar item #${editingId.value}`;
+  }
+
+  return isGroupType.value ? 'Nova categoria' : 'Novo item';
+});
+const formDescription = computed(() => (
+  isGroupType.value
+    ? 'Categorias agrupam itens no menu lateral. Use Dropdown para abrir e fechar os filhos.'
+    : 'Seção (marcação) mostra os filhos sempre visíveis; Dropdown abre/fecha os filhos; Link é um item simples.'
+));
+
 function flatten(nodes) {
   return nodes.flatMap((node) => [node, ...flatten(node.children ?? [])]);
 }
@@ -198,7 +229,22 @@ const parentOptions = computed(() => {
 });
 
 function isGroup(menu) {
-  return menu.type === 'section';
+  return ['section', 'dropdown'].includes(menu.type);
+}
+
+function childCount(menu) {
+  return menus.items.filter((item) => String(item.sub) === String(menu.id)).length;
+}
+
+function nextSortOrder(parentId = '') {
+  const siblings = menus.items.filter(
+    (item) => String(item.sub ?? '') === String(parentId ?? ''),
+  );
+
+  return siblings.reduce(
+    (max, item) => Math.max(max, Number(item.sort_order) || 0),
+    0,
+  ) + 1;
 }
 
 function typeLabel(type) {
@@ -232,6 +278,29 @@ function openCreate() {
 
   editingId.value = null;
   resetForm();
+  form.sort_order = nextSortOrder('');
+  showForm.value = true;
+}
+
+function openCreateGroup() {
+  editingId.value = null;
+  resetForm();
+  form.type = 'dropdown';
+
+  const admin = menus.items.find(
+    (menu) => menu.name === 'Administração' && menu.type === 'section',
+  );
+
+  form.sub = admin ? String(admin.id) : '';
+  form.sort_order = nextSortOrder(form.sub);
+  showForm.value = true;
+}
+
+function openCreateChild(parent) {
+  editingId.value = null;
+  resetForm();
+  form.sub = String(parent.id);
+  form.sort_order = nextSortOrder(form.sub);
   showForm.value = true;
 }
 
@@ -254,7 +323,7 @@ async function save() {
       name: form.name,
       type: form.type,
       sub: form.sub ? Number(form.sub) : null,
-      link: form.link || null,
+      link: isGroupType.value ? null : (form.link || null),
       icon: form.icon || null,
       sort_order: Number(form.sort_order) || 0,
     };
@@ -311,6 +380,16 @@ onMounted(() => menus.fetchMenus());
 }
 .menu-child-row .menu-name .icon{
   color:var(--text-muted);
+}
+.menu-count{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:20px;padding:1px 6px;border-radius:999px;
+  background:var(--bg-card);color:var(--text-muted);
+  font-size:10.5px;font-weight:800;letter-spacing:0;text-transform:none;
+}
+.menu-link{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11.5px;
 }
 .type-pill{
   display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;
