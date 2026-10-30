@@ -399,10 +399,12 @@ CRUD. Campos: `title`, `slug`, `description`, `tags[]`, `price`, `sale`, `status
 - `POST /payments` — `{ order_id, gateway_id, method, amount, metadata? }`
 - `POST /payments/{payment}/refund` — `{ amount?, reason? }`
 
-### Pedidos (`orders`)
-- `GET /orders` — lista os pedidos da empresa (filtros: `status`, `user_id`, `search`, `sort`, `direction`)
+### Vendas e pedidos (`orders`)
+- `GET /orders` — lista as vendas/pedidos da empresa (filtros: `status`, `source`, `user_id`, `seller_id`, `date_from`, `date_to`, `search`, `sort`, `direction`)
+- `GET /orders/summary` — resumo de vendas pagas (filtros: `seller_id`, `source`, `date_from`, `date_to`, `search`); retorna `paid_orders`, `revenue`, `avg_ticket` e `refunded`
+- `GET /orders/export` — exporta XLSX com os mesmos filtros da listagem
 - `GET /orders/{order}` — detalhe do pedido (itens, pagamentos, cupom, cliente)
-- Filtro adicional em `GET /orders`: `seller_id`.
+- A tela **Vendas** usa `/admin/vendas` e mantém `/admin/pedidos` como redirecionamento.
 
 ### Vendedores (`sellers`)
 - `GET /sellers` - lista com métricas (filtros: `search`, `status`, `sort`, `direction`)

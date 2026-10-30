@@ -14,6 +14,7 @@ use App\Models\StoreProduct;
 use App\Models\User;
 use App\Repositories\OrderRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class OrderService
@@ -37,6 +38,24 @@ class OrderService
             direction: $filters['direction'] ?? 'desc',
             withCount: ['items'],
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array{paid_orders: int, revenue: float, avg_ticket: float, refunded: float}
+     */
+    public function summary(array $filters): array
+    {
+        return $this->orders->summary($filters);
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return Collection<int, Order>
+     */
+    public function exportRows(array $filters): Collection
+    {
+        return $this->orders->filtered($filters);
     }
 
     public function find(int $id): Order

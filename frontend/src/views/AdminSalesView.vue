@@ -2,18 +2,30 @@
   <main class="content">
     <div class="page-header">
       <div>
-        <h1 class="page-title">Pedidos</h1>
-        <p class="page-subtitle">Compras e cobranças da empresa.</p>
+        <h1 class="page-title">Vendas</h1>
+        <p class="page-subtitle">Vendas pagas e histórico de pedidos da empresa.</p>
       </div>
-      <router-link :to="{ name: 'admin-pagamentos' }" class="btn btn-outline btn-sm">Pagamentos</router-link>
+      <div class="admin-head-actions">
+        <router-link :to="{ name: 'admin-pagamentos' }" class="btn btn-outline btn-sm">Pagamentos</router-link>
+        <button class="btn btn-outline btn-sm" type="button" :disabled="exporting" @click="exportFile">
+          {{ exporting ? 'Exportando...' : 'Exportar Excel' }}
+        </button>
+      </div>
     </div>
 
-    <form class="orders-filters" @submit.prevent="reload">
+    <section class="sales-kpis">
+      <article><span>Vendas pagas</span><strong>{{ summary.paid_orders }}</strong></article>
+      <article><span>Faturamento</span><strong>{{ formatCurrency(summary.revenue) }}</strong></article>
+      <article><span>Ticket médio</span><strong>{{ formatCurrency(summary.avg_ticket) }}</strong></article>
+      <article><span>Estornado</span><strong>{{ formatCurrency(summary.refunded) }}</strong></article>
+    </section>
+
+    <form class="sales-filters" @submit.prevent="reload">
       <input v-model="filters.search" class="form-control" type="search" placeholder="Buscar por aluno, e-mail ou #pedido">
       <select v-model="filters.status" class="form-control">
         <option value="">Todos os status</option>
-        <option value="pending">Pendente</option>
         <option value="paid">Pago</option>
+        <option value="pending">Pendente</option>
         <option value="canceled">Cancelado</option>
         <option value="refunded">Estornado</option>
       </select>
@@ -27,6 +39,12 @@
         placeholder="Todos os vendedores"
         @search="loadSellers"
       />
+      <select v-model="filters.source" class="form-control">
+        <option value="">Todas as origens</option>
+        <option value="store">Loja</option>
+        <option value="manual">Manual</option>
+        <option value="unknown">Desconhecida</option>
+      </select>
       <input v-model="filters.date_from" class="form-control" type="date" aria-label="Data inicial">
       <input v-model="filters.date_to" class="form-control" type="date" aria-label="Data final">
       <button class="btn btn-primary btn-sm" type="submit">Filtrar</button>
@@ -34,11 +52,11 @@
     </form>
 
     <div v-if="loading" class="empty-state"><strong>Carregando...</strong></div>
-    <div v-else-if="!orders.length" class="empty-state"><strong>Nenhum pedido</strong></div>
+    <div v-else-if="!orders.length" class="empty-state"><strong>Nenhuma venda encontrada</strong></div>
     <div v-else class="admin-table-wrap">
       <table class="admin-table">
         <thead>
-          <tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Origem</th><th>Vendedor</th><th>Valor</th><th>Pagamento</th><th>Status</th><th>Data</th><th></th></tr>
+          <tr><th>#</th><th>Cliente</th><th>Produto</th><th>Tipo</th><th>Origem</th><th>Vendedor</th><th>Valor</th><th>Pagamento</th><th>Status</th><th>Data</th><th></th></tr>
         </thead>
         <tbody>
           <tr v-for="order in orders" :key="order.id">
@@ -46,6 +64,13 @@
             <td>
               {{ order.user?.name || 'Aluno' }}
               <span v-if="order.user?.email" class="admin-sub">{{ order.user.email }}</span>
+            </td>
+            <td class="admin-muted">
+              <template v-if="order.items?.length">
+                {{ order.items[0].product_title || order.items[0].store_product?.title || 'Produto' }}
+                <span v-if="order.items.length > 1" class="admin-sub">+{{ order.items.length - 1 }} item(ns)</span>
+              </template>
+              <span v-else>—</span>
             </td>
             <td class="admin-muted">{{ orderTypeLabel(order.type) }}</td>
             <td><span class="status-pill" :class="originClass(order.source)">{{ originLabel(order.source) }}</span></td>
@@ -85,6 +110,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '../api/http';
+import { useToast } from '../composables/useToast';
 import { formatCurrency, formatDateTime } from '../utils/format';
 import { originClass, originLabel } from '../utils/origin';
 import {
@@ -98,23 +124,32 @@ import OrderDetailDrawer from '../components/admin/OrderDetailDrawer.vue';
 import SearchSelect from '../components/admin/SearchSelect.vue';
 
 const route = useRoute();
+const toast = useToast();
 const orders = ref([]);
 const meta = ref({ current_page: 1, last_page: 1 });
+const summary = ref({ paid_orders: 0, revenue: 0, avg_ticket: 0, refunded: 0 });
 const loading = ref(true);
+const exporting = ref(false);
 const drawerOpen = ref(false);
 const selectedOrderId = ref(null);
 const sellerOptions = ref([]);
 const sellersLoading = ref(false);
 const filters = reactive({
   search: route.query.search ? String(route.query.search) : '',
-  status: '',
-  seller_id: '',
-  date_from: '',
-  date_to: '',
+  status: route.query.status ? String(route.query.status) : 'paid',
+  seller_id: route.query.seller_id ? String(route.query.seller_id) : '',
+  source: route.query.source ? String(route.query.source) : '',
+  date_from: route.query.date_from ? String(route.query.date_from) : '',
+  date_to: route.query.date_to ? String(route.query.date_to) : '',
 });
 
 const hasFilters = computed(() => Boolean(
-  filters.search || filters.status || filters.seller_id || filters.date_from || filters.date_to,
+  filters.search
+  || filters.seller_id
+  || filters.source
+  || filters.date_from
+  || filters.date_to
+  || (filters.status && filters.status !== 'paid'),
 ));
 
 onMounted(() => {
@@ -141,23 +176,43 @@ async function loadSellers(search = '') {
   }
 }
 
+function summaryParams() {
+  return {
+    search: filters.search || undefined,
+    seller_id: filters.seller_id || undefined,
+    source: filters.source || undefined,
+    date_from: filters.date_from || undefined,
+    date_to: filters.date_to || undefined,
+  };
+}
+
+function listParams() {
+  return {
+    ...summaryParams(),
+    status: filters.status || undefined,
+  };
+}
+
 async function load() {
   loading.value = true;
 
   try {
-    const { data } = await api.get('/admin/orders', {
-      params: {
-        page: meta.value.current_page,
-        per_page: 20,
-        search: filters.search || undefined,
-        status: filters.status || undefined,
-        seller_id: filters.seller_id || undefined,
-        date_from: filters.date_from || undefined,
-        date_to: filters.date_to || undefined,
-      },
-    });
-    orders.value = data.data ?? [];
-    meta.value = data.meta ?? meta.value;
+    const [{ data: list }, { data: totals }] = await Promise.all([
+      api.get('/admin/orders', {
+        params: { ...listParams(), page: meta.value.current_page, per_page: 20 },
+      }),
+      api.get('/admin/orders/summary', { params: summaryParams() }),
+    ]);
+
+    orders.value = list.data ?? [];
+    meta.value = list.meta ?? meta.value;
+    summary.value = {
+      paid_orders: 0,
+      revenue: 0,
+      avg_ticket: 0,
+      refunded: 0,
+      ...(totals.data || {}),
+    };
   } finally {
     loading.value = false;
   }
@@ -175,11 +230,39 @@ function go(page) {
 
 function clearFilters() {
   filters.search = '';
-  filters.status = '';
+  filters.status = 'paid';
   filters.seller_id = '';
+  filters.source = '';
   filters.date_from = '';
   filters.date_to = '';
   reload();
+}
+
+async function exportFile() {
+  exporting.value = true;
+
+  try {
+    const { data } = await api.get('/admin/orders/export', {
+      params: listParams(),
+      responseType: 'blob',
+      headers: { Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+    });
+
+    const url = URL.createObjectURL(new Blob([data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `vendas-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível exportar as vendas.');
+  } finally {
+    exporting.value = false;
+  }
 }
 
 function openOrder(order) {
@@ -194,8 +277,12 @@ function statusLabel(status) {
 
 <style scoped>
 .page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-.orders-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px;margin-bottom:18px;border:1px solid var(--border);border-radius:14px;background:var(--bg-card);}
-.orders-filters .form-control{min-width:150px;flex:1 1 160px;}
-.orders-filters input[type="search"]{flex-basis:260px;}
-.orders-filters .btn{flex-shrink:0;}
+.sales-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px;}
+.sales-kpis article{display:flex;flex-direction:column;gap:6px;padding:18px;border:1px solid var(--border);border-radius:16px;background:var(--bg-card);}
+.sales-kpis span{color:var(--text-muted);font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;}
+.sales-kpis strong{font-size:24px;letter-spacing:-.03em;}
+.sales-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px;margin-bottom:18px;border:1px solid var(--border);border-radius:14px;background:var(--bg-card);}
+.sales-filters .form-control{min-width:150px;flex:1 1 160px;}
+.sales-filters input[type="search"]{flex-basis:260px;}
+.sales-filters .btn{flex-shrink:0;}
 </style>

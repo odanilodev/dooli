@@ -287,6 +287,8 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::apiResource('payments', AdminPaymentController::class)->only(['index', 'store', 'show']);
         Route::post('payments/{payment}/refund', [AdminPaymentController::class, 'refund']);
 
+        Route::get('orders/summary', [AdminOrderController::class, 'summary']);
+        Route::get('orders/export', [AdminOrderController::class, 'export']);
         Route::apiResource('orders', AdminOrderController::class)->only(['index', 'show']);
 
         Route::apiResource('sellers', AdminSellerController::class)->only(['index', 'store', 'show', 'update', 'destroy']);

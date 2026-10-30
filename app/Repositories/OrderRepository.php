@@ -3,14 +3,17 @@
 namespace App\Repositories;
 
 use App\Enums\OrderStatus;
+use App\Enums\RefundStatus;
 use App\Models\Order;
+use App\Models\Refund;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class OrderRepository extends BaseRepository
 {
     protected array $searchable = ['status'];
 
-    protected array $filterable = ['status', 'user_id', 'company_id', 'coupon_id', 'seller_id'];
+    protected array $filterable = ['status', 'source', 'user_id', 'company_id', 'coupon_id', 'seller_id'];
 
     protected string $defaultSort = 'id';
 
@@ -55,6 +58,49 @@ class OrderRepository extends BaseRepository
                         ->orWhere('email', 'like', "%{$search}%");
                 });
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array{paid_orders: int, revenue: float, avg_ticket: float, refunded: float}
+     */
+    public function summary(array $filters): array
+    {
+        $query = $this->query();
+        $this->applyFilters($query, $filters);
+
+        $paidQuery = (clone $query)->where(
+            $this->model->qualifyColumn('status'),
+            OrderStatus::Paid->value,
+        );
+
+        $paidOrders = (int) (clone $paidQuery)->count();
+        $revenue = round((float) (clone $paidQuery)->sum($this->model->qualifyColumn('total')), 2);
+        $orderIds = (clone $query)->select($this->model->qualifyColumn('id'));
+
+        $refunded = round((float) Refund::query()
+            ->where('status', RefundStatus::Refunded->value)
+            ->whereHas('payment', fn (Builder $payment) => $payment->whereIn('order_id', $orderIds))
+            ->sum('amount'), 2);
+
+        return [
+            'paid_orders' => $paidOrders,
+            'revenue' => $revenue,
+            'avg_ticket' => $paidOrders > 0 ? round($revenue / $paidOrders, 2) : 0.0,
+            'refunded' => $refunded,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return Collection<int, Order>
+     */
+    public function filtered(array $filters): Collection
+    {
+        $query = $this->query()->with(['coupon', 'items.storeProduct', 'latestPayment', 'seller', 'user']);
+        $this->applyFilters($query, $filters);
+
+        return $query->latest($this->model->qualifyColumn('id'))->get();
     }
 
     public function countCouponUsageForUser(int $couponId, int $userId): int

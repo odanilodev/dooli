@@ -31,12 +31,17 @@ class MenuSeeder extends Seeder
                 ['Comentários', '/admin/comentarios', 'comments'],
             ],
         ],
-        'Loja e vendas' => [
+        'Loja' => [
             'icon' => 'store',
             'items' => [
                 ['Produtos', '/admin/produtos', 'store'],
-                ['Loja', '/admin/loja', 'storefront'],
+                ['Vitrine', '/admin/loja', 'storefront'],
                 ['Banners', '/admin/banners', 'banners'],
+            ],
+        ],
+        'Comercial' => [
+            'icon' => 'sellers',
+            'items' => [
                 ['Vendedores', '/admin/vendedores', 'sellers'],
                 ['Comissões', '/admin/comissoes', 'commissions'],
             ],
@@ -44,7 +49,7 @@ class MenuSeeder extends Seeder
         'Financeiro' => [
             'icon' => 'payments',
             'items' => [
-                ['Pedidos', '/admin/pedidos', 'orders'],
+                ['Vendas', '/admin/vendas', 'orders'],
                 ['Pagamentos', '/admin/pagamentos', 'payments'],
                 ['Assinaturas', '/admin/assinaturas', 'subscriptions'],
                 ['Gateways', '/admin/gateways', 'gateway'],
@@ -126,7 +131,7 @@ class MenuSeeder extends Seeder
             'type' => 'section',
             'link' => null,
             'icon' => null,
-            'sort_order' => 6,
+            'sort_order' => 7,
             'sub' => null,
         ]);
 

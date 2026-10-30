@@ -120,15 +120,25 @@ const FALLBACK_MENU = [
       },
       {
         id: 'fb-group-store',
-        name: 'Loja e vendas',
+        name: 'Loja',
         type: 'dropdown',
         depth: 1,
         link: null,
         icon: 'store',
         children: [
           { id: 'fb-products', name: 'Produtos', type: 'link', depth: 2, link: '/admin/produtos', icon: 'store' },
-          { id: 'fb-storefront', name: 'Loja', type: 'link', depth: 2, link: '/admin/loja', icon: 'storefront' },
+          { id: 'fb-storefront', name: 'Vitrine', type: 'link', depth: 2, link: '/admin/loja', icon: 'storefront' },
           { id: 'fb-banners', name: 'Banners', type: 'link', depth: 2, link: '/admin/banners', icon: 'banners' },
+        ],
+      },
+      {
+        id: 'fb-group-commercial',
+        name: 'Comercial',
+        type: 'dropdown',
+        depth: 1,
+        link: null,
+        icon: 'sellers',
+        children: [
           { id: 'fb-sellers', name: 'Vendedores', type: 'link', depth: 2, link: '/admin/vendedores', icon: 'sellers' },
           { id: 'fb-commissions', name: 'Comissões', type: 'link', depth: 2, link: '/admin/comissoes', icon: 'commissions' },
         ],
@@ -141,7 +151,7 @@ const FALLBACK_MENU = [
         link: null,
         icon: 'payments',
         children: [
-          { id: 'fb-orders', name: 'Pedidos', type: 'link', depth: 2, link: '/admin/pedidos', icon: 'orders' },
+          { id: 'fb-orders', name: 'Vendas', type: 'link', depth: 2, link: '/admin/vendas', icon: 'orders' },
           { id: 'fb-payments', name: 'Pagamentos', type: 'link', depth: 2, link: '/admin/pagamentos', icon: 'payments' },
           { id: 'fb-subscriptions', name: 'Assinaturas', type: 'link', depth: 2, link: '/admin/assinaturas', icon: 'subscriptions' },
           { id: 'fb-gateways', name: 'Gateways', type: 'link', depth: 2, link: '/admin/gateways', icon: 'gateway' },

@@ -5,7 +5,7 @@
         <h1 class="page-title">Pagamentos</h1>
         <p class="page-subtitle">Recebimentos, tentativas e estornos da empresa.</p>
       </div>
-      <router-link :to="{ name: 'admin-pedidos' }" class="btn btn-outline btn-sm">Pedidos</router-link>
+      <router-link :to="{ name: 'admin-vendas' }" class="btn btn-outline btn-sm">Vendas</router-link>
     </div>
 
     <section class="payment-kpis">

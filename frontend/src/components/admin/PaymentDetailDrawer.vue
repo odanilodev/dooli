@@ -19,11 +19,11 @@
           <span v-if="payment.order?.user?.email" class="admin-muted">{{ payment.order.user.email }}</span>
           <router-link
             v-if="payment.order_id"
-            :to="{ name: 'admin-pedidos', query: { search: payment.order_id } }"
+            :to="salesLink"
             class="admin-link"
             @click="close"
           >
-            Abrir pedidos
+            Abrir venda
           </router-link>
         </div>
 
@@ -81,6 +81,16 @@ const refundable = computed(() => {
 });
 
 const canRefund = computed(() => payment.value?.status === 'paid' && refundable.value > 0);
+
+const salesLink = computed(() => {
+  const query = { search: payment.value?.order_id };
+
+  if (payment.value?.order?.status) {
+    query.status = payment.value.order.status;
+  }
+
+  return { name: 'admin-vendas', query };
+});
 
 watch(() => [props.open, props.paymentId], async ([open, id]) => {
   if (!open || !id) {

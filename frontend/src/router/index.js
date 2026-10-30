@@ -45,7 +45,7 @@ import AdminUserTypesView from '../views/AdminUserTypesView.vue';
 import AdminMenusView from '../views/AdminMenusView.vue';
 import AdminCompaniesView from '../views/AdminCompaniesView.vue';
 import AdminGatewaysView from '../views/AdminGatewaysView.vue';
-import AdminOrdersView from '../views/AdminOrdersView.vue';
+import AdminSalesView from '../views/AdminSalesView.vue';
 import AdminPaymentsView from '../views/AdminPaymentsView.vue';
 import AdminSellersView from '../views/AdminSellersView.vue';
 import AdminCommissionsView from '../views/AdminCommissionsView.vue';
@@ -219,7 +219,8 @@ const routes = [
       { path: 'admin/produtos', name: 'admin-produtos', component: AdminProductsView, meta: { title: 'Produtos da loja (admin)', requiresAdminMenu: true } },
       { path: 'admin/loja', name: 'admin-loja', component: AdminStoreView, meta: { title: 'Loja (admin)', requiresAdminMenu: true } },
       { path: 'admin/gateways', name: 'admin-gateways', component: AdminGatewaysView, meta: { title: 'Gateways (admin)', requiresAdminMenu: true } },
-      { path: 'admin/pedidos', name: 'admin-pedidos', component: AdminOrdersView, meta: { title: 'Pedidos (admin)', requiresAdminMenu: true } },
+      { path: 'admin/vendas', name: 'admin-vendas', component: AdminSalesView, meta: { title: 'Vendas (admin)', requiresAdminMenu: true } },
+      { path: 'admin/pedidos', name: 'admin-pedidos', redirect: (to) => ({ name: 'admin-vendas', query: to.query }) },
       { path: 'admin/vendedores', name: 'admin-vendedores', component: AdminSellersView, meta: { title: 'Vendedores (admin)', requiresAdmin: true } },
       { path: 'admin/comissoes', name: 'admin-comissoes', component: AdminCommissionsView, meta: { title: 'Comissões (admin)', requiresAdmin: true } },
       { path: 'admin/pagamentos', name: 'admin-pagamentos', component: AdminPaymentsView, meta: { title: 'Pagamentos (admin)', requiresAdminMenu: true } },

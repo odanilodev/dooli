@@ -127,7 +127,8 @@ class MyMenuTest extends TestCase
         $this->assertSame([
             'Conteúdo',
             'Alunos',
-            'Loja e vendas',
+            'Loja',
+            'Comercial',
             'Financeiro',
             'Sistema',
         ], $groups);
@@ -135,8 +136,10 @@ class MyMenuTest extends TestCase
         $expectedParents = [
             '/admin/cursos' => 'Conteúdo',
             '/admin/certificados' => 'Alunos',
-            '/admin/produtos' => 'Loja e vendas',
-            '/admin/pedidos' => 'Financeiro',
+            '/admin/produtos' => 'Loja',
+            '/admin/vendedores' => 'Comercial',
+            '/admin/comissoes' => 'Comercial',
+            '/admin/vendas' => 'Financeiro',
             '/admin/usuarios' => 'Sistema',
         ];
 
@@ -153,12 +156,26 @@ class MyMenuTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame([
-            '/admin/pedidos',
+            '/admin/vendas',
             '/admin/pagamentos',
             '/admin/assinaturas',
             '/admin/gateways',
         ], Menu::query()
             ->where('sub', (string) $finance->id)
+            ->orderBy('sort_order')
+            ->pluck('link')
+            ->all());
+
+        $commercial = Menu::query()
+            ->where('name', 'Comercial')
+            ->where('type', 'dropdown')
+            ->firstOrFail();
+
+        $this->assertSame([
+            '/admin/vendedores',
+            '/admin/comissoes',
+        ], Menu::query()
+            ->where('sub', (string) $commercial->id)
             ->orderBy('sort_order')
             ->pluck('link')
             ->all());
@@ -171,9 +188,11 @@ class MyMenuTest extends TestCase
         )->pluck('name');
 
         $this->assertTrue($names->contains('Conteúdo'));
+        $this->assertTrue($names->contains('Loja'));
+        $this->assertTrue($names->contains('Comercial'));
         $this->assertTrue($names->contains('Financeiro'));
         $this->assertTrue($names->contains('Gateways'));
-        $this->assertTrue($names->contains('Pedidos'));
+        $this->assertTrue($names->contains('Vendas'));
         $this->assertTrue($names->contains('Vendedores'));
     }
 
