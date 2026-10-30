@@ -45,26 +45,11 @@
               <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
             </button>
             <div class="user-dropdown">
-              <router-link :to="{ name: 'perfil' }" @click="userMenuOpen = false">
-                <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
-                Meu perfil
-              </router-link>
-              <router-link :to="{ name: 'dashboard' }" @click="userMenuOpen = false">
-                <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
-                Meus cursos
-              </router-link>
-              <router-link :to="publicRoute('public-compras')" @click="userMenuOpen = false">
-                <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
-                Minhas compras
-              </router-link>
-              <!-- <router-link :to="publicRoute('public-assinaturas')" @click="userMenuOpen = false">
-                <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
-                Minhas assinaturas
-              </router-link> -->
-              <a href="#" @click.prevent="logout">
-                <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
-                Sair
-              </a>
+              <AccountMenuLinks
+                variant="public"
+                @navigate="userMenuOpen = false"
+                @logout="logout"
+              />
             </div>
           </div>
         </div>
@@ -95,6 +80,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import AccountMenuLinks from '../components/AccountMenuLinks.vue';
 import BrandLogo from '../components/BrandLogo.vue';
 import { useReferral } from '../composables/useReferral';
 import { useTenant } from '../composables/useTenant';

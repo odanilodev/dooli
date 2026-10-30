@@ -71,10 +71,11 @@
           <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
         </button>
         <div class="user-dropdown">
-          <router-link to="/perfil" @click="userMenuOpen = false"><svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>Meu perfil</router-link>
-          <router-link to="/configuracoes" @click="userMenuOpen = false"><svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>Configurações</router-link>
-          <router-link to="/minhas-compras" @click="userMenuOpen = false"><svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Minhas compras</router-link>
-          <a href="#" @click.prevent="handleLogout"><svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>Sair</a>
+          <AccountMenuLinks
+            variant="app"
+            @navigate="userMenuOpen = false"
+            @logout="handleLogout"
+          />
         </div>
       </div>
     </div>
@@ -91,6 +92,7 @@ import { useAuthStore } from '../stores/auth';
 import { useLiveClassesStore } from '../stores/liveClasses';
 import { useNotificationsStore } from '../stores/notifications';
 import { resetUserStores } from '../stores/resetUserStores';
+import AccountMenuLinks from './AccountMenuLinks.vue';
 import TeamSwitcher from './TeamSwitcher.vue';
 
 const route = useRoute();
