@@ -105,7 +105,7 @@ class SellerService
     private function uniqueToken(): string
     {
         do {
-            $token = Str::random(48);
+            $token = Str::random(Seller::KIT_TOKEN_LENGTH);
         } while ($this->sellers->tokenExists($token));
 
         return $token;

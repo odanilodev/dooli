@@ -19,6 +19,8 @@ class Seller extends Model
 {
     use BelongsToCompany, HasFactory;
 
+    public const KIT_TOKEN_LENGTH = 8;
+
     protected $hidden = ['share_token'];
 
     protected $attributes = [

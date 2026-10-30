@@ -26,9 +26,9 @@ O kit é público, somente leitura e mostra:
 - nome e código do vendedor;
 - link geral da loja com `?ref`;
 - produtos ativos e já liberados;
-- botão para copiar e compartilhar cada link.
+- botões para copiar e compartilhar cada link; compartilhar abre o WhatsApp com a mensagem pronta.
 
-O kit não mostra comissões, vendas, clientes ou dados de outros vendedores. O `share_token` é aleatório e pode ser rotacionado no admin; o link anterior deixa de funcionar. Vendedor inativo tem o kit indisponível.
+O kit não mostra comissões, vendas, clientes ou dados de outros vendedores. O `share_token` tem 8 caracteres alfanuméricos, é aleatório e pode ser rotacionado no admin; o link anterior deixa de funcionar. Vendedor inativo tem o kit indisponível.
 
 ## Links de produto
 

@@ -262,11 +262,22 @@ async function copyProduct(product) {
 }
 
 function shareStoreLink() {
-  return shareText('Loja', kit.value.store_url, 'store');
+  const seller = kit.value?.seller?.name;
+  const message = seller
+    ? `Confira a loja de ${seller}: ${kit.value.store_url}`
+    : `Confira a loja: ${kit.value.store_url}`;
+
+  return shareOnWhatsApp(message);
 }
 
 function shareProduct(product) {
-  return shareText(product.title, product.share_url, product.id);
+  return shareOnWhatsApp(`Confira ${product.title}: ${product.share_url}`);
+}
+
+function shareOnWhatsApp(message) {
+  const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 async function copyText(value, successMessage, key = null) {
@@ -305,22 +316,6 @@ function fallbackCopy(value) {
   textarea.select();
   document.execCommand('copy');
   textarea.remove();
-}
-
-async function shareText(title, url, key = null) {
-  if (navigator.share) {
-    try {
-      await navigator.share({ title, url });
-
-      return;
-    } catch (e) {
-      if (e?.name === 'AbortError') {
-        return;
-      }
-    }
-  }
-
-  await copyText(url, 'Link copiado para compartilhar.', key);
 }
 
 function markCopied(key) {

@@ -38,6 +38,8 @@ class AdminSellerTest extends TestCase
         $seller = Seller::query()->firstOrFail();
         $kitUrl = $response->json('data.kit_url');
 
+        $this->assertSame(Seller::KIT_TOKEN_LENGTH, strlen($seller->share_token));
+        $this->assertMatchesRegularExpression('/^[A-Za-z0-9]{8}$/', $seller->share_token);
         $this->assertStringContainsString('/e/'.$this->company->slug.'/vendedor/'.$seller->share_token, $kitUrl);
         $this->assertArrayNotHasKey('share_token', $response->json('data'));
     }
@@ -147,6 +149,7 @@ class AdminSellerTest extends TestCase
         $newToken = $seller->fresh()->share_token;
 
         $this->assertNotSame($oldToken, $newToken);
+        $this->assertSame(Seller::KIT_TOKEN_LENGTH, strlen($newToken));
         $this->assertStringContainsString('/vendedor/'.$newToken, $response->json('data.kit_url'));
 
         $this->getJson('/api/v1/public/companies/'.$this->company->slug.'/seller-kits/'.$oldToken)

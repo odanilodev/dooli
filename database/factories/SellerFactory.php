@@ -23,7 +23,7 @@ class SellerFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'phone' => fake()->numerify('(##) #####-####'),
             'code' => Str::limit(Str::lower(Str::slug($name)), 24, '').'-'.fake()->unique()->numberBetween(1000, 9999),
-            'share_token' => Str::random(48),
+            'share_token' => Str::random(Seller::KIT_TOKEN_LENGTH),
             'commission_percent' => 10,
             'status' => GeneralStatus::Active->value,
         ];
