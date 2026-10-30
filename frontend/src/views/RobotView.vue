@@ -2,7 +2,10 @@
   <main class="content">
     <div class="page-header">
       <div>
-        <router-link :to="{ name: 'robos' }" class="back">← Robôs</router-link>
+        <router-link class="btn btn-outline btn-sm robot-back" :to="{ name: 'robos' }">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Robôs
+        </router-link>
         <h1 class="page-title">{{ robot?.name || 'Robô' }}</h1>
         <p class="page-subtitle">{{ robot?.description }}</p>
       </div>
@@ -371,7 +374,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.back { font-size: 12px; color: var(--text-muted); text-decoration: none; }
+.robot-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px; }
 .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px; margin-bottom: 20px; }
 form { display: flex; flex-direction: column; gap: 16px; }
 .row { display: flex; flex-wrap: wrap; gap: 24px; }
@@ -420,6 +423,21 @@ form .btn { align-self: flex-start; }
 .toolbar label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
 .toolbar label input[type=number] { width: 70px; }
 .toolbar .check { cursor: pointer; }
+.toolbar .check input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; margin: 0; flex-shrink: 0;
+  width: 18px; height: 18px; display: inline-grid; place-content: center; cursor: pointer;
+  border: 1.5px solid var(--border); border-radius: 6px; background: var(--bg-input);
+  transition: border-color .14s ease, background .14s ease;
+}
+.toolbar .check input[type="checkbox"]::before {
+  content: ""; width: 10px; height: 10px; transform: scale(0); transition: transform .12s ease;
+  box-shadow: inset 1em 1em var(--accent-ink);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+.toolbar .check:hover input[type="checkbox"] { border-color: var(--accent); }
+.toolbar .check input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+.toolbar .check input[type="checkbox"]:checked::before { transform: scale(1); }
+.toolbar .check input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .toolbar .btn { margin-left: auto; }
 
 .table-wrap { background: var(--bg-card); overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
