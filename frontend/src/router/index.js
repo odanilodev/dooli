@@ -15,6 +15,8 @@ import LiveClassesView from '../views/LiveClassesView.vue';
 import LessonView from '../views/LessonView.vue';
 import StoreView from '../views/StoreView.vue';
 import StoreProductView from '../views/StoreProductView.vue';
+import RobotsView from '../views/RobotsView.vue';
+import RobotView from '../views/RobotView.vue';
 import PublicStoreView from '../views/PublicStoreView.vue';
 import PublicProductView from '../views/PublicProductView.vue';
 import PublicCheckoutView from '../views/PublicCheckoutView.vue';
@@ -165,6 +167,8 @@ const routes = [
       { path: 'certificados/:id', name: 'certificado', component: CertificatePrintView, meta: { title: 'Certificado' } },
       { path: 'loja', name: 'loja', component: StoreView, meta: { title: 'Loja', searchPlaceholder: 'Buscar na loja...' } },
       { path: 'loja/:slug', name: 'loja-produto', component: StoreProductView, meta: { title: 'Produto', searchPlaceholder: 'Buscar na loja...' } },
+      { path: 'robos', name: 'robos', component: RobotsView, meta: { title: 'Robôs' } },
+      { path: 'robos/:slug', name: 'robo', component: RobotView, meta: { title: 'Robô' } },
       { path: 'perfil', name: 'perfil', component: ProfileView, meta: { title: 'Meu perfil' } },
       { path: 'configuracoes', name: 'configuracoes', component: SettingsView, meta: { title: 'Configurações' } },
       { path: 'admin/video-platforms', name: 'admin-video-platforms', component: AdminVideoPlatformsView, meta: { title: 'Plataformas de vídeo', requiresAdminMenu: true } },

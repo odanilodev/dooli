@@ -157,6 +157,7 @@
         <button type="button" role="menuitem" @click="run('details')">Detalhes</button>
         <button type="button" role="menuitem" @click="run('students')">Alunos</button>
         <button type="button" role="menuitem" @click="run('courses')">Cursos</button>
+        <button type="button" role="menuitem" @click="run('tools')">Ferramentas</button>
         <button type="button" role="menuitem" @click="run('schedules')">Agendamentos</button>
         <div class="team-menu-sep"></div>
         <button type="button" role="menuitem" class="danger" @click="run('delete')">Excluir</button>

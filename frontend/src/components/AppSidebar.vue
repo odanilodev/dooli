@@ -36,6 +36,21 @@
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.5 7 21l5-2.5L17 21l-1.5-7.5"/></svg>
           <span>Meus certificados</span>
         </router-link>
+        <template v-if="robots.hasAny">
+          <span class="nav-group-label">Ferramentas</span>
+          <router-link
+            v-for="robot in robots.items"
+            :key="robot.id"
+            :to="{ name: 'robo', params: { slug: robot.slug } }"
+            class="nav-link"
+            :class="{ active: $route.name === 'robo' && $route.params.slug === robot.slug }"
+            @click="close"
+          >
+            <NavIcon name="robots" />
+            <span>{{ robot.name }}</span>
+          </router-link>
+        </template>
+        <span class="nav-group-label">Conta</span>
         <router-link to="/perfil" class="nav-link" :class="{ active: $route.name === 'perfil' }" @click="close">
           <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
           <span>Meu perfil</span>
@@ -67,12 +82,15 @@ import { useLiveClassesStore } from '../stores/liveClasses';
 import { useMenusStore } from '../stores/menus';
 import { useNavMenu } from '../composables/useNavMenu';
 import BrandLogo from './BrandLogo.vue';
+import NavIcon from './NavIcon.vue';
 import NavItem from './NavItem.vue';
+import { useRobotsStore } from '../stores/robots';
 
 const { isOpen, close } = useSidebar();
 const auth = useAuthStore();
 const live = useLiveClassesStore();
 const menus = useMenusStore();
+const robots = useRobotsStore();
 const route = useRoute();
 const { openPath, isActive } = useNavMenu();
 
@@ -205,6 +223,7 @@ onMounted(() => {
   }
 
   if (!auth.canAccessAdmin) {
+    robots.fetch();
     live.fetch();
     live.startClock();
     document.addEventListener('visibilitychange', refreshLiveOnVisible);

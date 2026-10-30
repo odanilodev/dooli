@@ -45,6 +45,24 @@ services:
     command: php artisan queue:work --sleep=1 --tries=3 --timeout=120
     tty: true
 
+  # Executa o agendador do Laravel (coleta diária de dados de mercado dos robôs).
+  scheduler:
+    image: cursos-api-app
+    container_name: cursos_api_scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+      - vendor:/var/www/html/vendor
+      - bootstrap_cache:/var/www/html/bootstrap/cache
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: php artisan schedule:work
+    tty: true
+
   db:
     image: mysql:8.4
     container_name: cursos_api_db

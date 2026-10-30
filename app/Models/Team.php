@@ -28,6 +28,13 @@ class Team extends Model
             ->withTimestamps();
     }
 
+    public function robots(): BelongsToMany
+    {
+        return $this->belongsToMany(Robot::class, 'robot_team')
+            ->withPivot(['company_id'])
+            ->withTimestamps();
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'team_users')

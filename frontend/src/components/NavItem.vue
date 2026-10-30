@@ -53,10 +53,6 @@ const { isOpen, toggle, isActive } = useNavMenu();
 </script>
 
 <style scoped>
-.nav-group-label{
-  font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;
-  color:var(--text-muted);margin:14px 0 2px;padding-left:12px;
-}
 .nav-toggle{width:100%;}
 .nav-caret{
   margin-left:auto;flex:none;opacity:.7;transition:transform .2s ease;
