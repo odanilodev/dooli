@@ -41,8 +41,11 @@ class Company extends Model
         $domain = self::normalizeDomain($this->domain);
 
         if ($domain) {
+            $port = (int) config('app.frontend_port');
+            $suffix = $port > 0 ? ':'.$port : '';
+
             return rtrim((string) config('app.frontend_scheme', 'https'), '/')
-                .'://'.$domain;
+                .'://'.$domain.$suffix;
         }
 
         return rtrim((string) config('app.frontend_url'), '/');

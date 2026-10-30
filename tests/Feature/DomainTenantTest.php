@@ -141,6 +141,7 @@ class DomainTenantTest extends TestCase
     public function test_company_urls_use_the_domain_when_configured(): void
     {
         config()->set('app.frontend_scheme', 'https');
+        config()->set('app.frontend_port', null);
         config()->set('app.frontend_url', 'http://localhost:5174');
 
         $this->company->update(['domain' => 'ourovelho.test']);
@@ -173,6 +174,26 @@ class DomainTenantTest extends TestCase
         $this->assertSame(
             'http://localhost:5174/e/'.$this->company->slug.'/assinaturas',
             $this->company->publicSubscriptionsUrl(),
+        );
+    }
+
+    public function test_company_urls_include_the_configured_frontend_port(): void
+    {
+        config()->set('app.frontend_scheme', 'http');
+        config()->set('app.frontend_port', 5174);
+        config()->set('app.frontend_url', 'http://localhost:5174');
+
+        $this->company->update(['domain' => 'empresa2.localhost']);
+
+        $this->assertSame('http://empresa2.localhost:5174/', $this->company->publicStoreUrl());
+        $this->assertSame('http://empresa2.localhost:5174/produto/curso-php?ref=joao123', $this->company->publicProductUrl('curso-php', 'joao123'));
+        $this->assertSame('http://empresa2.localhost:5174/vendedor/token-123', $this->company->sellerKitUrl('token-123'));
+
+        $this->company->update(['domain' => null]);
+
+        $this->assertSame(
+            'http://localhost:5174/e/'.$this->company->slug.'/loja',
+            $this->company->publicStoreUrl(),
         );
     }
 

@@ -80,14 +80,14 @@
 
     <template v-if="!showForm">
       <form class="sellers-filters" @submit.prevent="reload">
-        <input v-model="filters.search" class="form-control" type="search" placeholder="Buscar por nome, e-mail ou código">
-        <select v-model="filters.status" class="form-control">
+        <input v-model="filters.search" class="form-control sellers-filter-search" type="search" placeholder="Buscar vendedor...">
+        <select v-model="filters.status" class="form-control sellers-filter-status">
           <option value="">Todos os status</option>
           <option value="active">Ativos</option>
           <option value="inactive">Inativos</option>
         </select>
-        <button class="btn btn-primary btn-sm" type="submit">Filtrar</button>
-        <button v-if="hasFilters" class="btn btn-outline btn-sm" type="button" @click="clearFilters">Limpar</button>
+        <button class="btn btn-primary sellers-filter-submit" type="submit">Filtrar</button>
+        <button v-if="hasFilters" class="btn btn-outline sellers-filter-clear" type="button" @click="clearFilters">Limpar</button>
       </form>
 
       <div v-if="loading" class="empty-state"><strong>Carregando...</strong></div>
@@ -106,15 +106,28 @@
               <th>Pedidos</th>
               <th>Faturamento</th>
               <th>A pagar</th>
-              <th>Kit</th>
-              <th></th>
+              <th class="seller-actions-head">Ações</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="seller in sellers" :key="seller.id">
               <td>
-                <strong>{{ seller.name }}</strong>
-                <span class="admin-sub">{{ seller.email || 'Sem e-mail' }} · {{ seller.code }}</span>
+                <div class="seller-cell">
+                  <div class="seller-cell-main">
+                    <strong>{{ seller.name }}</strong>
+                    <span class="admin-sub">{{ seller.email || 'Sem e-mail' }} · {{ seller.code }}</span>
+                  </div>
+                  <button
+                    v-if="seller.kit_url"
+                    class="kit-copy-btn"
+                    type="button"
+                    title="Copiar link do kit"
+                    aria-label="Copiar link do kit"
+                    @click="copyKit(seller)"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L11 5"/><path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07L13 19"/></svg>
+                  </button>
+                </div>
               </td>
               <td>{{ Number(seller.commission_percent).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) }}%</td>
               <td><span class="status-pill" :class="seller.status">{{ statusLabel(seller.status) }}</span></td>
@@ -122,14 +135,19 @@
               <td>{{ seller.metrics?.paid_orders_count ?? 0 }}</td>
               <td>{{ formatCurrency(seller.metrics?.gross_revenue) }}</td>
               <td>{{ formatCurrency(seller.metrics?.commission_pending) }}</td>
-              <td class="admin-actions">
-                <button class="btn btn-outline btn-sm" type="button" :disabled="!seller.kit_url" @click="copyKit(seller)">Copiar</button>
-                <button class="btn btn-outline btn-sm" type="button" :disabled="!seller.kit_url" @click="openKit(seller)">Abrir</button>
-              </td>
-              <td class="admin-actions">
-                <button class="btn btn-outline btn-sm" type="button" @click="openDetail(seller)">Detalhes</button>
-                <button class="btn btn-outline btn-sm" type="button" @click="openEdit(seller)">Editar</button>
-                <button class="btn btn-danger btn-sm" type="button" :disabled="busyId === seller.id" @click="remove(seller)">Excluir</button>
+              <td class="seller-actions-cell">
+                <button
+                  class="seller-actions-btn"
+                  :class="{ 'is-open': openMenuSeller?.id === seller.id }"
+                  type="button"
+                  :disabled="busyId === seller.id"
+                  aria-label="Ações do vendedor"
+                  aria-haspopup="menu"
+                  :aria-expanded="openMenuSeller?.id === seller.id"
+                  @click.stop="toggleActions(seller, $event)"
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+                </button>
               </td>
             </tr>
           </tbody>
@@ -149,11 +167,26 @@
       @close="drawerOpen = false"
       @updated="load"
     />
+    <Teleport to="body">
+      <div
+        v-if="openMenuSeller"
+        class="seller-actions-menu"
+        :style="actionsMenuStyle"
+        role="menu"
+        @click.stop
+      >
+        <button type="button" role="menuitem" @click="runAction('details')">Detalhes</button>
+        <button type="button" role="menuitem" @click="runAction('edit')">Editar</button>
+        <button type="button" role="menuitem" :disabled="!openMenuSeller.kit_url" @click="runAction('open-kit')">Abrir kit</button>
+        <div class="seller-menu-sep"></div>
+        <button type="button" role="menuitem" class="danger" :disabled="busyId === openMenuSeller.id" @click="runAction('delete')">Excluir</button>
+      </div>
+    </Teleport>
   </main>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
 import { formatCurrency } from '../utils/format';
@@ -172,6 +205,8 @@ const drawerOpen = ref(false);
 const selectedSellerId = ref(null);
 const userOptions = ref([]);
 const usersLoading = ref(false);
+const openMenuSeller = ref(null);
+const actionsMenuPosition = ref({ top: 0, left: 0 });
 const filters = reactive({ search: '', status: '' });
 const form = reactive({
   name: '',
@@ -185,13 +220,29 @@ const form = reactive({
 });
 
 const hasFilters = computed(() => Boolean(filters.search || filters.status));
+const actionsMenuStyle = computed(() => ({
+  top: `${actionsMenuPosition.value.top}px`,
+  left: `${actionsMenuPosition.value.left}px`,
+}));
 
 onMounted(() => {
   load();
   loadUsers('');
+  document.addEventListener('click', closeActionsMenu);
+  document.addEventListener('keydown', handleGlobalKeydown);
+  window.addEventListener('scroll', closeActionsMenu, true);
+  window.addEventListener('resize', closeActionsMenu);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeActionsMenu);
+  document.removeEventListener('keydown', handleGlobalKeydown);
+  window.removeEventListener('scroll', closeActionsMenu, true);
+  window.removeEventListener('resize', closeActionsMenu);
 });
 
 async function load() {
+  closeActionsMenu();
   loading.value = true;
 
   try {
@@ -260,6 +311,7 @@ function toggleForm() {
 }
 
 function openCreate() {
+  closeActionsMenu();
   editingId.value = null;
   Object.assign(form, {
     name: '',
@@ -275,6 +327,7 @@ function openCreate() {
 }
 
 function openEdit(seller) {
+  closeActionsMenu();
   editingId.value = seller.id;
   Object.assign(form, {
     name: seller.name || '',
@@ -331,6 +384,8 @@ async function save() {
 }
 
 async function remove(seller) {
+  closeActionsMenu();
+
   if (!window.confirm(`Excluir o vendedor ${seller.name}?`)) {
     return;
   }
@@ -348,21 +403,114 @@ async function remove(seller) {
   }
 }
 
+function toggleActions(seller, event) {
+  if (openMenuSeller.value?.id === seller.id) {
+    closeActionsMenu();
+
+    return;
+  }
+
+  const rect = event.currentTarget.getBoundingClientRect();
+  const width = 190;
+  const height = 190;
+  const margin = 12;
+  let left = rect.right - width;
+  let top = rect.bottom + 6;
+  const maxLeft = Math.max(margin, window.innerWidth - width - margin);
+
+  left = Math.min(Math.max(left, margin), maxLeft);
+
+  if (top + height > window.innerHeight - margin) {
+    top = Math.max(margin, rect.top - height - 6);
+  }
+
+  actionsMenuPosition.value = { top, left };
+  openMenuSeller.value = seller;
+}
+
+function closeActionsMenu() {
+  openMenuSeller.value = null;
+}
+
+function handleGlobalKeydown(event) {
+  if (event.key === 'Escape') {
+    closeActionsMenu();
+  }
+}
+
+function runAction(action) {
+  const seller = openMenuSeller.value;
+
+  closeActionsMenu();
+
+  if (!seller) {
+    return;
+  }
+
+  if (action === 'details') {
+    openDetail(seller);
+
+    return;
+  }
+
+  if (action === 'edit') {
+    openEdit(seller);
+
+    return;
+  }
+
+  if (action === 'open-kit') {
+    openKit(seller);
+
+    return;
+  }
+
+  if (action === 'delete') {
+    remove(seller);
+  }
+}
+
 function openDetail(seller) {
+  closeActionsMenu();
   selectedSellerId.value = seller.id;
   drawerOpen.value = true;
 }
 
 async function copyKit(seller) {
+  closeActionsMenu();
+
+  if (!seller.kit_url) {
+    return;
+  }
+
   try {
-    await navigator.clipboard.writeText(seller.kit_url);
+    await copyText(seller.kit_url);
     toast.success('Link do kit copiado.');
   } catch (e) {
     toast.error('Não foi possível copiar o link.');
   }
 }
 
+async function copyText(value) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  textarea.remove();
+}
+
 function openKit(seller) {
+  closeActionsMenu();
   window.open(seller.kit_url, '_blank', 'noopener');
 }
 
@@ -373,8 +521,64 @@ function statusLabel(value) {
 
 <style scoped>
 .page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-.sellers-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px;margin-bottom:18px;border:1px solid var(--border);border-radius:14px;background:var(--bg-card);}
-.sellers-filters input[type="search"]{flex:1 1 260px;}
-.sellers-filters .form-control{min-width:150px;}
-.sellers-filters .btn{flex-shrink:0;}
+
+.sellers-filters{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 170px max-content max-content;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px;
+  margin-bottom:18px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--bg-card);
+}
+.sellers-filters .form-control,
+.sellers-filters .btn{height:42px;box-sizing:border-box;}
+.sellers-filters .btn{padding:0 18px;font-size:13px;}
+.sellers-filter-search{min-width:0;}
+.sellers-filter-status{width:170px;}
+
+.seller-cell{display:flex;align-items:center;gap:10px;min-width:0;}
+.seller-cell-main{display:flex;flex-direction:column;min-width:0;}
+.kit-copy-btn{
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+  width:30px;height:30px;padding:0;border-radius:9px;cursor:pointer;
+  background:transparent;border:1.5px solid var(--border);color:var(--text-muted);
+  transition:border-color .14s ease,color .14s ease,background .14s ease;
+}
+.kit-copy-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+.kit-copy-btn:disabled{opacity:.45;cursor:default;}
+
+.seller-actions-head{width:52px;text-align:right;}
+.seller-actions-cell{width:52px;text-align:right;}
+.seller-actions-btn{
+  display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;
+  border-radius:9px;border:1.5px solid transparent;background:transparent;color:var(--text-muted);
+  cursor:pointer;transition:border-color .14s ease,color .14s ease,background .14s ease;
+}
+.seller-actions-btn:hover,.seller-actions-btn.is-open{border-color:var(--border);background:var(--bg-card-alt);color:var(--text-primary);}
+.seller-actions-btn:disabled{opacity:.45;cursor:wait;}
+
+.seller-actions-menu{
+  position:fixed;z-index:120;min-width:180px;max-width:calc(100vw - 24px);padding:6px;
+  display:flex;flex-direction:column;gap:2px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);
+}
+.seller-actions-menu button{
+  text-align:left;background:none;border:none;color:var(--text-secondary);font-family:inherit;
+  font-size:12.5px;font-weight:600;padding:8px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;
+}
+.seller-actions-menu button:hover{background:var(--bg-card-alt);color:var(--text-primary);}
+.seller-actions-menu button:disabled{opacity:.45;cursor:wait;}
+.seller-actions-menu button.danger{color:#ef4444;}
+.seller-actions-menu button.danger:hover{background:rgba(239,68,68,.12);}
+.seller-menu-sep{height:1px;background:var(--border);margin:4px 2px;}
+
+@media(max-width:640px){
+  .sellers-filters{display:flex;flex-wrap:wrap;}
+  .sellers-filter-search{flex:1 1 100%;}
+  .sellers-filter-status{flex:1 1 140px;width:auto;}
+  .sellers-filters .btn{flex:0 0 auto;}
+}
 </style>

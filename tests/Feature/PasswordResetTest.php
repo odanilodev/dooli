@@ -46,6 +46,7 @@ class PasswordResetTest extends TestCase
         Notification::fake();
 
         config()->set('app.frontend_scheme', 'https');
+        config()->set('app.frontend_port', null);
         $this->company->update(['domain' => 'ourovelho.test']);
 
         $this->postJson('/api/v1/auth/forgot-password', ['email' => $this->student->email])

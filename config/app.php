@@ -80,6 +80,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Frontend Port
+    |--------------------------------------------------------------------------
+    |
+    | Optional port appended to tenant URLs built from a custom domain. Local
+    | environments can override this with FRONTEND_PORT=5174.
+    |
+    */
+
+    'frontend_port' => env('FRONTEND_PORT'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Platform Domains
     |--------------------------------------------------------------------------
     |

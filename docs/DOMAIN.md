@@ -273,4 +273,4 @@ O middleware `company.domain` resolve a empresa pelo header `X-Company-Domain` (
 
 O dominio identifica o tenant, mas nao substitui autorizacao: rotas autenticadas sempre usam a empresa do usuario/token. O servidor precisa de DNS/TLS por dominio e fallback SPA para `index.html` (mantendo `/v/*` para `verificar.html`).
 
-Para testar localmente, mapeie o host (ex.: `ourovelho.test` para `127.0.0.1`), use `VITE_PLATFORM_DOMAINS=localhost,127.0.0.1` e acesse `http://ourovelho.test:5174`. O Vite de desenvolvimento aceita hosts customizados (`server.allowedHosts`); em producao a regra fica no proxy/Nginx. Defina `FRONTEND_SCHEME=http` no `.env` local se os links gerados pelo backend forem abertos via HTTP.
+Para testar localmente, mapeie o host (ex.: `ourovelho.test` para `127.0.0.1`), use `VITE_PLATFORM_DOMAINS=localhost,127.0.0.1` e acesse `http://ourovelho.test:5174`. O Vite de desenvolvimento aceita hosts customizados (`server.allowedHosts`); em producao a regra fica no proxy/Nginx. Defina `FRONTEND_SCHEME=http` e `FRONTEND_PORT=5174` no `.env` local para que os links gerados pelo backend incluam o protocolo e a porta corretos.
