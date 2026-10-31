@@ -9,7 +9,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-#[Fillable(['company_id', 'team_id', 'release_at', 'type_notification_id', 'status'])]
+#[Fillable([
+    'company_id', 'team_id', 'release_at', 'type_notification_id', 'status',
+    'title', 'message', 'action_url', 'category', 'severity', 'dedupe_key', 'metadata',
+])]
 class Notification extends Model
 {
     use BelongsToCompany, HasFactory;
@@ -18,6 +21,7 @@ class Notification extends Model
     {
         return [
             'release_at' => 'datetime',
+            'metadata' => 'array',
         ];
     }
 

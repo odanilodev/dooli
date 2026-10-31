@@ -76,6 +76,42 @@ export const useCompaniesStore = defineStore('companies', () => {
     return data.data;
   }
 
+  async function fetchMailSettings(id) {
+    const { data } = await api.get(`/admin/companies/${id}/mail-settings`);
+
+    return data.data;
+  }
+
+  async function saveMailSettings(id, payload) {
+    const { data } = await api.put(`/admin/companies/${id}/mail-settings`, payload);
+
+    return data.data;
+  }
+
+  async function validateMailCredentials(id) {
+    const { data } = await api.post(`/admin/companies/${id}/mail-settings/validate-credentials`);
+
+    return data.data;
+  }
+
+  async function registerMailDomain(id) {
+    const { data } = await api.post(`/admin/companies/${id}/mail-settings/register-domain`);
+
+    return data.data;
+  }
+
+  async function checkMailDomain(id) {
+    const { data } = await api.post(`/admin/companies/${id}/mail-settings/check-domain`);
+
+    return data.data;
+  }
+
+  async function testMailSettings(id, email) {
+    const { data } = await api.post(`/admin/companies/${id}/mail-settings/test`, { email });
+
+    return data.data;
+  }
+
   return {
     items,
     loading,
@@ -85,5 +121,11 @@ export const useCompaniesStore = defineStore('companies', () => {
     updateCompany,
     fetchBranding,
     saveBranding,
+    fetchMailSettings,
+    saveMailSettings,
+    validateMailCredentials,
+    registerMailDomain,
+    checkMailDomain,
+    testMailSettings,
   };
 });

@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Exceptions\ApiException;
 use App\Models\EmailVerificationCode;
 use App\Models\User;
-use App\Notifications\EmailVerificationCode as EmailVerificationCodeNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -17,12 +16,14 @@ class EmailVerificationService
 
     public const RESEND_COOLDOWN_SECONDS = 60;
 
-    public function __construct(private readonly DatalogService $audit) {}
+    public function __construct(
+        private readonly DatalogService $audit,
+        private readonly CompanyMailService $mail,
+    ) {}
 
     public function sendCode(User $user): void
     {
         $code = (string) random_int(100000, 999999);
-        $companyName = $user->company?->name ?? (string) config('app.name');
 
         EmailVerificationCode::query()
             ->withoutGlobalScope('company')
@@ -39,11 +40,7 @@ class EmailVerificationService
                 ],
             );
 
-        $user->notify(new EmailVerificationCodeNotification(
-            $code,
-            $companyName,
-            self::CODE_TTL_MINUTES,
-        ));
+        $this->mail->sendVerificationCode($user, $code, self::CODE_TTL_MINUTES);
 
         $this->audit->log(
             'auth',

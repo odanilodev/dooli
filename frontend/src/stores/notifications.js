@@ -34,6 +34,10 @@ export const useNotificationsStore = defineStore('notifications', () => {
     }
   }
 
+  async function refresh() {
+    return fetch(true);
+  }
+
   async function markAsRead(id) {
     const item = items.value.find((notification) => notification.id === Number(id));
 
@@ -63,5 +67,5 @@ export const useNotificationsStore = defineStore('notifications', () => {
     error.value = null;
   }
 
-  return { items, meta, loading, loaded, error, unreadCount, fetch, markAsRead, markAllAsRead, reset };
+  return { items, meta, loading, loaded, error, unreadCount, fetch, refresh, markAsRead, markAllAsRead, reset };
 });

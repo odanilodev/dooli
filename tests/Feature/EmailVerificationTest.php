@@ -3,13 +3,13 @@
 namespace Tests\Feature;
 
 use App\Enums\UserTypeCode;
+use App\Mail\TransactionalMail;
 use App\Models\Company;
 use App\Models\EmailVerificationCode;
 use App\Models\User;
 use App\Models\UserType;
-use App\Notifications\EmailVerificationCode as EmailVerificationCodeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Mail;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
 
@@ -21,7 +21,7 @@ class EmailVerificationTest extends TestCase
     {
         parent::setUp();
         $this->buildTenant();
-        Notification::fake();
+        Mail::fake();
     }
 
     public function test_valid_code_confirms_email_and_returns_a_token(): void
@@ -100,7 +100,7 @@ class EmailVerificationTest extends TestCase
 
         $secondCode = $this->latestCode($user);
 
-        Notification::assertSentToTimes($user, EmailVerificationCodeNotification::class, 2);
+        Mail::assertSentTimes(TransactionalMail::class, 2);
         $this->assertNotSame($firstCode, $secondCode);
 
         $this->verify($user->email, $firstCode)
@@ -116,7 +116,7 @@ class EmailVerificationTest extends TestCase
             'email' => $user->email,
         ])->assertOk();
 
-        Notification::assertSentToTimes($user, EmailVerificationCodeNotification::class, 1);
+        Mail::assertSentTimes(TransactionalMail::class, 1);
     }
 
     public function test_resend_returns_generic_response_for_unknown_email(): void
@@ -180,9 +180,13 @@ class EmailVerificationTest extends TestCase
 
     private function latestCode(User $user): string
     {
-        return Notification::sent($user, EmailVerificationCodeNotification::class)
-            ->last()
-            ->code;
+        $mail = Mail::sent(TransactionalMail::class)
+            ->filter(fn (TransactionalMail $mailable) => $mailable->hasTo($user->email))
+            ->last();
+
+        $this->assertNotNull($mail?->code);
+
+        return (string) $mail->code;
     }
 
     private function record(User $user): EmailVerificationCode

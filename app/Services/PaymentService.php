@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTO\CreatePaymentDTO;
+use App\Enums\NotificationSlug;
 use App\Enums\OrderEventActorType;
 use App\Enums\OrderEventType;
 use App\Enums\OrderStatus;
@@ -22,6 +23,7 @@ use App\Support\CompanyContext;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class PaymentService
 {
@@ -34,6 +36,7 @@ class PaymentService
         private readonly DatalogService $audit,
         private readonly OrderEventService $orderEvents,
         private readonly SellerCommissionService $sellerCommissions,
+        private readonly NotificationService $notifications,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -303,6 +306,10 @@ class PaymentService
 
             $this->audit->log('payment', 'confirm', 'payment', "Pagamento confirmado: {$payment->id}");
 
+            if (! $order->subscription_id) {
+                $this->notifyPayment($order, $payment, NotificationSlug::PaymentApproved);
+            }
+
             return $payment->refresh();
         });
     }
@@ -387,6 +394,11 @@ class PaymentService
 
             $this->audit->log('payment', 'refund', 'payment', "Estorno do pagamento {$payment->id}");
 
+            $this->notifyPayment($order, $payment, NotificationSlug::PaymentRefunded, [
+                'dedupe' => "payment_refunded:{$refund->id}",
+                'message' => 'Um estorno de R$ '.number_format($amount, 2, ',', '.').' foi processado para o seu pagamento.',
+            ]);
+
             return $payment->refresh();
         });
     }
@@ -450,6 +462,11 @@ class PaymentService
             'source_id' => (int) $order->id,
             'occurred_at' => $refundedAt,
         ]);
+
+        $this->notifyPayment($order, $payment, NotificationSlug::PaymentRefunded, [
+            'dedupe' => "payment_refunded_webhook:{$payment->id}",
+            'message' => 'O gateway informou o estorno do seu pagamento.',
+        ]);
     }
 
     private function applyFailedWebhook(
@@ -475,6 +492,13 @@ class PaymentService
                 'amount' => (float) $payment->amount,
             ],
         ]);
+
+        if (! $order->subscription_id) {
+            $this->notifyPayment($order, $payment, NotificationSlug::PaymentFailed, [
+                'dedupe' => "payment_failed:{$payment->id}",
+                'message' => 'Não foi possível confirmar seu pagamento. Tente novamente ou escolha outra forma de pagamento.',
+            ]);
+        }
     }
 
     /**
@@ -546,5 +570,47 @@ class PaymentService
 
             return PaymentEventStatus::Processed->value;
         });
+    }
+
+    /**
+     * @param  array{dedupe?: string, message?: string}  $options
+     */
+    private function notifyPayment(
+        Order $order,
+        Payment $payment,
+        NotificationSlug $slug,
+        array $options = [],
+    ): void {
+        try {
+            $order->loadMissing('user');
+
+            if (! $order->user) {
+                return;
+            }
+
+            $message = $options['message'] ?? match ($slug) {
+                NotificationSlug::PaymentApproved => 'Seu pagamento de R$ '.number_format((float) $payment->amount, 2, ',', '.').' foi aprovado e o acesso já está disponível.',
+                NotificationSlug::PaymentRefunded => 'O estorno do seu pagamento foi processado.',
+                NotificationSlug::PaymentFailed => 'Não foi possível confirmar seu pagamento.',
+                default => 'Sua situação de pagamento foi atualizada.',
+            };
+
+            $this->notifications->sendToUser(
+                $order->user,
+                $slug,
+                [
+                    'message' => $message,
+                    'action_url' => 'minhas-compras',
+                    'metadata' => [
+                        'order_id' => $order->id,
+                        'payment_id' => $payment->id,
+                        'amount' => (float) $payment->amount,
+                    ],
+                ],
+                $options['dedupe'] ?? "payment_approved:{$payment->id}",
+            );
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 }

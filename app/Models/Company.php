@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 #[Fillable(['name', 'slug', 'domain', 'status'])]
@@ -177,6 +178,11 @@ class Company extends Model
     public function settings(): HasMany
     {
         return $this->hasMany(CompanySetting::class);
+    }
+
+    public function mailSetting(): HasOne
+    {
+        return $this->hasOne(CompanyMailSetting::class);
     }
 
     public function sellers(): HasMany

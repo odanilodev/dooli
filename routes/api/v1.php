@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Admin\CertificateController as AdminCertificateC
 use App\Http\Controllers\Api\V1\Admin\CommentController as AdminCommentController;
 use App\Http\Controllers\Api\V1\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Api\V1\Admin\CompanyLinkController as AdminCompanyLinkController;
+use App\Http\Controllers\Api\V1\Admin\CompanyMailSettingController as AdminCompanyMailSettingController;
 use App\Http\Controllers\Api\V1\Admin\CompanySettingController as AdminCompanySettingController;
 use App\Http\Controllers\Api\V1\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Api\V1\Admin\CourseController as AdminCourseController;
@@ -237,6 +238,14 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::middleware('super.admin')->group(function () {
             Route::get('companies/{company}/settings', [AdminCompanySettingController::class, 'show']);
             Route::put('companies/{company}/settings', [AdminCompanySettingController::class, 'update']);
+
+            Route::get('companies/{company}/mail-settings', [AdminCompanyMailSettingController::class, 'show']);
+            Route::put('companies/{company}/mail-settings', [AdminCompanyMailSettingController::class, 'update']);
+            Route::post('companies/{company}/mail-settings/validate-credentials', [AdminCompanyMailSettingController::class, 'validateCredentials']);
+            Route::post('companies/{company}/mail-settings/register-domain', [AdminCompanyMailSettingController::class, 'registerDomain']);
+            Route::post('companies/{company}/mail-settings/check-domain', [AdminCompanyMailSettingController::class, 'checkDomain']);
+            Route::post('companies/{company}/mail-settings/test', [AdminCompanyMailSettingController::class, 'test'])
+                ->middleware('throttle:5,1');
 
             Route::apiResource('companies', AdminCompanyController::class)->only(['index', 'store', 'show', 'update']);
         });

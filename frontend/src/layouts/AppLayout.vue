@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 import AppSidebar from '../components/AppSidebar.vue';
 import AppHeader from '../components/AppHeader.vue';
 import { useSidebar } from '../composables/useSidebar';
@@ -25,11 +25,19 @@ const notifications = useNotificationsStore();
 const auth = useAuthStore();
 const teams = useStudentTeamsStore();
 
+let refreshTimer;
+
 onMounted(() => {
   notifications.fetch();
 
   if (!auth.isAdmin) {
     teams.fetchTeams();
   }
+
+  refreshTimer = window.setInterval(() => notifications.refresh(), 60000);
+});
+
+onUnmounted(() => {
+  window.clearInterval(refreshTimer);
 });
 </script>

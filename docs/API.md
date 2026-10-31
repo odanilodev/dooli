@@ -323,6 +323,10 @@ Gera o certificado somente se todos os critérios de conclusão forem atendidos 
 Lista notificações do aluno. `POST /api/v1/me/notifications/{notification}/read` e `POST /api/v1/me/notifications/read-all`.
 > Marcar como lida exige que a notificação seja destinada ao próprio usuário (404 caso contrário).
 
+Cada item expõe `title`, `message`, `action_url`, `category` (`security`, `payment`, `subscription`, `certificate`), `severity` (`info`, `success`, `warning`, `danger`), `release_at`, `created_at` e `read_at`. O frontend abre `action_url` (relativo ao domínio da empresa) ao clicar.
+
+Notificações transacionais são criadas por `NotificationService::sendToUser`, com deduplicação por `dedupe_key`, e o e-mail é enfileirado em `SendNotificationJob`. O job atualiza `notification_users.email_status` (`pending`/`sent`/`failed`), `email_attempts`, `email_sent_at`, `email_message_id` e `email_error`.
+
 ### Pedidos
 - `GET /api/v1/me/orders` — pedidos do aluno
 - `POST /api/v1/me/orders` — cria pedido; o backend recalcula subtotal/desconto/total
@@ -508,6 +512,7 @@ Recursos restritos a super admin (middleware `super.admin` + policies; um admin 
 
 - **Menus**: `GET/POST /admin/menus`, `GET/PUT/DELETE /admin/menus/{menu}` — config global de menus da plataforma.
 - **Tema (identidade visual, por empresa)**: `GET/PUT /admin/companies/{company}/settings` — cor primária e logos para **tema claro** (`logo_light`) e **tema escuro** (`logo_dark`) de uma empresa específica, editáveis na página Empresas. Se apenas um logo for enviado, ele é usado nos dois temas. `logo`/`logo_url` continuam como aliases legados do logo claro.
+- **E-mail transacional (Resend, por empresa)**: `GET/PUT /admin/companies/{company}/mail-settings`, `POST .../validate-credentials`, `POST .../register-domain`, `POST .../check-domain` e `POST .../test` (5/min). Campos: `from_name`, `from_address`, `reply_to`, `email_domain`, `region` (`us-east-1`, `eu-west-1`, `sa-east-1`, `ap-northeast-1`) e `credentials.api_key`. A API key é criptografada e nunca retornada; a resposta expõe apenas `has_credentials` e `is_ready`. O remetente precisa pertencer ao domínio. Sem configuração válida, o envio usa a conta Resend padrão da plataforma.
 - **Empresas**:
   - `GET /admin/companies` — lista/pagina empresas (busca por `name`, filtro `status`).
   - `POST /admin/companies` — cria a empresa e faz o bootstrap: tipos de usuário padrão (`admin`, `instructor`, `student`) + o primeiro admin. Campos: `name`, `domain?`, `status?`, `admin_name`, `admin_username`, `admin_email`, `admin_password`. O `domain` é opcional, único, salvo apenas como host (sem protocolo, `www.` ou caminho) e normalizado em minúsculas.

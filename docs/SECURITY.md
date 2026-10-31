@@ -38,6 +38,14 @@
 ### Mass assignment
 - Todos os models usam `#[Fillable]` explícito; nenhum `$guarded = []`.
 
+### E-mail transacional (Resend)
+- Cada empresa tem credenciais e domínio próprios em `company_mail_settings`; a API key usa cast `encrypted:array` e o model usa `#[Hidden]`.
+- A API de configuração é restrita ao super admin (`manageCompanyMail` + middleware `super.admin`); a resposta expõe apenas `has_credentials` e `is_ready`.
+- O remetente é validado contra o domínio configurado; o domínio é registrado/verificado no Resend via API e os registros DNS são exibidos no painel.
+- Sem configuração válida, o envio usa a conta padrão da plataforma (`RESEND_API_KEY`); não há queda silenciosa para `log` em produção.
+- `SendNotificationJob` carrega empresa/usuário sem tenant scope, confere o destinatário e é idempotente por `notification_users.email_status`; erros são truncados e não gravam segredos.
+- Tracking de abertura/clique fica desativado; o escopo é apenas transacional.
+
 ### Exposição de dados
 - `User` oculta `password`/`remember_token`.
 - Listagens de comentários/avaliações usam `UserSummaryResource` (sem e-mail/telefone/endereço).
@@ -68,7 +76,7 @@
 2. **Definir `MERCADOPAGO_WEBHOOK_SECRET`** e `MANUAL_WEBHOOK_SECRET` em produção; sem segredo, todo webhook é rejeitado (falha fechada).
 3. **`X-Company` é público por natureza** (id enumerável). Recomenda-se, no futuro, usar um `companies.slug`/chave pública para reduzir enumeração — mudança aditiva já prevista.
 4. **CORS** deve ser restringido aos domínios do frontend em produção.
-5. **Rotação de credenciais de gateway** e uso de cofre de segredos (ex.: variáveis de ambiente/secret manager) em vez de apenas cifra em banco.
+5. **Rotação de credenciais de gateway e Resend** e uso de cofre de segredos (ex.: variáveis de ambiente/secret manager) em vez de apenas cifra em banco. A `RESEND_API_KEY` da plataforma deve ser configurada em produção; o limite gratuito é 3.000/mês e 100/dia por conta.
 6. **Upload de arquivos** (`documents`/`attachments`/`banners`) hoje armazena caminhos; ao habilitar upload real, validar tipo/tamanho e servir por URL assinada.
 7. **`APP_DEBUG=false`** em produção para não vazar stack traces.
 

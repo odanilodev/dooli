@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ActionCode;
+use App\Enums\NotificationSlug;
 use App\Exceptions\BusinessRuleException;
 use App\Exceptions\CertificateNotAvailableException;
 use App\Exceptions\ResourceNotFoundException;
@@ -23,6 +24,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Throwable;
 
 class CertificateService
 {
@@ -441,6 +443,14 @@ class CertificateService
 
         $this->audit->log('certificate', 'issue', 'certificate_user', "Certificado emitido para user {$user->id}", $user->id);
 
+        $this->notifyCertificate(
+            $user,
+            NotificationSlug::CertificateAvailable,
+            'Seu certificado do curso '.($certificate->course?->name ?? 'concluído').' está disponível.',
+            'certificados/'.$issued->id,
+            "certificate_available:{$issued->id}",
+        );
+
         return $issued;
     }
 
@@ -505,6 +515,14 @@ class CertificateService
                 "Certificado substituído: {$current->id} -> {$replacement->id}",
                 $user->id,
             );
+
+            $this->notifyCertificate(
+                $user,
+                NotificationSlug::CertificateUpdated,
+                'Seu certificado foi atualizado com os novos dados de conclusão.',
+                'certificados/'.$replacement->id,
+                "certificate_updated:{$replacement->id}",
+            );
         }
 
         return $replacement;
@@ -567,7 +585,42 @@ class CertificateService
             $certificateUser->user_id,
         );
 
-        return $revoked->load(['certificate.course', 'user', 'team', 'company']);
+        $revoked = $revoked->load(['certificate.course', 'user', 'team', 'company']);
+
+        if ($revoked->user) {
+            $this->notifyCertificate(
+                $revoked->user,
+                NotificationSlug::CertificateRevoked,
+                'Seu certificado foi revogado. Entre em contato com o suporte para mais informações.',
+                'certificados',
+                "certificate_revoked:{$revoked->id}",
+            );
+        }
+
+        return $revoked;
+    }
+
+    private function notifyCertificate(
+        User $user,
+        NotificationSlug $slug,
+        string $message,
+        string $actionUrl,
+        string $dedupe,
+    ): void {
+        try {
+            $this->notifications->sendToUser(
+                $user,
+                $slug,
+                [
+                    'message' => $message,
+                    'action_url' => $actionUrl,
+                    'metadata' => ['certificate_user_id' => (int) str($dedupe)->afterLast(':')],
+                ],
+                $dedupe,
+            );
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     public function verify(string $code): CertificateUser

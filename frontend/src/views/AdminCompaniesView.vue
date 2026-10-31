@@ -108,6 +108,87 @@
 
       <span class="form-hint">Se apenas um logo for enviado, ele será usado nos dois temas.</span>
 
+      <template v-if="editingId">
+        <h3 class="form-section-title">E-mail transacional (Resend)</h3>
+        <p class="panel-desc">
+          A conta Resend desta empresa envia verificação, recuperação de senha e notificações.
+          Sem configuração válida, a plataforma usa a conta padrão.
+        </p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="mail-from-name">Nome do remetente</label>
+            <input id="mail-from-name" class="form-control" v-model="mailForm.from_name" placeholder="Minha Escola">
+          </div>
+          <div class="form-group">
+            <label for="mail-from-address">E-mail do remetente</label>
+            <input id="mail-from-address" type="email" class="form-control" v-model="mailForm.from_address" placeholder="contato@minhaescola.com.br">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="mail-reply-to">Responder para</label>
+            <input id="mail-reply-to" type="email" class="form-control" v-model="mailForm.reply_to" placeholder="suporte@minhaescola.com.br">
+          </div>
+          <div class="form-group">
+            <label for="mail-domain">Domínio de envio</label>
+            <input id="mail-domain" class="form-control" v-model="mailForm.email_domain" placeholder="minhaescola.com.br">
+            <span class="form-hint">Domínio verificado no Resend. O remetente precisa pertencer a ele.</span>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="mail-api-key">API key do Resend</label>
+            <input id="mail-api-key" type="password" class="form-control" v-model="mailApiKey" :placeholder="mailForm.has_credentials ? 'Chave já configurada — deixe vazio para manter' : 're_...'" autocomplete="new-password">
+            <span class="form-hint">Criptografada no banco. Use uma chave com permissão de domínio e envio.</span>
+          </div>
+          <div class="form-group">
+            <label for="mail-region">Região</label>
+            <select id="mail-region" class="form-control" v-model="mailForm.region">
+              <option value="sa-east-1">São Paulo</option>
+              <option value="us-east-1">Virgínia</option>
+              <option value="eu-west-1">Irlanda</option>
+              <option value="ap-northeast-1">Tóquio</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mail-status-row">
+          <span class="status-pill" :class="mailForm.domain_status === 'verified' ? 'active' : 'inactive'">
+            {{ mailStatusLabel(mailForm.domain_status) }}
+          </span>
+          <span class="form-hint">
+            {{ mailForm.has_credentials ? 'Credenciais configuradas' : 'Sem credenciais' }} ·
+            {{ mailForm.is_ready ? 'Pronto para enviar' : 'Ainda não pronto' }}
+          </span>
+        </div>
+
+        <div class="form-row mail-actions">
+          <button type="button" class="btn btn-outline btn-sm" :disabled="mailBusy" @click="saveMail">Salvar e-mail</button>
+          <button type="button" class="btn btn-outline btn-sm" :disabled="mailBusy || !mailForm.has_credentials" @click="validateMail">Validar chave</button>
+          <button type="button" class="btn btn-outline btn-sm" :disabled="mailBusy || !mailForm.has_credentials || !mailForm.email_domain" @click="registerMail">Registrar domínio</button>
+          <button type="button" class="btn btn-outline btn-sm" :disabled="mailBusy || !mailForm.domain_id" @click="checkMail">Verificar domínio</button>
+        </div>
+
+        <div v-if="mailForm.dns_records?.length" class="mail-dns">
+          <strong>Registros DNS</strong>
+          <div v-for="(record, index) in mailForm.dns_records" :key="index" class="mail-dns-row">
+            <span class="mail-dns-type">{{ record.type || record.record }}</span>
+            <code>{{ record.name }}</code>
+            <code class="mail-dns-value">{{ record.value }}</code>
+          </div>
+        </div>
+
+        <p v-if="mailForm.last_error" class="mail-error">{{ mailForm.last_error }}</p>
+
+        <div class="mail-test-row">
+          <input class="form-control" type="email" v-model="testEmail" placeholder="enviar teste para...">
+          <button type="button" class="btn btn-outline btn-sm" :disabled="mailBusy || !mailForm.is_ready" @click="sendTest">Enviar teste</button>
+        </div>
+      </template>
+
       <div>
         <button class="btn btn-primary" :disabled="saving">
           {{ saving ? 'Salvando...' : (editingId ? 'Salvar empresa' : 'Criar empresa') }}
@@ -167,6 +248,20 @@ const logoLightFile = ref(null);
 const logoDarkPreview = ref(null);
 const logoDarkFile = ref(null);
 
+const mailForm = reactive({
+  from_name: '',
+  from_address: '',
+  reply_to: '',
+  email_domain: '',
+  region: 'sa-east-1',
+  domain_id: null,
+  domain_status: 'not_started',
+  dns_records: null,
+  has_credentials: false,
+  is_ready: false,
+  last_error: null,
+});
+
 const form = reactive({
   name: '',
   slug: '',
@@ -178,6 +273,10 @@ const form = reactive({
   admin_password: '',
   primary_color: DEFAULT_PRIMARY_COLOR,
 });
+
+const mailApiKey = ref('');
+const testEmail = ref('');
+const mailBusy = ref(false);
 
 function revokePreview(value) {
   if (value?.startsWith('blob:')) {
@@ -270,6 +369,138 @@ async function openEdit(company) {
   } catch (e) {
     /* mantém os valores padrão em caso de falha */
   }
+
+  mailApiKey.value = '';
+  testEmail.value = '';
+
+  try {
+    applyMailSettings(await companies.fetchMailSettings(company.id));
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível carregar a configuração de e-mail.');
+  }
+}
+
+function applyMailSettings(data = {}) {
+  mailForm.from_name = data.from_name ?? '';
+  mailForm.from_address = data.from_address ?? '';
+  mailForm.reply_to = data.reply_to ?? '';
+  mailForm.email_domain = data.email_domain ?? '';
+  mailForm.region = data.region ?? 'sa-east-1';
+  mailForm.domain_id = data.domain_id ?? null;
+  mailForm.domain_status = data.domain_status ?? 'not_started';
+  mailForm.dns_records = Array.isArray(data.dns_records) ? data.dns_records : null;
+  mailForm.has_credentials = Boolean(data.has_credentials);
+  mailForm.is_ready = Boolean(data.is_ready);
+  mailForm.last_error = data.last_error ?? null;
+}
+
+function mailStatusLabel(status) {
+  return {
+    verified: 'Domínio verificado',
+    pending: 'Aguardando DNS',
+    not_started: 'Domínio não registrado',
+    failed: 'Falha na verificação',
+  }[status] || 'Não configurado';
+}
+
+async function persistMail() {
+  if (!editingId.value) {
+    return null;
+  }
+
+  const payload = {
+    from_name: mailForm.from_name.trim() || null,
+    from_address: mailForm.from_address.trim() || null,
+    reply_to: mailForm.reply_to.trim() || null,
+    email_domain: mailForm.email_domain.trim() || null,
+    region: mailForm.region,
+  };
+
+  if (mailApiKey.value.trim()) {
+    payload.credentials = { api_key: mailApiKey.value.trim() };
+  }
+
+  const data = await companies.saveMailSettings(editingId.value, payload);
+  applyMailSettings(data);
+  mailApiKey.value = '';
+
+  return data;
+}
+
+async function saveMail() {
+  mailBusy.value = true;
+
+  try {
+    await persistMail();
+    toast.success('Configuração de e-mail salva.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível salvar a configuração de e-mail.');
+  } finally {
+    mailBusy.value = false;
+  }
+}
+
+async function validateMail() {
+  mailBusy.value = true;
+
+  try {
+    await persistMail();
+    applyMailSettings(await companies.validateMailCredentials(editingId.value));
+    toast.success('Credenciais do Resend validadas.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível validar a chave do Resend.');
+  } finally {
+    mailBusy.value = false;
+  }
+}
+
+async function registerMail() {
+  mailBusy.value = true;
+
+  try {
+    await persistMail();
+    applyMailSettings(await companies.registerMailDomain(editingId.value));
+    toast.success('Domínio enviado ao Resend. Configure os registros DNS exibidos.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível registrar o domínio.');
+  } finally {
+    mailBusy.value = false;
+  }
+}
+
+async function checkMail() {
+  mailBusy.value = true;
+
+  try {
+    applyMailSettings(await companies.checkMailDomain(editingId.value));
+    toast.success('Status do domínio atualizado.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível verificar o domínio.');
+  } finally {
+    mailBusy.value = false;
+  }
+}
+
+async function sendTest() {
+  const email = testEmail.value.trim() || mailForm.from_address.trim();
+
+  if (!email) {
+    toast.error('Informe o e-mail que receberá o teste.');
+
+    return;
+  }
+
+  mailBusy.value = true;
+
+  try {
+    await persistMail();
+    await companies.testMailSettings(editingId.value, email);
+    toast.success('E-mail de teste enviado.');
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível enviar o e-mail de teste.');
+  } finally {
+    mailBusy.value = false;
+  }
 }
 
 async function save() {
@@ -341,4 +572,17 @@ onMounted(() => {
 .brand-logo-preview.is-light{background:#f7f9fb;}
 .brand-logo-preview.is-dark{background:#0b1420;border-color:#223247;}
 .brand-logo-preview img{max-height:48px;max-width:100%;object-fit:contain;}
+.mail-status-row,.mail-actions,.mail-test-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;}
+.mail-status-row{margin:14px 0 10px;}
+.mail-actions{margin-bottom:12px;}
+.mail-test-row{margin-top:12px;}
+.mail-test-row .form-control{max-width:320px;}
+.mail-dns{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card-alt);}
+.mail-dns>strong{display:block;margin-bottom:8px;font-size:12.5px;}
+.mail-dns-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--border);font-size:11.5px;}
+.mail-dns-row:first-of-type{border-top:0;}
+.mail-dns-type{min-width:42px;font-weight:700;color:var(--text-secondary);}
+.mail-dns-row code{font-size:11px;word-break:break-all;}
+.mail-dns-value{color:var(--text-muted);}
+.mail-error{margin-top:10px;font-size:12px;color:var(--danger,#e5484d);}
 </style>

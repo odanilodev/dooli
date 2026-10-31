@@ -32,6 +32,7 @@ use App\Repositories\UserRepository;
 use App\Repositories\UserTypeRepository;
 use App\Repositories\VideoRepository;
 use App\Support\CompanyContext;
+use App\Support\CompanyUrlService;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -91,6 +92,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('viewReports', fn (User $user) => $user->isAdmin() || $user->isSuperAdmin());
         Gate::define('manageCompanyBranding', fn (User $user) => $user->isSuperAdmin());
+        Gate::define('manageCompanyMail', fn (User $user) => $user->isSuperAdmin());
         Gate::define('manageStorefront', fn (User $user) => $user->isAdmin() || $user->isSuperAdmin());
 
         $this->configurePasswordResetUrl();
@@ -104,17 +106,7 @@ class AppServiceProvider extends ServiceProvider
     private function configurePasswordResetUrl(): void
     {
         ResetPassword::createUrlUsing(function ($notifiable, string $token) {
-            $email = urlencode($notifiable->getEmailForPasswordReset());
-            $company = $notifiable->company;
-
-            if ($company?->domain && ! $notifiable->isSuperAdmin()) {
-                return $company->frontendUrl()."/reset-password?token={$token}&email={$email}";
-            }
-
-            $slug = urlencode((string) ($company?->slug ?? ''));
-
-            return rtrim((string) config('app.frontend_url'), '/')
-                ."/#/reset-password?token={$token}&email={$email}&company={$slug}";
+            return app(CompanyUrlService::class)->passwordResetUrl($notifiable, $token);
         });
     }
 

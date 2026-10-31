@@ -4,16 +4,16 @@ namespace Tests\Feature;
 
 use App\Enums\GeneralStatus;
 use App\Enums\UserTypeCode;
+use App\Mail\TransactionalMail;
 use App\Models\Company;
 use App\Models\Course;
 use App\Models\StoreProduct;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\UserType;
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Mail;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
 
@@ -100,7 +100,7 @@ class PublicStorefrontTest extends TestCase
 
     public function test_password_reset_is_scoped_to_the_company(): void
     {
-        Notification::fake();
+        Mail::fake();
 
         $other = Company::factory()->create();
         UserType::factory()->create(['company_id' => $other->id, 'code' => UserTypeCode::Student->value]);
@@ -114,17 +114,20 @@ class PublicStorefrontTest extends TestCase
             'email' => $this->student->email,
         ])->assertOk();
 
-        $token = null;
+        $mail = Mail::sent(TransactionalMail::class)
+            ->last(fn (TransactionalMail $mailable) => $mailable->hasTo($this->student->email));
 
-        Notification::assertSentTo(
-            $this->student,
-            ResetPassword::class,
-            function (ResetPassword $notification) use (&$token) {
-                $token = $notification->token;
+        $this->assertNotNull($mail?->actionUrl);
 
-                return true;
-            },
-        );
+        $url = (string) $mail->actionUrl;
+        $query = (string) parse_url($url, PHP_URL_QUERY);
+
+        if ($query === '' && str_contains($url, '?')) {
+            $query = substr($url, strpos($url, '?') + 1);
+        }
+
+        parse_str($query, $params);
+        $token = (string) ($params['token'] ?? '');
 
         $this->postJson('/api/v1/public/companies/'.$this->company->slug.'/auth/reset-password', [
             'token' => $token,

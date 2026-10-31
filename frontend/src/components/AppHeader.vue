@@ -47,9 +47,10 @@
               </span>
               <span class="notif-body">
                 <span class="notif-head">
-                  <span class="notif-type">{{ label(item) }}</span>
+                  <span class="notif-type">{{ item.title || label(item) }}</span>
                   <span v-if="!item.read_at" class="notif-dot"></span>
                 </span>
+                <span v-if="item.message" class="notif-message">{{ item.message }}</span>
                 <span class="notif-date">{{ formatDate(item.release_at || item.created_at) }}</span>
               </span>
             </button>
@@ -147,6 +148,11 @@ async function read(item) {
     await notifications.markAsRead(item.id);
   } catch (e) {
     /* mantém como está em caso de falha */
+  }
+
+  if (item.action_url) {
+    notifOpen.value = false;
+    router.push(item.action_url.startsWith('/') ? item.action_url : `/${item.action_url}`);
   }
 }
 

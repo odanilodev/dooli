@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\GeneralStatus;
 use App\Enums\NotificationSlug;
 use App\Exceptions\ResourceNotFoundException;
+use App\Jobs\SendNotificationJob;
 use App\Models\Notification;
 use App\Models\Team;
 use App\Models\TypeNotification;
@@ -39,13 +40,16 @@ class NotificationService
         return DB::transaction(function () use ($team, $slug, $releaseAt, $userIds) {
             $type = TypeNotification::query()->firstOrCreate(
                 ['company_id' => $team->company_id, 'slug' => $slug->value],
-                ['name' => $slug->value],
+                ['name' => $slug->title()],
             );
 
             $notification = Notification::query()->create([
                 'company_id' => $team->company_id,
                 'team_id' => $team->id,
                 'type_notification_id' => $type->id,
+                'title' => $slug->title(),
+                'category' => $slug->category(),
+                'severity' => $slug->severity(),
                 'release_at' => $releaseAt,
                 'status' => GeneralStatus::Active->value,
             ]);
@@ -69,6 +73,78 @@ class NotificationService
 
             return $notification;
         });
+    }
+
+    /**
+     * Creates a transactional notification for a single user and queues the
+     * e-mail delivery. Deduplication is scoped to the company.
+     *
+     * @param  array{
+     *     title?: string,
+     *     message?: string,
+     *     action_url?: string|null,
+     *     category?: string,
+     *     severity?: string,
+     *     release_at?: string|null,
+     *     metadata?: array<string, mixed>|null
+     * }  $payload
+     */
+    public function sendToUser(
+        User $user,
+        NotificationSlug $slug,
+        array $payload = [],
+        ?string $dedupeKey = null,
+        bool $sendEmail = true,
+    ): Notification {
+        $notification = DB::transaction(function () use ($user, $slug, $payload, $dedupeKey) {
+            $type = TypeNotification::query()
+                ->withoutGlobalScope('company')
+                ->firstOrCreate(
+                    ['company_id' => $user->company_id, 'slug' => $slug->value],
+                    ['name' => $slug->title()],
+                );
+
+            $attributes = [
+                'company_id' => $user->company_id,
+                'team_id' => null,
+                'type_notification_id' => $type->id,
+                'title' => $payload['title'] ?? $slug->title(),
+                'message' => $payload['message'] ?? null,
+                'action_url' => $payload['action_url'] ?? null,
+                'category' => $payload['category'] ?? $slug->category(),
+                'severity' => $payload['severity'] ?? $slug->severity(),
+                'release_at' => $payload['release_at'] ?? null,
+                'metadata' => $payload['metadata'] ?? null,
+                'status' => GeneralStatus::Active->value,
+            ];
+
+            $notification = $dedupeKey !== null
+                ? Notification::query()
+                    ->withoutGlobalScope('company')
+                    ->where('company_id', $user->company_id)
+                    ->where('dedupe_key', $dedupeKey)
+                    ->first()
+                : null;
+
+            if (! $notification) {
+                $notification = Notification::query()->create([
+                    ...$attributes,
+                    'dedupe_key' => $dedupeKey,
+                ]);
+            }
+
+            $notification->users()->syncWithoutDetaching([
+                $user->id => ['company_id' => $user->company_id],
+            ]);
+
+            return $notification;
+        });
+
+        if ($sendEmail && filled($user->email)) {
+            SendNotificationJob::dispatch($notification->id, $user->id)->afterCommit();
+        }
+
+        return $notification;
     }
 
     public function markAsRead(User $user, int $notificationId): void

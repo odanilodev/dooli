@@ -8,7 +8,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['company_id', 'notification_id', 'user_id', 'read_at'])]
+#[Fillable([
+    'company_id', 'notification_id', 'user_id', 'read_at',
+    'email_sent_at', 'email_status', 'email_error', 'email_attempts', 'email_message_id',
+])]
 class NotificationUser extends Model
 {
     use BelongsToCompany, HasFactory;
@@ -17,6 +20,8 @@ class NotificationUser extends Model
     {
         return [
             'read_at' => 'datetime',
+            'email_sent_at' => 'datetime',
+            'email_attempts' => 'integer',
         ];
     }
 

@@ -837,6 +837,7 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 .notif-type{font-size:13.5px;font-weight:700;color:var(--text-primary);}
 .notif-item:not(.unread) .notif-type{color:var(--text-secondary);font-weight:600;}
 .notif-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.notif-message{font-size:12.5px;line-height:1.45;color:var(--text-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .notif-date{font-size:11.5px;color:var(--text-muted);}
 
 .notif-menu{position:relative;}

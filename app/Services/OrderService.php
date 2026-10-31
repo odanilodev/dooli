@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DTO\ApplyCouponDTO;
 use App\DTO\CreateOrderDTO;
 use App\Enums\GeneralStatus;
+use App\Enums\NotificationSlug;
 use App\Enums\OrderEventType;
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
@@ -16,6 +17,7 @@ use App\Repositories\OrderRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class OrderService
 {
@@ -26,6 +28,7 @@ class OrderService
         private readonly DatalogService $audit,
         private readonly OrderEventService $events,
         private readonly SellerAttributionService $sellerAttribution,
+        private readonly NotificationService $notifications,
     ) {}
 
     public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -165,6 +168,25 @@ class OrderService
             ]);
 
             $this->audit->log('order', 'cancel', 'order', "Pedido cancelado: {$order->id}", $order->user_id);
+
+            try {
+                $order->loadMissing('user');
+
+                if ($order->user) {
+                    $this->notifications->sendToUser(
+                        $order->user,
+                        NotificationSlug::OrderCanceled,
+                        [
+                            'message' => "Seu pedido #{$order->id} foi cancelado.",
+                            'action_url' => 'minhas-compras',
+                            'metadata' => ['order_id' => $order->id],
+                        ],
+                        "order_canceled:{$order->id}",
+                    );
+                }
+            } catch (Throwable $e) {
+                report($e);
+            }
 
             return $order;
         });

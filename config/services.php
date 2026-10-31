@@ -20,6 +20,8 @@ return [
 
     'resend' => [
         'key' => env('RESEND_API_KEY'),
+        'base_url' => env('RESEND_BASE_URL', 'https://api.resend.com'),
+        'region' => env('RESEND_REGION', 'sa-east-1'),
     ],
 
     'ses' => [

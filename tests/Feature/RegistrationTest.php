@@ -5,13 +5,13 @@ namespace Tests\Feature;
 use App\Enums\GeneralStatus;
 use App\Enums\UserRegistrationSource;
 use App\Enums\UserTypeCode;
+use App\Mail\TransactionalMail;
 use App\Models\EmailVerificationCode;
 use App\Models\User;
 use App\Models\UserType;
-use App\Notifications\EmailVerificationCode as EmailVerificationCodeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
 use Tests\Concerns\BuildsTenant;
 use Tests\TestCase;
@@ -24,7 +24,7 @@ class RegistrationTest extends TestCase
     {
         parent::setUp();
         $this->buildTenant();
-        Notification::fake();
+        Mail::fake();
     }
 
     public function test_student_can_register_and_receives_verification_code(): void
@@ -55,7 +55,7 @@ class RegistrationTest extends TestCase
         $this->assertNull($user->email_verified_at);
         $this->assertTrue(Hash::check('password123', $user->password));
 
-        Notification::assertSentTo($user, EmailVerificationCodeNotification::class);
+        Mail::assertSent(TransactionalMail::class, fn (TransactionalMail $mail) => $mail->hasTo($user->email) && filled($mail->code));
 
         $record = EmailVerificationCode::query()
             ->withoutGlobalScope('company')

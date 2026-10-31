@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\AccessGrantSource;
 use App\Enums\BillingType;
 use App\Enums\GeneralStatus;
+use App\Enums\NotificationSlug;
 use App\Enums\OrderEventActorType;
 use App\Enums\OrderEventType;
 use App\Enums\OrderSource;
@@ -21,6 +22,7 @@ use App\Models\User;
 use App\Services\Payments\GatewayManager;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class SubscriptionService
 {
@@ -32,6 +34,7 @@ class SubscriptionService
         private readonly DatalogService $audit,
         private readonly OrderEventService $orderEvents,
         private readonly SellerAttributionService $sellerAttribution,
+        private readonly NotificationService $notifications,
     ) {}
 
     /**
@@ -108,6 +111,7 @@ class SubscriptionService
         $paidAt ??= now();
         $periodStart ??= $paidAt->copy();
         $periodEnd ??= $periodStart->copy()->addMonthNoOverflow();
+        $previousStatus = $subscription->refresh()->status;
 
         $subscription = DB::transaction(function () use ($subscription, $paidAt, $transactionId, $periodStart, $periodEnd) {
             $subscription = $subscription->refresh();
@@ -134,6 +138,20 @@ class SubscriptionService
 
         $this->audit->log('subscription', 'activate', 'subscription', "Assinatura ativada: {$subscription->id}");
 
+        $renewed = in_array($previousStatus, [
+            SubscriptionStatus::Active->value,
+            SubscriptionStatus::PastDue->value,
+        ], true);
+
+        $this->notifySubscription(
+            $subscription,
+            $renewed ? NotificationSlug::SubscriptionRenewed : NotificationSlug::SubscriptionActivated,
+            $renewed
+                ? 'Sua assinatura foi renovada e o acesso continua liberado.'
+                : 'Sua assinatura está ativa e o acesso já está disponível.',
+            'subscription_'.($renewed ? 'renewed' : 'activated').":{$subscription->id}:".($subscription->current_period_start?->toDateString() ?? ''),
+        );
+
         return $subscription;
     }
 
@@ -150,7 +168,16 @@ class SubscriptionService
 
         $this->audit->log('subscription', 'cancel', 'subscription', "Assinatura cancelada: {$subscription->id}");
 
-        return $subscription->refresh();
+        $subscription = $subscription->refresh();
+
+        $this->notifySubscription(
+            $subscription,
+            NotificationSlug::SubscriptionCanceled,
+            'Sua assinatura foi cancelada. O acesso permanece disponível até o fim do período já pago.',
+            "subscription_canceled:{$subscription->id}:".($subscription->current_period_end?->toDateString() ?? ''),
+        );
+
+        return $subscription;
     }
 
     public function markPastDue(Subscription $subscription): Subscription
@@ -171,7 +198,16 @@ class SubscriptionService
 
         $this->audit->log('subscription', 'past_due', 'subscription', "Assinatura em atraso: {$subscription->id}");
 
-        return $subscription->refresh();
+        $subscription = $subscription->refresh();
+
+        $this->notifySubscription(
+            $subscription,
+            NotificationSlug::SubscriptionPastDue,
+            'Não conseguimos confirmar a renovação da sua assinatura. Atualize seu pagamento para manter o acesso.',
+            "subscription_past_due:{$subscription->id}:".($subscription->grace_ends_at?->toDateString() ?? ''),
+        );
+
+        return $subscription;
     }
 
     public function handleWebhook(Subscription $subscription, array $payload): Subscription
@@ -205,6 +241,37 @@ class SubscriptionService
         }
 
         return $subscription->refresh();
+    }
+
+    private function notifySubscription(
+        Subscription $subscription,
+        NotificationSlug $slug,
+        string $message,
+        string $dedupe,
+    ): void {
+        try {
+            $subscription->loadMissing('user', 'storeProduct');
+
+            if (! $subscription->user) {
+                return;
+            }
+
+            $this->notifications->sendToUser(
+                $subscription->user,
+                $slug,
+                [
+                    'message' => $message,
+                    'action_url' => 'minhas-assinaturas',
+                    'metadata' => [
+                        'subscription_id' => $subscription->id,
+                        'store_product_id' => $subscription->store_product_id,
+                    ],
+                ],
+                $dedupe,
+            );
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     private function recordCharge(

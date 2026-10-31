@@ -38,6 +38,7 @@ Route → Middleware → FormRequest → Controller → Service → Repository �
 | Respostas | Envelope `success/data/meta/errors` + exceções centralizadas em `bootstrap/app.php` |
 | Erros | `ApiException` e filhas; handler mapeia validação/auth/404/429 |
 | Vendedores | `sellers` independentes de `users`; kit publico por `share_token`, atribuicao por `?ref` e comissao por item em `seller_commissions` (detalhes em [`SELLERS.md`](SELLERS.md)) |
+| E-mail transacional | Resend, uma conta/domínio por empresa em `company_mail_settings` (API key `encrypted:array`), com fallback para `RESEND_API_KEY` da plataforma. Verificação e reset usam `CompanyMailService`; notificações usam `SendNotificationJob` com status/idempotência em `notification_users` |
 
 ## Nomenclatura
 

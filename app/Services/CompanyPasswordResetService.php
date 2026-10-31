@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -11,6 +10,10 @@ use Illuminate\Support\Str;
 
 class CompanyPasswordResetService
 {
+    public function __construct(
+        private readonly CompanyMailService $mail,
+    ) {}
+
     public function send(string $email, int $companyId): string
     {
         $user = User::query()
@@ -42,7 +45,7 @@ class CompanyPasswordResetService
             ],
         );
 
-        $user->notify(new ResetPassword($token));
+        $this->mail->sendPasswordReset($user, $token);
 
         return Password::RESET_LINK_SENT;
     }
