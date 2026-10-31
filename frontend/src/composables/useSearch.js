@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 
-// Estado compartilhado do campo de busca do header — usado pelo catálogo de
-// cursos para filtrar em tempo real; nas demais páginas é apenas visual.
+// Estado compartilhado do campo de busca do header. O campo só aparece nas
+// rotas com meta.headerSearch e é consumido pelo catálogo de cursos e pela loja.
 const query = ref('');
 
 export function useSearch() {

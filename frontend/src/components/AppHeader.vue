@@ -5,7 +5,7 @@
         <span v-if="hasLive" class="hamburger-live" aria-hidden="true"></span>
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
-      <label class="search">
+      <label v-if="route.meta.headerSearch" class="search">
         <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         <input type="text" v-model="query" :placeholder="placeholder">
       </label>
@@ -84,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useTheme } from '../composables/useTheme';
 import { useSidebar } from '../composables/useSidebar';
@@ -109,6 +109,15 @@ const unreadCount = computed(() => notifications.unreadCount);
 const hasLive = computed(() => !auth.canAccessAdmin && live.hasLiveNow);
 
 const placeholder = computed(() => route.meta?.searchPlaceholder || 'Buscar cursos, aulas ou temas...');
+
+watch(
+  () => route.meta?.headerSearch,
+  (enabled) => {
+    if (!enabled) {
+      query.value = '';
+    }
+  },
+);
 
 const userMenuOpen = ref(false);
 const menuRef = ref(null);
