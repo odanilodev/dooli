@@ -1,6 +1,56 @@
-# Cursos API
+<div align="center">
 
-API REST de plataforma de cursos em **Laravel 13 + Sanctum**, rodando com Docker (PHP 8.3 + MySQL 8.4 + Redis). Multi-tenant por `company_id`.
+# 🎓 Delta Class
+
+**Plataforma multiempresa de cursos online, com loja, pagamentos e área do aluno.**
+
+![Laravel](https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white)
+![PHP](https://img.shields.io/badge/PHP-8.3-777BB4?logo=php&logoColor=white)
+![Vue](https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8.4-4479A1?logo=mysql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
+
+</div>
+
+---
+
+## ✨ Visão geral
+
+API REST em **Laravel 13 + Sanctum** com SPA em **Vue 3**, isolada por empresa (`company_id`). Cada escola tem sua própria loja, domínio, alunos, gateways e configurações de e-mail.
+
+## 🚀 Funcionalidades
+
+- 📚 **Conteúdo:** cursos, módulos, tópicos, aulas (vídeo ou documento), anexos e aulas ao vivo
+- 👥 **Alunos:** turmas, certificados, comentários, avaliações e relatórios
+- 🛒 **Loja por empresa:** produtos (pagamento único ou assinatura), cupons, banners e vitrine
+- 💳 **Pagamentos:** Mercado Pago (PIX e cartão), assinaturas e webhooks com assinatura HMAC
+- 🤝 **Comercial:** vendedores e comissões
+- 🤖 **Robôs / DeltaStats:** coleta diária e intradiária de dados de mercado (brapi.dev, Binance)
+- 🔔 **Notificações:** e-mails transacionais via Resend, configuráveis por empresa
+- 🧭 **Menus dinâmicos** por tipo de usuário e painel administrativo completo
+
+## 🧱 Stack
+
+| Camada | Tecnologias |
+| --- | --- |
+| Backend | PHP 8.3, Laravel 13, Sanctum, Resend |
+| Frontend | Vue 3, Vue Router, Pinia, Vite, Chart.js |
+| Infra | Docker, MySQL 8.4, Redis 7, Nginx/PHP-FPM, Caddy (TLS) |
+
+## 📁 Estrutura
+
+```text
+app/        Controllers, Models, Services (regras de negócio) e Commands
+frontend/   SPA Vue 3 (Vite)
+database/   Migrations, seeders e factories
+docs/       API, arquitetura, domínio, segurança e Postman/OpenAPI
+docker/     Configurações de Nginx e Caddy
+tests/      Testes automatizados (PHPUnit)
+```
+
+---
 
 ## Requisitos
 
