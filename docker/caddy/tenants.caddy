@@ -1,0 +1,13 @@
+# Adicione um bloco por domínio de empresa/cliente e recarregue o Caddy.
+# O DNS do domínio precisa apontar para esta VPS e as portas 80/443 precisam
+# estar acessíveis para a emissão do certificado.
+#
+# Exemplo:
+#
+# empresa1.exemplo.com {
+#     import app-prod
+# }
+#
+# cliente.com.br {
+#     import app-prod
+# }

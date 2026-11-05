@@ -75,7 +75,7 @@
 1. **HTTPS obrigatório em produção** — tokens trafegam no header `Authorization`.
 2. **Definir `MERCADOPAGO_WEBHOOK_SECRET`** e `MANUAL_WEBHOOK_SECRET` em produção; sem segredo, todo webhook é rejeitado (falha fechada).
 3. **`X-Company` é público por natureza** (id enumerável). Recomenda-se, no futuro, usar um `companies.slug`/chave pública para reduzir enumeração — mudança aditiva já prevista.
-4. **CORS** deve ser restringido aos domínios do frontend em produção.
+4. **CORS** é restringido por `CORS_ALLOWED_ORIGINS`/`CORS_ALLOWED_ORIGIN_PATTERNS`; em produção informe apenas o domínio da plataforma (os domínios dos tenants são same-origin).
 5. **Rotação de credenciais de gateway e Resend** e uso de cofre de segredos (ex.: variáveis de ambiente/secret manager) em vez de apenas cifra em banco. A `RESEND_API_KEY` da plataforma deve ser configurada em produção; o limite gratuito é 3.000/mês e 100/dia por conta.
 6. **Upload de arquivos** (`documents`/`attachments`/`banners`) hoje armazena caminhos; ao habilitar upload real, validar tipo/tamanho e servir por URL assinada.
 7. **`APP_DEBUG=false`** em produção para não vazar stack traces.

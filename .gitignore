@@ -1,29 +1,90 @@
 *.log
 .DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Environment and local secrets
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
+!.env.*.example
+!**/.env.example
+!**/.env.*.example
+.envrc
+.direnv/
+.npmrc
+auth.json
+
+# Private keys and certificates
+*.key
+*.pem
+*.p12
+*.pfx
+*.p8
+*.jks
+*.keystore
+*.csr
+*.crt
+*.cer
+id_rsa*
+id_ed25519*
+
+# Databases and dumps
+*.sql
+*.sql.gz
+*.dump
+*.sqlite
+*.sqlite3
+
+# PHP tooling
 .phpactor.json
 .phpunit.result.cache
+/.phpunit.cache
+_ide_helper.php
+.php-cs-fixer.cache
+.phpstan.cache
+.pest.cache
+
+# Editors and local tooling
 /.codex
 /.cursor/
+/.fleet/
+/.history/
 /.idea
 /.nova
-/.phpunit.cache
 /.vscode
 /.zed
-/auth.json
+*.sublime-workspace
+
+# Build, dependencies and runtime artifacts
 /node_modules
 /frontend/node_modules
 /frontend/dist
+/frontend/.vite
+/frontend/.eslintcache
+/.nyc_output
+/coverage
+/frontend/coverage
 /public/build
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
 /storage/*.key
+/storage/debugbar
 /storage/pail
 /vendor
-_ide_helper.php
+
+# Backup/temporary files
+*.bak
+*.orig
+*.rej
+*~
+*.swp
+*.swo
+
+# Local compose overrides can contain secrets
+docker-compose.override.yml
+
 Homestead.json
 Homestead.yaml
-Thumbs.db

@@ -1,0 +1,139 @@
+name: cursos-homolog
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-app-base: &app-base
+  build:
+    context: .
+    dockerfile: docker/app/Dockerfile.production
+  image: cursos-api-app:homolog
+  restart: unless-stopped
+  init: true
+  working_dir: /var/www/html
+  env_file:
+    - .env.homolog
+  volumes:
+    - homolog_storage:/var/www/html/storage
+    - homolog_bootstrap_cache:/var/www/html/bootstrap/cache
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  logging: *default-logging
+
+services:
+  app:
+    <<: *app-base
+    container_name: cursos_homolog_app
+    expose:
+      - "9000"
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm -t >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  queue:
+    <<: *app-base
+    container_name: cursos_homolog_queue
+    command: php artisan queue:work --sleep=1 --tries=3 --timeout=120 --max-time=3600
+    stop_grace_period: 130s
+
+  scheduler:
+    <<: *app-base
+    container_name: cursos_homolog_scheduler
+    command: php artisan schedule:work
+    stop_grace_period: 30s
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
+        VITE_COMPANY_ID: ${VITE_COMPANY_ID:-}
+        VITE_PLATFORM_DOMAINS: ${VITE_PLATFORM_DOMAINS:-}
+        VITE_MAX_UPLOAD_MB: ${VITE_MAX_UPLOAD_MB:-20}
+    image: cursos-api-web:homolog
+    container_name: cursos_homolog_web
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - homolog_storage:/var/www/storage:ro
+    expose:
+      - "80"
+    networks:
+      default:
+      edge:
+        aliases:
+          - homolog-web
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/up >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging: *default-logging
+
+  db:
+    image: mysql:8.4
+    container_name: cursos_homolog_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - homolog_dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    container_name: cursos_homolog_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - homolog_redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    logging: *default-logging
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: cursos_homolog_mailpit
+    restart: unless-stopped
+    expose:
+      - "1025"
+      - "8025"
+    logging: *default-logging
+
+networks:
+  edge:
+    external: true
+    name: cursos_edge
+
+volumes:
+  homolog_dbdata:
+  homolog_redisdata:
+  homolog_storage:
+  homolog_bootstrap_cache:

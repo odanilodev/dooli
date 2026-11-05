@@ -1,0 +1,71 @@
+FROM php:8.3-fpm-bookworm
+
+LABEL maintainer="cursos-api"
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=America/Sao_Paulo
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git \
+        curl \
+        unzip \
+        zip \
+        libzip-dev \
+        libpng-dev \
+        libjpeg62-turbo-dev \
+        libfreetype6-dev \
+        libonig-dev \
+        libicu-dev \
+        default-mysql-client \
+    && docker-php-ext-configure gd --with-jpeg --with-freetype \
+    && docker-php-ext-install -j"$(nproc)" \
+        pdo_mysql \
+        mbstring \
+        bcmath \
+        gd \
+        zip \
+        intl \
+        pcntl \
+        opcache \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+COPY composer.json composer.lock ./
+RUN composer install \
+        --no-dev \
+        --prefer-dist \
+        --no-interaction \
+        --no-scripts \
+        --no-autoloader
+
+COPY . .
+
+RUN composer dump-autoload --no-dev --optimize --classmap-authoritative
+
+COPY docker/app/php.ini /usr/local/etc/php/conf.d/zz-app.ini
+COPY docker/app/opcache.ini /usr/local/etc/php/conf.d/zz-opcache.ini
+COPY docker/app/www.conf /usr/local/etc/php-fpm.d/www.conf
+COPY docker/app/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && mkdir -p \
+        storage/app/public \
+        storage/app/private \
+        storage/framework/cache/data \
+        storage/framework/sessions \
+        storage/framework/testing \
+        storage/framework/views \
+        storage/logs \
+        bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+EXPOSE 9000
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["php-fpm", "-F"]

@@ -1,48 +1,50 @@
 name: cursos-api
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-app-base: &app-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: cursos-api-app
+  restart: unless-stopped
+  working_dir: /var/www/html
+  volumes:
+    - .:/var/www/html
+    - vendor:/var/www/html/vendor
+    - bootstrap_cache:/var/www/html/bootstrap/cache
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  logging: *default-logging
+
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: cursos-api-app
+    <<: *app-base
     container_name: cursos_api_app
-    restart: unless-stopped
-    working_dir: /var/www/html
-    volumes:
-      - .:/var/www/html
-      - vendor:/var/www/html/vendor
-      - bootstrap_cache:/var/www/html/bootstrap/cache
     ports:
       - "8000:8000"
     environment:
       PHP_CLI_SERVER_WORKERS: "4"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     command: php artisan serve --host=0.0.0.0 --port=8000
     tty: true
 
   queue:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: cursos-api-app
+    <<: *app-base
     container_name: cursos_api_queue
-    restart: unless-stopped
-    working_dir: /var/www/html
-    volumes:
-      - .:/var/www/html
-      - vendor:/var/www/html/vendor
-      - bootstrap_cache:/var/www/html/bootstrap/cache
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     command: php artisan queue:work --sleep=1 --tries=3 --timeout=120
+    tty: true
+
+  scheduler:
+    <<: *app-base
+    container_name: cursos_api_scheduler
+    command: php artisan schedule:work
     tty: true
 
   db:
@@ -64,6 +66,7 @@ services:
       timeout: 5s
       retries: 30
       start_period: 30s
+    logging: *default-logging
 
   redis:
     image: redis:7-alpine
@@ -78,6 +81,16 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+    logging: *default-logging
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: cursos_api_mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    logging: *default-logging
 
   frontend:
     image: node:20-alpine
@@ -93,6 +106,7 @@ services:
       - app
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
     tty: true
+    logging: *default-logging
 
 volumes:
   dbdata:

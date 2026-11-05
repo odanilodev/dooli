@@ -34,6 +34,20 @@ return Application::configure(basePath: dirname(__DIR__))
         // Unauthenticated requests must fall through to the JSON 401 handler.
         $middleware->redirectGuestsTo(null);
 
+        // Production runs behind Caddy/Nginx. Trust only the proxies configured
+        // for the environment so HTTPS, host and client IP are preserved.
+        $trustedProxies = env('TRUSTED_PROXIES');
+
+        if (is_string($trustedProxies) && trim($trustedProxies) !== '') {
+            $trustedProxies = trim($trustedProxies);
+
+            $middleware->trustProxies(
+                at: $trustedProxies === '*'
+                    ? '*'
+                    : array_map('trim', explode(',', $trustedProxies)),
+            );
+        }
+
         $middleware->alias([
             'company' => SetCompanyContext::class,
             'company.required' => EnsureCompanyContext::class,
