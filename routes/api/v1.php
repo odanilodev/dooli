@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\V1\Admin\StorefrontSettingController as AdminStoref
 use App\Http\Controllers\Api\V1\Admin\StoreProductController as AdminStoreProductController;
 use App\Http\Controllers\Api\V1\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Api\V1\Admin\TeamController as AdminTeamController;
+use App\Http\Controllers\Api\V1\Admin\TeamRobotController as AdminTeamRobotController;
 use App\Http\Controllers\Api\V1\Admin\TopicController as AdminTopicController;
 use App\Http\Controllers\Api\V1\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\V1\Admin\UserTypeController as AdminUserTypeController;
@@ -53,6 +54,7 @@ use App\Http\Controllers\Api\V1\Student\HomeController as StudentHomeController;
 use App\Http\Controllers\Api\V1\Student\LiveClassController as StudentLiveClassController;
 use App\Http\Controllers\Api\V1\Student\MaterialController;
 use App\Http\Controllers\Api\V1\Student\MyCourseController;
+use App\Http\Controllers\Api\V1\Student\RobotController;
 use App\Http\Controllers\Api\V1\Student\NotificationController as StudentNotificationController;
 use App\Http\Controllers\Api\V1\Student\OrderController as StudentOrderController;
 use App\Http\Controllers\Api\V1\Student\ProgressController;
@@ -190,6 +192,15 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
 
     Route::get('me/continue-watching', [MyCourseController::class, 'continueWatching']);
 
+    /*
+    | Robôs (liberados a todo aluno ativo)
+    */
+    Route::get('me/robots', [RobotController::class, 'index']);
+    Route::get('me/robots/{slug}', [RobotController::class, 'show']);
+    Route::post('me/robots/{slug}/run', [RobotController::class, 'run'])->middleware('throttle:30,1');
+    Route::post('me/robots/{slug}/detail', [RobotController::class, 'detail'])->middleware('throttle:60,1');
+    Route::post('me/robots/{slug}/assets', [RobotController::class, 'addAsset'])->middleware('throttle:10,1');
+
     Route::get('me/courses/{course}/documents/{document}', [MaterialController::class, 'document']);
     Route::get('me/courses/{course}/attachments/{attachment}', [MaterialController::class, 'attachment']);
 
@@ -281,6 +292,10 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
         Route::get('teams/{team}/courses', [AdminTeamController::class, 'courses']);
         Route::post('teams/{team}/courses', [AdminTeamController::class, 'attachCourse']);
         Route::delete('teams/{team}/courses/{course}', [AdminTeamController::class, 'detachCourse'])->whereNumber('course');
+        Route::get('robots', [AdminTeamRobotController::class, 'index']);
+        Route::get('teams/{team}/robots', [AdminTeamRobotController::class, 'robots']);
+        Route::post('teams/{team}/robots', [AdminTeamRobotController::class, 'attach']);
+        Route::delete('teams/{team}/robots/{robot}', [AdminTeamRobotController::class, 'detach'])->whereNumber('robot');
         Route::get('teams/{team}/schedules', [AdminScheduleController::class, 'index']);
         Route::put('teams/{team}/schedules', [AdminScheduleController::class, 'upsert']);
 

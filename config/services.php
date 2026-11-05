@@ -52,6 +52,10 @@ return [
         'webhook_secret' => env('MERCADOPAGO_WEBHOOK_SECRET'),
     ],
 
+    'brapi' => [
+        'token' => env('BRAPI_TOKEN'),
+    ],
+
     'manual' => [
         'webhook_secret' => env('MANUAL_WEBHOOK_SECRET'),
     ],

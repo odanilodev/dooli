@@ -106,7 +106,11 @@ class StoreProductService
         $storeProduct->teams()->sync($sync);
     }
 
-    private function resolveCourseId(array $teamIds): int
+    /**
+     * Curso principal do produto. Turma que só libera ferramenta (sem curso) é válida:
+     * nesse caso o produto fica sem curso.
+     */
+    private function resolveCourseId(array $teamIds): ?int
     {
         $courseId = TeamCourse::query()
             ->whereIn('team_id', $teamIds)
@@ -115,12 +119,18 @@ class StoreProductService
             ->orderBy('course_id')
             ->value('course_id');
 
-        if (! $courseId) {
+        if ($courseId) {
+            return (int) $courseId;
+        }
+
+        $hasRobot = $teamIds !== [] && DB::table('robot_team')->whereIn('team_id', $teamIds)->exists();
+
+        if (! $hasRobot) {
             throw ValidationException::withMessages([
-                'team_ids' => 'Vincule ao menos um curso ativo às turmas selecionadas.',
+                'team_ids' => 'Vincule ao menos um curso ativo ou uma ferramenta às turmas selecionadas.',
             ]);
         }
 
-        return (int) $courseId;
+        return null;
     }
 }
