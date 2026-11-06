@@ -89,9 +89,14 @@ class PaymentService
 
             $result = $this->gatewayManager->for($gateway)->createCharge($payment, $dto->metadata);
 
+            // Pagamento aprovado na hora (ex.: cartão): mantém "pending" aqui e deixa o confirm() fazer a
+            // transição para "paid". Se já gravássemos "paid", o confirm() (idempotente) retornaria sem
+            // atualizar o pedido, liberar o acesso, nem registrar comissão e notificação.
             $payment = $this->payments->update($payment, [
                 'transaction_id' => $result->transactionId,
-                'status' => $result->status,
+                'status' => $result->status === PaymentStatus::Paid->value
+                    ? PaymentStatus::Pending->value
+                    : $result->status,
                 'metadata' => $result->raw ?: null,
             ]);
 
