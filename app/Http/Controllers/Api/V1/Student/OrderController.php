@@ -119,6 +119,20 @@ class OrderController extends ApiController
         return ApiResponse::success(new StudentOrderDetailResource($this->orders->find($order->id)));
     }
 
+    /**
+     * Reembolso pelo direito de arrependimento (7 dias): estorno integral automático.
+     */
+    public function refund(Request $request, Order $order): JsonResponse
+    {
+        abort_unless((int) $order->user_id === (int) $request->user()->id, 403);
+
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
+
+        $this->payments->requestStudentRefund($order, $data['reason'] ?? null);
+
+        return ApiResponse::success(new StudentOrderDetailResource($this->orders->find($order->id)));
+    }
+
     public function cancel(Request $request, Order $order): JsonResponse
     {
         if ((int) $order->user_id !== (int) $request->user()->id) {

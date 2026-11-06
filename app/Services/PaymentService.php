@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTO\CreatePaymentDTO;
+use App\Enums\AccessGrantSource;
 use App\Enums\NotificationSlug;
 use App\Enums\OrderEventActorType;
 use App\Enums\OrderEventType;
@@ -27,6 +28,9 @@ use Throwable;
 
 class PaymentService
 {
+    /** Direito de arrependimento (CDC, art. 49): reembolso integral em até 7 dias corridos. */
+    public const REFUND_WINDOW_DAYS = 7;
+
     public function __construct(
         private readonly PaymentRepository $payments,
         private readonly OrderRepository $orders,
@@ -255,8 +259,11 @@ class PaymentService
                 return $payment;
             }
 
+            // O Mercado Pago devolve date_approved com offset (ex.: -04:00). Converte para o fuso da
+            // aplicação antes de gravar; senão o horário é salvo com o relógio do offset original
+            // (1 hora de diferença em relação ao horário de Brasília).
             $paidAt = ! empty($context['paid_at'])
-                ? Carbon::parse($context['paid_at'])
+                ? Carbon::parse($context['paid_at'])->setTimezone(config('app.timezone'))
                 : ($payment->paid_at ? Carbon::parse($payment->paid_at) : now());
 
             $payment = $this->payments->update($payment, [
@@ -340,6 +347,85 @@ class PaymentService
         });
     }
 
+    /**
+     * Regra do direito de arrependimento: pedido pago, de compra única, dentro de 7 dias do pagamento.
+     *
+     * @return array{eligible: bool, deadline: ?Carbon, payment: ?Payment, message: ?string}
+     */
+    public function refundEligibility(Order $order): array
+    {
+        $order->loadMissing('payments');
+
+        if ($order->subscription_id) {
+            return ['eligible' => false, 'deadline' => null, 'payment' => null,
+                'message' => 'O reembolso de assinaturas deve ser solicitado diretamente à empresa.'];
+        }
+
+        if ($order->status !== OrderStatus::Paid->value) {
+            return ['eligible' => false, 'deadline' => null, 'payment' => null,
+                'message' => 'Somente pedidos pagos podem ser reembolsados.'];
+        }
+
+        $payment = $order->payments
+            ->where('status', PaymentStatus::Paid->value)
+            ->sortByDesc('paid_at')
+            ->first();
+
+        if (! $payment || ! $payment->paid_at) {
+            return ['eligible' => false, 'deadline' => null, 'payment' => null,
+                'message' => 'Não encontramos um pagamento confirmado para este pedido.'];
+        }
+
+        $deadline = Carbon::parse($payment->paid_at)->addDays(self::REFUND_WINDOW_DAYS);
+
+        if (now()->greaterThan($deadline)) {
+            return ['eligible' => false, 'deadline' => $deadline, 'payment' => $payment,
+                'message' => 'O prazo de '.self::REFUND_WINDOW_DAYS.' dias para reembolso já terminou. Fale com a empresa.'];
+        }
+
+        return ['eligible' => true, 'deadline' => $deadline, 'payment' => $payment, 'message' => null];
+    }
+
+    /**
+     * Reembolso solicitado pelo aluno dentro do prazo: estorno integral automático no gateway
+     * e encerramento do acesso (feito pelo refund()).
+     */
+    public function requestStudentRefund(Order $order, ?string $reason = null): Payment
+    {
+        $eligibility = $this->refundEligibility($order);
+
+        if (! $eligibility['eligible']) {
+            throw new PaymentException($eligibility['message'] ?? 'Reembolso indisponível.', 'refund_not_allowed');
+        }
+
+        $description = 'Reembolso solicitado pelo aluno (direito de arrependimento).';
+
+        if ($reason !== null && trim($reason) !== '') {
+            $description .= ' Motivo: '.trim($reason);
+        }
+
+        return $this->refund($eligibility['payment'], null, $description);
+    }
+
+    /**
+     * Encerra o acesso concedido por um pedido (estorno total).
+     */
+    private function revokeOrderAccess(Order $order): void
+    {
+        $order->loadMissing('items.storeProduct');
+
+        foreach ($order->items as $item) {
+            if ($item->storeProduct) {
+                $this->enrollments->revokeAccess(
+                    (int) $order->user_id,
+                    $item->storeProduct,
+                    AccessGrantSource::Order->value,
+                    (int) $order->id,
+                );
+            }
+        }
+    }
+
     public function refund(Payment $payment, ?float $amount = null, ?string $reason = null): Payment
     {
         if ($payment->status !== PaymentStatus::Paid->value) {
@@ -382,6 +468,7 @@ class PaymentService
             if ($fullyRefunded) {
                 $payment = $this->payments->update($payment, ['status' => PaymentStatus::Refunded->value]);
                 $order->update(['status' => OrderStatus::Refunded->value]);
+                $this->revokeOrderAccess($order);
             }
 
             $this->sellerCommissions->applyOrderRefunds($order->refresh());
@@ -461,6 +548,7 @@ class PaymentService
             'status' => PaymentStatus::Refunded->value,
         ]);
         $order->update(['status' => OrderStatus::Refunded->value]);
+        $this->revokeOrderAccess($order);
 
         $this->sellerCommissions->applyOrderRefunds($order->refresh());
 
