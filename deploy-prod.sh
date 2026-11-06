@@ -68,6 +68,9 @@ run_compose build
 echo
 echo "[4/7] Subindo containers"
 run_compose up -d --remove-orphans
+# O nginx do web resolve o nome "app" so ao iniciar. Se o app foi recriado (IP novo)
+# e o web nao, ele continua apontando para o IP antigo (502). Reiniciar re-resolve.
+run_compose restart web
 
 echo
 echo "[5/7] Aguardando health check (${HEALTH_URL})"
