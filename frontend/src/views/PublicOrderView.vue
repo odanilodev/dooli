@@ -96,6 +96,17 @@
           Assim que o pagamento for confirmado, seu acesso será liberado automaticamente.
         </p>
 
+        <div v-if="order.refund?.eligible" class="order-note refund-note">
+          <strong>Garantia de {{ order.refund.window_days }} dias</strong>
+          <span>
+            Você pode pedir o reembolso integral até {{ formatDateTime(order.refund.deadline) }}.
+            Ao solicitar, o valor é devolvido e o acesso ao curso é encerrado.
+          </span>
+          <button class="btn btn-outline btn-sm" type="button" :disabled="refunding" @click="requestRefund">
+            {{ refunding ? 'Processando...' : 'Solicitar reembolso' }}
+          </button>
+        </div>
+
         <div class="order-actions">
           <router-link v-if="order.status === 'paid'" :to="{ name: 'dashboard' }" class="btn btn-primary order-cta">
             Ir para meus cursos
@@ -123,6 +134,7 @@ import { useRoute } from 'vue-router';
 import { api } from '../api/http';
 import { paletteAt } from '../data/palette';
 import { useTenant } from '../composables/useTenant';
+import { useToast } from '../composables/useToast';
 import { formatCurrency, formatDateTime } from '../utils/format';
 import { orderStatusClass, orderStatusLabel } from '../utils/orderStatus';
 import OrderTimeline from '../components/OrderTimeline.vue';
@@ -130,6 +142,8 @@ import PaymentDetailsCard from '../components/PaymentDetailsCard.vue';
 
 const route = useRoute();
 const { publicRoute } = useTenant();
+const toast = useToast();
+const refunding = ref(false);
 const order = ref(null);
 const loading = ref(true);
 const error = ref(null);
@@ -147,6 +161,29 @@ async function load() {
     error.value = e?.message || 'Não foi possível carregar o pedido.';
   } finally {
     loading.value = false;
+  }
+}
+
+async function requestRefund() {
+  const confirmed = window.confirm(
+    'Confirma o reembolso integral desta compra? O valor será devolvido e seu acesso ao curso será encerrado.',
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  refunding.value = true;
+
+  try {
+    const { data } = await api.post(`/me/orders/${orderId.value}/refund`, {});
+    order.value = data.data;
+    toast.success('Reembolso solicitado. O valor será devolvido na forma de pagamento original.');
+  } catch (e) {
+    const firstError = e?.errors ? Object.values(e.errors).flat()[0] : null;
+    toast.error(firstError || e?.message || 'Não foi possível solicitar o reembolso.');
+  } finally {
+    refunding.value = false;
   }
 }
 
@@ -217,6 +254,8 @@ onBeforeUnmount(() => clearInterval(timer));
 .order-total-line.total{padding-top:16px;border-top:1px solid var(--border);font-size:14px;font-weight:800;}
 .order-total-line.total strong{font-size:29px;color:var(--accent);letter-spacing:-.035em;}
 .order-note{padding:16px 18px;border-radius:14px;background:var(--bg-card-alt);color:var(--text-secondary);font-size:13px;line-height:1.6;}
+.refund-note{display:flex;flex-direction:column;align-items:flex-start;gap:8px;}
+.refund-note strong{color:var(--text-primary);font-size:14px;}
 .order-note.success{background:rgba(34,197,94,.08);color:#22c55e;}
 .order-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .order-cta{padding:14px 22px;border-radius:13px;}

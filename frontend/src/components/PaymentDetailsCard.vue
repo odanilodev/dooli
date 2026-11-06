@@ -51,7 +51,7 @@
       </div>
     </dl>
 
-    <div v-if="payment.pix?.qr_code || payment.pix?.qr_code_base64" class="payment-pix">
+    <div v-if="payment.status === 'pending' && (payment.pix?.qr_code || payment.pix?.qr_code_base64)" class="payment-pix">
       <div class="pix-copy">
         <strong>PIX para pagamento</strong>
         <span v-if="payment.pix.expires_at">Expira em {{ formatDateTime(payment.pix.expires_at) }}</span>

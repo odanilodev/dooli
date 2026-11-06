@@ -227,6 +227,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     Route::get('me/orders/{order}', [StudentOrderController::class, 'show']);
     Route::post('me/orders/{order}/pay', [StudentOrderController::class, 'pay']);
     Route::post('me/orders/{order}/cancel', [StudentOrderController::class, 'cancel']);
+    Route::post('me/orders/{order}/refund', [StudentOrderController::class, 'refund']);
 
     Route::get('comments', [CommentController::class, 'index']);
     Route::post('comments', [CommentController::class, 'store']);
