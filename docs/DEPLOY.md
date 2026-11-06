@@ -138,8 +138,24 @@ dc logs -f --tail=100 app queue
 dc exec app php artisan about
 ```
 
-Backup (agendar no cron do root): dump do MySQL e do volume `dooli_prod_storage`.
+## 7. Backup
+
+`scripts/backup.sh` faz o dump do MySQL e copia os arquivos enviados (`dooli_prod_storage`) sem parar nenhum container. Salva em `/opt/dooli-backups/AAAAMMDD_HHMMSS/` (fora da pasta de deploy) e mantém 14 dias (`RETENTION_DAYS`).
 
 ```bash
-docker exec dooli_db sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --all-databases' | gzip > /root/backups/dooli-$(date +%F).sql.gz
+bash /opt/dooli/scripts/backup.sh
 ```
+
+Agende no cron do root (`crontab -e`), todo dia às 03:00:
+
+```cron
+0 3 * * * bash /opt/dooli/scripts/backup.sh >> /var/log/dooli-backup.log 2>&1
+```
+
+Restaurar (pede confirmação, **sobrescreve** banco e arquivos):
+
+```bash
+bash /opt/dooli/scripts/restore.sh /opt/dooli-backups/AAAAMMDD_HHMMSS
+```
+
+> Backup no mesmo disco do servidor não protege contra perda do servidor. Copie `/opt/dooli-backups` para fora (rclone para S3, Drive ou Backblaze). O Redis não entra no backup (só cache, sessão e fila).
