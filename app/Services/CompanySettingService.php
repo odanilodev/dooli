@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Company;
 use App\Repositories\CompanySettingRepository;
 use App\Support\ImageStorage;
 use Illuminate\Http\UploadedFile;
@@ -26,6 +27,7 @@ class CompanySettingService
      * Branding values exposed to the frontend.
      *
      * @return array{
+     *     company_name: string|null,
      *     primary_color: string|null,
      *     logo_light: string|null,
      *     logo_light_url: string|null,
@@ -43,6 +45,7 @@ class CompanySettingService
         $lightLogoUrl = $this->publicUrl($lightLogo);
 
         return [
+            'company_name' => Company::withoutGlobalScopes()->whereKey($companyId)->value('name'),
             'primary_color' => $this->settings->get($companyId, self::COLOR_KEY),
             'logo_light' => $lightLogo,
             'logo_light_url' => $lightLogoUrl,

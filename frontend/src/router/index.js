@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 import { useAuthStore } from '../stores/auth';
 import { useTenantStore } from '../stores/tenant';
+import { useBrandingStore } from '../stores/branding';
 
 import AppLayout from '../layouts/AppLayout.vue';
 import AuthLayout from '../layouts/AuthLayout.vue';
@@ -458,8 +459,14 @@ router.beforeEach(async (to) => {
   return true;
 });
 
+// O título da aba é sempre o nome da empresa (fallback: plataforma)
+export function atualizarTituloPagina() {
+  const tenant = useTenantStore();
+  document.title = useBrandingStore().companyName || tenant.company?.name || 'Delta Class';
+}
+
 router.afterEach((to) => {
-  document.title = to.meta?.title ? `Delta Class · ${to.meta.title}` : 'Delta Class';
+  atualizarTituloPagina();
 
   let robots = document.querySelector('meta[name="robots"]');
 

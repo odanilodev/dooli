@@ -5,6 +5,9 @@
         <span v-if="hasLive" class="hamburger-live" aria-hidden="true"></span>
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
+      <router-link :to="{ name: 'dashboard' }" class="topbar-brand" aria-label="Início">
+        <BrandLogo />
+      </router-link>
       <label v-if="route.meta.headerSearch" class="search">
         <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         <input type="text" v-model="query" :placeholder="placeholder">
@@ -72,6 +75,10 @@
           <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
         </button>
         <div class="user-dropdown">
+          <a href="#" class="menu-theme-item" @click.prevent="toggleTheme">
+            <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="2"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>
+            Alternar tema
+          </a>
           <AccountMenuLinks
             variant="app"
             @navigate="userMenuOpen = false"
@@ -95,6 +102,7 @@ import { useNotificationsStore } from '../stores/notifications';
 import { resetUserStores } from '../stores/resetUserStores';
 import AccountMenuLinks from './AccountMenuLinks.vue';
 import TeamSwitcher from './TeamSwitcher.vue';
+import BrandLogo from './BrandLogo.vue';
 
 const route = useRoute();
 const router = useRouter();

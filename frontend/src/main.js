@@ -1,9 +1,10 @@
-import { createApp } from 'vue';
+import { createApp, watch } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
-import router from './router';
+import router, { atualizarTituloPagina } from './router';
 import { useAuthStore } from './stores/auth';
 import { useTenantStore } from './stores/tenant';
+import { useBrandingStore } from './stores/branding';
 import { resetUserStores } from './stores/resetUserStores';
 import { setUnauthorizedHandler } from './api/http';
 import './assets/style.css';
@@ -39,5 +40,8 @@ setUnauthorizedHandler(() => {
 });
 
 auth.init();
+
+// Atualiza o título da aba quando o nome da empresa chegar/mudar (ex.: após login)
+watch(() => useBrandingStore(pinia).companyName, atualizarTituloPagina);
 
 app.mount('#app');
