@@ -113,6 +113,35 @@
           </tbody>
         </table>
       </div>
+
+      <section class="panel webhook-log">
+        <div class="webhook-log-head">
+          <div>
+            <h2 class="panel-title">Eventos de webhook</h2>
+            <p class="page-subtitle">Avisos de pagamento recebidos do Mercado Pago e o que o sistema fez com cada um.</p>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" :disabled="logsLoading" @click="loadLogs">
+            {{ logsLoading ? 'Atualizando...' : 'Atualizar' }}
+          </button>
+        </div>
+
+        <p v-if="!logsLoading && !logs.length" class="form-hint">
+          Nenhum evento ainda. Quando o Mercado Pago avisar um pagamento, ele aparece aqui.
+        </p>
+
+        <div v-else class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Quando</th><th>Resultado</th><th>Detalhe</th></tr></thead>
+            <tbody>
+              <tr v-for="log in logs" :key="log.id">
+                <td class="admin-muted">{{ formatLogDate(log.created_at) }}</td>
+                <td><span class="webhook-pill" :class="`is-${log.action}`">{{ webhookActionLabel(log.action) }}</span></td>
+                <td>{{ log.description }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </template>
   </main>
 </template>
@@ -152,8 +181,54 @@ const subscriptionWebhookUrl = computed(() => companySlug.value
   ? `${apiBase.value}/webhooks/companies/${companySlug.value}/subscriptions/mercadopago`
   : '');
 
+const logs = ref([]);
+const logsLoading = ref(false);
+
+const WEBHOOK_LABELS = {
+  receive: 'Recebido',
+  processed: 'Processado',
+  rejected: 'Recusado',
+  not_found: 'Pagamento não encontrado',
+  failed: 'Falhou',
+};
+
+function webhookActionLabel(action) {
+  return WEBHOOK_LABELS[action] || action;
+}
+
+function formatLogDate(value) {
+  if (!value) {
+    return '';
+  }
+
+  try {
+    return new Date(value).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  } catch (e) {
+    return '';
+  }
+}
+
+async function loadLogs() {
+  logsLoading.value = true;
+
+  try {
+    const { data } = await api.get('/admin/datalogs', { params: { module: 'webhook', per_page: 20 } });
+    logs.value = data.data ?? [];
+  } catch (e) {
+    toast.error(e?.message || 'Não foi possível carregar os eventos de webhook.');
+  } finally {
+    logsLoading.value = false;
+  }
+}
+
 onMounted(async () => {
-  await Promise.all([load(), loadCompany()]);
+  await Promise.all([load(), loadCompany(), loadLogs()]);
 });
 
 async function load() {
@@ -245,6 +320,14 @@ async function save() {
 </script>
 
 <style scoped>
+.webhook-log{margin-top:24px;}
+.webhook-log-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px;}
+.webhook-pill{
+  display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:800;
+  background:var(--bg-card-alt);color:var(--text-secondary);
+}
+.webhook-pill.is-processed,.webhook-pill.is-receive{background:var(--accent-soft);color:var(--accent);}
+.webhook-pill.is-rejected,.webhook-pill.is-failed,.webhook-pill.is-not_found{background:rgba(255,107,107,.14);color:#ff6b6b;}
 .gateway-help{
   margin:4px 0 18px;padding:0 14px;
   border:1px solid var(--border);border-radius:12px;

@@ -29,7 +29,19 @@ class WebhookService
     {
         $adapter = $this->gatewayManager->for($gateway);
 
+        // O gateway pertence a uma empresa: usa esse contexto para registrar a auditoria.
+        app(CompanyContext::class)->set((int) $gateway->company_id);
+
         if (! $adapter->verifyWebhook($request, $gateway)) {
+            $reason = method_exists($adapter, 'webhookFailureReason') ? $adapter->webhookFailureReason() : null;
+
+            $this->audit->log(
+                'webhook',
+                'rejected',
+                'payment',
+                'Webhook recusado (401): '.($reason ?: 'assinatura inválida.'),
+            );
+
             throw new ApiException('Assinatura do webhook inválida.', 401, 'invalid_webhook_signature');
         }
 
@@ -42,6 +54,13 @@ class WebhookService
         $payment = $this->resolvePayment($payload);
 
         if (! $payment) {
+            $this->audit->log(
+                'webhook',
+                'not_found',
+                'payment',
+                'Webhook com assinatura válida, mas o pagamento não existe no sistema (transação '.($payload['transaction_id'] ?? '?').').',
+            );
+
             throw new ResourceNotFoundException('Pagamento não encontrado para o webhook.');
         }
 

@@ -246,27 +246,42 @@ class MercadoPagoGateway implements PaymentGatewayContract
         return new GatewayRefundResult(success: true, status: 'refunded', raw: $response->json());
     }
 
+    /** Motivo da última recusa de webhook (para registrar na auditoria). */
+    private ?string $webhookFailure = null;
+
+    public function webhookFailureReason(): ?string
+    {
+        return $this->webhookFailure;
+    }
+
+    private function rejectWebhook(string $reason, array $context = []): bool
+    {
+        $this->webhookFailure = $reason;
+
+        Log::warning('MercadoPago webhook recusado: '.$reason, $context);
+
+        return false;
+    }
+
     public function verifyWebhook(Request $request, Gateway $gateway): bool
     {
+        $this->webhookFailure = null;
+
         $secret = $gateway->credentials['webhook_secret'] ?? config('services.mercadopago.webhook_secret');
 
         // Fail closed: without a configured secret no webhook can be trusted.
         if (! $secret) {
-            Log::warning('MercadoPago webhook recusado: segredo do webhook não configurado no gateway.');
-
-            return false;
+            return $this->rejectWebhook('segredo do webhook não configurado no gateway.');
         }
 
         $signature = (string) $request->header('x-signature');
         $requestId = (string) $request->header('x-request-id');
 
         if ($signature === '' || $requestId === '') {
-            Log::warning('MercadoPago webhook recusado: cabeçalhos de assinatura ausentes.', [
+            return $this->rejectWebhook('cabeçalhos de assinatura ausentes (x-signature/x-request-id).', [
                 'tem_x_signature' => $signature !== '',
                 'tem_x_request_id' => $requestId !== '',
             ]);
-
-            return false;
         }
 
         $dataId = (string) ($request->input('data.id') ?? '');
@@ -275,9 +290,7 @@ class MercadoPagoGateway implements PaymentGatewayContract
 
         // Reject stale signatures to reduce replay window (5 minutes).
         if ($ts !== '' && abs((int) (microtime(true) * 1000) - (int) $ts) > 300000) {
-            Log::warning('MercadoPago webhook recusado: assinatura expirada (ts fora da janela de 5 minutos).');
-
-            return false;
+            return $this->rejectWebhook('assinatura expirada (ts fora da janela de 5 minutos).');
         }
 
         // Conforme a documentação do Mercado Pago, campos ausentes saem do manifesto
@@ -298,16 +311,14 @@ class MercadoPagoGateway implements PaymentGatewayContract
 
         $expected = hash_hmac('sha256', $manifest, $secret);
 
-        $valid = hash_equals($expected, $this->extractV1($signature));
-
-        if (! $valid) {
-            Log::warning('MercadoPago webhook recusado: assinatura não confere (segredo do gateway diferente do gerado no Mercado Pago?).', [
-                'data_id' => $dataId,
-                'manifest' => $manifest,
-            ]);
+        if (! hash_equals($expected, $this->extractV1($signature))) {
+            return $this->rejectWebhook(
+                'assinatura não confere: o segredo salvo no gateway é diferente do gerado no Mercado Pago (confira se é o de produção, sem espaços).',
+                ['data_id' => $dataId, 'manifest' => $manifest],
+            );
         }
 
-        return $valid;
+        return true;
     }
 
     /**
