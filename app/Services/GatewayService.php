@@ -44,6 +44,12 @@ class GatewayService
             unset($data['credentials']);
         }
 
+        // Mescla com as credenciais já salvas: enviar só um campo (ex.: public_key)
+        // não pode apagar o access_token e o webhook_secret existentes.
+        if (isset($data['credentials']) && is_array($data['credentials'])) {
+            $data['credentials'] = array_merge($gateway->credentials ?? [], $data['credentials']);
+        }
+
         return $this->gateways->update($gateway, $data);
     }
 
