@@ -33,6 +33,7 @@ function writeCache(value) {
 export const useBrandingStore = defineStore('branding', () => {
   const { theme } = useTheme();
   const cached = readCache();
+  const companyName = ref(cached?.company_name || null);
   const primaryColor = ref(cached?.primary_color || null);
   const logoLightUrl = ref(cached?.logo_light_url || cached?.logo_url || null);
   const logoDarkUrl = ref(cached?.logo_dark_url || null);
@@ -71,10 +72,12 @@ export const useBrandingStore = defineStore('branding', () => {
   }
 
   function set(data) {
+    companyName.value = data?.company_name || null;
     primaryColor.value = data?.primary_color || null;
     logoLightUrl.value = data?.logo_light_url || data?.logo_url || null;
     logoDarkUrl.value = data?.logo_dark_url || null;
     writeCache({
+      company_name: companyName.value,
       primary_color: primaryColor.value,
       logo_light_url: logoLightUrl.value,
       logo_dark_url: logoDarkUrl.value,
@@ -98,6 +101,7 @@ export const useBrandingStore = defineStore('branding', () => {
   }
 
   function reset() {
+    companyName.value = null;
     primaryColor.value = null;
     logoLightUrl.value = null;
     logoDarkUrl.value = null;
@@ -109,6 +113,7 @@ export const useBrandingStore = defineStore('branding', () => {
   apply();
 
   return {
+    companyName,
     primaryColor,
     logoLightUrl,
     logoDarkUrl,

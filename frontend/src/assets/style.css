@@ -177,6 +177,10 @@ svg{display:block;}
   position:sticky;top:0;z-index:40;gap:16px;
 }
 .topbar-left{display:flex;align-items:center;gap:14px;min-width:0;flex:1;}
+.topbar-brand{display:none;align-items:center;gap:8px;min-width:0;}
+.topbar-brand .brand-logo{max-height:30px;max-width:150px;}
+.topbar-brand .brand-text{display:none;}
+.menu-theme-item{display:none !important;}
 .hamburger{
   position:relative;
   display:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);
@@ -571,6 +575,10 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
   .sidebar.open{transform:translateX(0);}
   .sidebar-backdrop.open{display:block;}
   .hamburger{display:flex;}
+  .topbar-brand{display:flex;}
+  .topbar-left{flex:1;justify-content:flex-start;}
+  .topbar-right .theme-toggle{display:none;}
+  .menu-theme-item{display:flex !important;}
   .user-text{display:none;}
   .content,.lesson-content{padding-left:20px;padding-right:20px;}
   .topbar{padding:0 20px;}
@@ -592,7 +600,9 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 }
 
 @media (max-width:420px){
-  .topbar-right{gap:12px;}
+  .topbar{padding:0 14px;gap:10px;}
+  .topbar-left{gap:10px;}
+  .topbar-right{gap:10px;}
   .v-divider{display:none;}
 }
 
