@@ -89,7 +89,14 @@ class MercadoPagoGateway implements PaymentGatewayContract
                 'body' => $response->json() ?? $response->body(),
             ]);
 
-            throw new PaymentException('Não foi possível criar a cobrança no MercadoPago.', 'gateway_charge_failed');
+            // Motivo devolvido pelo Mercado Pago (não contém dados sensíveis), para facilitar o diagnóstico.
+            $error = $response->json() ?? [];
+            $reason = $error['cause'][0]['description'] ?? $error['message'] ?? $error['error'] ?? null;
+
+            throw new PaymentException(
+                'Não foi possível criar a cobrança no MercadoPago.'.($reason ? ' Motivo: '.$reason : ''),
+                'gateway_charge_failed',
+            );
         }
 
         $data = $response->json();
