@@ -50,7 +50,12 @@ class MercadoPagoGateway implements PaymentGatewayContract
         }
 
         if (empty($payer['first_name']) && $user?->name) {
-            $payer['first_name'] = $user->name;
+            $parts = preg_split('/\s+/', trim((string) $user->name), 2);
+            $payer['first_name'] = $parts[0];
+
+            if (! empty($parts[1]) && empty($payer['last_name'])) {
+                $payer['last_name'] = $parts[1];
+            }
         }
 
         $body = [
