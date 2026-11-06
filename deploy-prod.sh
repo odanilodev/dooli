@@ -33,8 +33,14 @@ if [ ! -f "${ENV_FILE}" ]; then
     exit 1
 fi
 
-if grep -q 'CHANGE_ME' "${ENV_FILE}" || ! grep -Eq '^APP_KEY=base64:.+' "${ENV_FILE}"; then
-    echo "ERRO: ${ENV_FILE} ainda tem CHANGE_ME ou esta sem APP_KEY."
+if grep -v '^[[:space:]]*#' "${ENV_FILE}" | grep -q 'CHANGE_ME'; then
+    echo "ERRO: ${ENV_FILE} ainda tem CHANGE_ME nestas linhas:"
+    grep -n 'CHANGE_ME' "${ENV_FILE}" | grep -v '^[0-9]*:[[:space:]]*#' | sed 's/=.*/=.../'
+    exit 1
+fi
+
+if ! grep -Eq '^APP_KEY=base64:.+' "${ENV_FILE}"; then
+    echo "ERRO: APP_KEY ausente ou fora do formato (APP_KEY=base64:...) em ${ENV_FILE}."
     exit 1
 fi
 
