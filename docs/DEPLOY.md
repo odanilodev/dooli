@@ -111,7 +111,7 @@ No GitHub (`odanilodev/dooli` → Settings → Secrets and variables → Actions
 3. Primeira execução manual (libera a criação do volume do banco):
 
 ```bash
-cd /opt/dooli && ALLOW_NEW_DB_VOLUME=1 bash deploy-prod.sh
+cd /opt/dooli && SKIP_GIT_PULL=1 ALLOW_NEW_DB_VOLUME=1 bash deploy-prod.sh
 ```
 
 A partir daí, todo push na `main` faz o deploy sozinho.

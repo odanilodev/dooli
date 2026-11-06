@@ -4,7 +4,7 @@
 # Uso: bash deploy-prod.sh
 #
 # Primeira implantação (volume do banco ainda não existe):
-#   ALLOW_NEW_DB_VOLUME=1 bash deploy-prod.sh
+#   SKIP_GIT_PULL=1 ALLOW_NEW_DB_VOLUME=1 bash deploy-prod.sh
 
 set -euo pipefail
 
@@ -46,8 +46,8 @@ fi
 
 echo
 echo "[1/7] Atualizacao do codigo"
-if [ "${SKIP_GIT_PULL:-0}" = "1" ]; then
-    echo "SKIP_GIT_PULL=1 -> codigo ja foi enviado pelo CI"
+if [ "${SKIP_GIT_PULL:-0}" = "1" ] || [ ! -d .git ]; then
+    echo "Sem git pull -> codigo ja foi enviado pelo CI (tarball)"
 else
     git fetch --all --prune
     git reset --hard origin/main
