@@ -288,9 +288,18 @@ class MercadoPagoGateway implements PaymentGatewayContract
 
         $ts = $this->extractTs($signature);
 
-        // Reject stale signatures to reduce replay window (5 minutes).
-        if ($ts !== '' && abs((int) (microtime(true) * 1000) - (int) $ts) > 300000) {
-            return $this->rejectWebhook('assinatura expirada (ts fora da janela de 5 minutos).');
+        // O ts pode vir em segundos (10 dígitos) ou milissegundos (13 dígitos): normaliza para ms.
+        $tsMs = $ts !== '' ? (strlen($ts) <= 10 ? (int) $ts * 1000 : (int) $ts) : 0;
+        $agoraMs = (int) (microtime(true) * 1000);
+
+        // Rejeita assinaturas antigas para reduzir a janela de replay. O Mercado Pago reenvia
+        // notificações com falha por horas, então a tolerância é de 1 hora (o processamento é idempotente).
+        if ($tsMs > 0 && abs($agoraMs - $tsMs) > 3600000) {
+            return $this->rejectWebhook(sprintf(
+                'assinatura expirada: ts=%s, diferença de %d segundos para o horário do servidor (limite: 1 hora).',
+                $ts,
+                (int) round(abs($agoraMs - $tsMs) / 1000),
+            ));
         }
 
         // Conforme a documentação do Mercado Pago, campos ausentes saem do manifesto
