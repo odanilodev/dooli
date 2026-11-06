@@ -32,7 +32,7 @@ class CompanyController extends ApiController
             'gateways',
             $company->gateways()
                 ->where('status', 'active')
-                ->get(['id', 'name', 'code']),
+                ->get(['id', 'name', 'code', 'credentials']),
         );
 
         return ApiResponse::success(new PublicCompanyResource($company));
