@@ -80,14 +80,40 @@ const rowErrors = reactive({});
 const loading = ref(true);
 const savingId = ref(null);
 
+// Provedores com integração disponível. Se a empresa ainda não tem o registro
+// (ex.: produção sem seed), o card aparece como "não configurada" e é criado ao salvar.
+const AVAILABLE_PLATFORMS = [
+  { code: 'vdocipher', name: 'VdoCipher' },
+];
+
+function placeholder(item) {
+  return {
+    id: `new-${item.code}`,
+    isNew: true,
+    name: item.name,
+    code: item.code,
+    status: 'active',
+    has_credentials: false,
+    settings: {},
+  };
+}
+
 async function load() {
   loading.value = true;
 
   try {
     const { data } = await api.get('/admin/video-platforms', { params: { per_page: 50 } });
-    platforms.value = data.data;
+    const list = [...data.data];
 
-    for (const p of data.data) {
+    for (const item of AVAILABLE_PLATFORMS) {
+      if (!list.some((p) => p.code === item.code)) {
+        list.push(placeholder(item));
+      }
+    }
+
+    platforms.value = list;
+
+    for (const p of list) {
       forms[p.id] = {
         api_secret: '',
         ttl: p.settings?.ttl ?? '',
@@ -117,8 +143,24 @@ async function save(platform) {
   rowErrors[platform.id] = '';
 
   try {
-    const { data } = await api.put(`/admin/video-platforms/${platform.id}`, payload);
-    const updated = data.data;
+    let updated;
+
+    if (platform.isNew) {
+      const { data } = await api.post('/admin/video-platforms', {
+        ...payload,
+        name: platform.name,
+        code: platform.code,
+      });
+      updated = data.data;
+
+      forms[updated.id] = forms[platform.id];
+      delete forms[platform.id];
+      platform.id = updated.id;
+      platform.isNew = false;
+    } else {
+      const { data } = await api.put(`/admin/video-platforms/${platform.id}`, payload);
+      updated = data.data;
+    }
 
     platform.has_credentials = updated.has_credentials;
     platform.status = updated.status;
