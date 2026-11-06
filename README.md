@@ -37,7 +37,7 @@ API REST em **Laravel 13 + Sanctum** com SPA em **Vue 3**, isolada por empresa (
 | --- | --- |
 | Backend | PHP 8.3, Laravel 13, Sanctum, Resend |
 | Frontend | Vue 3, Vue Router, Pinia, Vite, Chart.js |
-| Infra | Docker, MySQL 8.4, Redis 7, Nginx/PHP-FPM, Caddy (TLS) |
+| Infra | Docker, MySQL 8.4, Redis 7, Nginx/PHP-FPM, Apache (cPanel) |
 
 ## 📁 Estrutura
 
@@ -45,8 +45,10 @@ API REST em **Laravel 13 + Sanctum** com SPA em **Vue 3**, isolada por empresa (
 app/        Controllers, Models, Services (regras de negócio) e Commands
 frontend/   SPA Vue 3 (Vite)
 database/   Migrations, seeders e factories
-docs/       API, arquitetura, domínio, segurança e Postman/OpenAPI
-docker/     Configurações de Nginx e Caddy
+docs/       API, arquitetura, domínio, segurança, deploy e Postman/OpenAPI
+docker/     Configurações de PHP/Nginx (imagem de produção)
+.github/    Workflow de deploy automático (GitHub Actions)
+deploy-prod.sh  Script de deploy executado no servidor
 tests/      Testes automatizados (PHPUnit)
 ```
 
@@ -62,11 +64,9 @@ tests/      Testes automatizados (PHPUnit)
 | Ambiente | Compose | Env example | Env real |
 | --- | --- | --- | --- |
 | Local | `docker-compose.yml` | `.env.example` | `.env` |
-| Homologação | `docker-compose.homolog.yml` | `.env.homolog.example` | `.env.homolog` |
 | Produção | `docker-compose.production.yml` | `.env.production.example` | `.env.production` |
-| Borda/TLS | `docker-compose.edge.yml` | — | — |
 
-Os arquivos `.env.homolog` e `.env.production` são ignorados pelo Git. Nunca versione valores reais.
+O arquivo `.env.production` é ignorado pelo Git. Nunca versione valores reais.
 
 ## Subir o ambiente local
 
@@ -103,42 +103,23 @@ Usuários de demonstração (após `db:seed`):
 | Admin   | `admin@cursos.test`  | `password` |
 | Aluno   | `aluno@cursos.test`  | `password` |
 
-## Homologação e produção
+## Produção
 
-Homologação e produção usam o mesmo domínio para SPA e API, PHP-FPM, Nginx, MySQL, Redis, queue e scheduler. A borda é um Caddy compartilhado na rede Docker `cursos_edge`.
+Produção roda em um servidor dedicado com cPanel/WHM. O Apache do cPanel faz o SSL (AutoSSL) e o proxy para o container `web` (nginx + SPA + PHP-FPM), publicado só em `127.0.0.1:9100`. MySQL e Redis não têm portas públicas.
 
-```sh
-# Crie a rede usada pelo Caddy e pelos dois ambientes
-docker network create cursos_edge
-
-# Suba/regenere a borda depois de editar o Caddyfile
-docker compose -f docker-compose.edge.yml up -d
-
-# Homologação
-docker compose -f docker-compose.homolog.yml --env-file .env.homolog up -d --build
-docker compose -f docker-compose.homolog.yml --env-file .env.homolog run --rm app php artisan migrate --force
-docker compose -f docker-compose.homolog.yml --env-file .env.homolog run --rm app php artisan config:cache
-docker compose -f docker-compose.homolog.yml --env-file .env.homolog exec queue php artisan queue:restart
-
-# Produção
-docker compose -f docker-compose.production.yml --env-file .env.production up -d --build
-docker compose -f docker-compose.production.yml --env-file .env.production run --rm app php artisan migrate --force
-docker compose -f docker-compose.production.yml --env-file .env.production run --rm app php artisan config:cache
-docker compose -f docker-compose.production.yml --env-file .env.production exec queue php artisan queue:restart
+```text
+Internet ─443─► Apache (cPanel) ─► 127.0.0.1:9100 ─► web (nginx) ─► app (php-fpm)
+                                                     + queue + scheduler + MySQL + Redis
 ```
 
-- Troque `app.exemplo.com`, `homolog.exemplo.com` e `admin@exemplo.com` no `docker/caddy/Caddyfile`.
-- Cada domínio de empresa/cliente deve ser adicionado em `docker/caddy/tenants.caddy` e o Caddy recarregado:
+**Deploy automático:** todo push na `main` dispara o workflow `.github/workflows/deploy-prod.yml`, que envia o código por SSH para o servidor e executa `deploy-prod.sh`: build das imagens, subida dos containers, health check, `migrate --force`, caches e `queue:restart`. O script aborta se o `.env.production` estiver incompleto (`CHANGE_ME`/sem `APP_KEY`) e tem uma trava contra criar um banco novo e vazio por engano.
 
-```sh
-docker compose -f docker-compose.edge.yml exec caddy caddy reload --config /etc/caddy/Caddyfile
-```
+Secrets necessários no GitHub: `PROD_HOST`, `PROD_USER`, `PROD_PORT`, `PROD_SSH_KEY`, `PROD_APP_DIR`.
 
-- O DNS de cada domínio precisa apontar para a VPS e as portas 80/443 precisam estar liberadas para o desafio HTTP do Let's Encrypt.
+**Domínios de clientes:** o cliente aponta o DNS para o servidor, o domínio é adicionado como alias no cPanel (o AutoSSL emite o certificado) e cadastrado na empresa (`companies.domain`, sem `www`). Não precisa de configuração nova no Apache.
+
 - Não rode `db:seed` em produção: ele cria usuários demo com senha conhecida.
-- O `Caddyfile` atual usa blocos explícitos. TLS on-demand para domínios arbitrários deve ser avaliado antes de habilitar.
-- Gere `APP_KEY` e os segredos de banco/Redis por ambiente. Não reutilize valores do local.
-- O primeiro super admin deve ser criado por comando/seeder próprio, nunca com os usuários demo.
+- Passo a passo completo do servidor (Apache, chave SSH, primeiro deploy, backup): [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Serviços
 
@@ -227,11 +208,11 @@ docker compose exec app php -r "echo (new Redis)->connect('redis', 6379) ? 'ok' 
 
 | Variável | Descrição |
 | --- | --- |
-| `APP_URL` | URL pública da API/plataforma; em homolog/prod use o mesmo domínio do frontend |
+| `APP_URL` | URL pública da API/plataforma; em prod use o mesmo domínio do frontend |
 | `FRONTEND_URL` | fallback para links de empresas sem domínio próprio |
 | `FRONTEND_SCHEME` / `FRONTEND_PORT` | esquema/porta usados nos links por domínio |
 | `PLATFORM_DOMAINS` | domínios da plataforma que nunca são tratados como tenant |
-| `TRUSTED_PROXIES` | proxies confiáveis para HTTPS/host/IP atrás do Caddy/Nginx (`*` em homolog/prod) |
+| `TRUSTED_PROXIES` | proxies confiáveis para HTTPS/host/IP atrás do Apache/Nginx (`*` em prod) |
 | `CORS_ALLOWED_ORIGINS` | origens permitidas; em produção use somente o domínio da plataforma |
 | `SANCTUM_EXPIRATION` | validade do token em minutos (vazio = nunca expira; recomendado 43200 em produção) |
 | `MERCADOPAGO_WEBHOOK_SECRET` | segredo HMAC do webhook do MercadoPago (**obrigatório em produção**) |

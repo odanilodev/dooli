@@ -1,0 +1,51 @@
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Production Server
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build deploy tarball
+        run: git archive --format=tar.gz -o deploy.tar.gz HEAD
+
+      - name: Upload tarball to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_PORT }}
+          source: "deploy.tar.gz"
+          target: "${{ secrets.PROD_APP_DIR }}"
+          overwrite: true
+          rm: false
+
+      - name: Extract and deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_PORT }}
+          script_stop: true
+          command_timeout: 20m
+          script: |
+            set -e
+            cd "${{ secrets.PROD_APP_DIR }}"
+            tar xzf deploy.tar.gz
+            rm -f deploy.tar.gz
+            SKIP_GIT_PULL=1 bash deploy-prod.sh
