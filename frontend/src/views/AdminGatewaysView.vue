@@ -32,6 +32,11 @@
           <span class="form-hint">Deixe vazio para manter o token atual.</span>
         </div>
         <div class="form-group">
+          <label for="g-public-key">Public Key</label>
+          <input id="g-public-key" class="form-control" v-model="form.public_key" autocomplete="off" placeholder="APP_USR-... (ou TEST-...)">
+          <span class="form-hint">Usada para o pagamento por cartão direto no site, sem redirecionar ao Mercado Pago. Também pode ficar vazia para manter a atual.</span>
+        </div>
+        <div class="form-group">
           <label for="g-secret">Segredo do webhook</label>
           <input id="g-secret" class="form-control" v-model="form.webhook_secret" autocomplete="off">
           <span class="form-hint">Também deixe vazio para manter o segredo atual.</span>
@@ -130,10 +135,16 @@ const form = reactive({
   code: 'mercadopago',
   status: 'active',
   access_token: '',
+  public_key: '',
   webhook_secret: '',
 });
 
-const apiBase = computed(() => String(api.defaults.baseURL).replace(/\/$/, ''));
+const apiBase = computed(() => {
+  const base = String(api.defaults.baseURL).replace(/\/$/, '');
+
+  // Base relativa (/api/v1): completa com o domínio atual para colar no Mercado Pago.
+  return /^https?:\/\//i.test(base) ? base : `${window.location.origin}${base}`;
+});
 const webhookUrl = computed(() => companySlug.value
   ? `${apiBase.value}/webhooks/companies/${companySlug.value}/payments/mercadopago`
   : '');
@@ -174,7 +185,7 @@ function toggleForm() {
   }
 
   editingId.value = null;
-  Object.assign(form, { name: 'Mercado Pago', code: 'mercadopago', status: 'active', access_token: '', webhook_secret: '' });
+  Object.assign(form, { name: 'Mercado Pago', code: 'mercadopago', status: 'active', access_token: '', public_key: '', webhook_secret: '' });
   showForm.value = true;
 }
 
@@ -185,6 +196,7 @@ function edit(gateway) {
     code: gateway.code,
     status: gateway.status,
     access_token: '',
+    public_key: '',
     webhook_secret: '',
   });
   showForm.value = true;
@@ -198,6 +210,10 @@ async function save() {
 
     if (form.access_token.trim()) {
       credentials.access_token = form.access_token.trim();
+    }
+
+    if (form.public_key.trim()) {
+      credentials.public_key = form.public_key.trim();
     }
 
     if (form.webhook_secret.trim()) {

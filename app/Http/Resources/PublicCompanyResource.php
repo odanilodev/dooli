@@ -23,6 +23,10 @@ class PublicCompanyResource extends JsonResource
                 'id' => $gateway->id,
                 'name' => $gateway->name,
                 'code' => $gateway->code,
+                // A Public Key do Mercado Pago é pública por natureza (usada no navegador para tokenizar o cartão).
+                'public_key' => $gateway->code === 'mercadopago'
+                    ? ($gateway->credentials['public_key'] ?? null)
+                    : null,
             ])),
         ];
     }

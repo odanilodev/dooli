@@ -104,13 +104,18 @@
                 </span>
                 <span class="payment-copy">
                   <strong>Cartão</strong>
-                  <small>{{ product.is_subscription ? 'Cobrança mensal recorrente' : 'Checkout seguro Mercado Pago' }}</small>
+                  <small>{{ product.is_subscription ? 'Cobrança mensal recorrente' : gateway?.public_key ? 'Pague sem sair do site' : 'Checkout seguro Mercado Pago' }}</small>
                 </span>
               </label>
             </div>
           </div>
 
           <p v-if="!gateway" class="public-warning">Pagamento indisponível: a empresa ainda não configurou um gateway.</p>
+
+          <div v-if="useCardBrick" class="card-brick-wrap">
+            <p v-if="brickLoading" class="summary-note">Carregando formulário do cartão...</p>
+            <div id="cardPaymentBrick_container"></div>
+          </div>
 
 
         </div>
@@ -158,7 +163,8 @@
         <p v-else-if="product.access_duration_days" class="summary-note">Acesso por {{ product.access_duration_days }} dias após a confirmação do pagamento.</p>
         <p v-else class="summary-note">Acesso permanente após a confirmação do pagamento.</p>
 
-        <button class="btn btn-primary btn-block checkout-submit" type="button" :disabled="submitting || !gateway" @click="submit">
+        <p v-if="useCardBrick" class="summary-note">Preencha os dados do cartão no formulário ao lado e clique em pagar.</p>
+        <button v-else class="btn btn-primary btn-block checkout-submit" type="button" :disabled="submitting || !gateway" @click="submit">
           {{ submitting ? 'Processando...' : product.is_subscription ? 'Assinar agora' : 'Finalizar compra' }}
           <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
@@ -221,7 +227,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api/http';
 import { paletteAt } from '../data/palette';
@@ -230,6 +236,8 @@ import { useTenant } from '../composables/useTenant';
 import { useAuthStore } from '../stores/auth';
 import { useStorefrontStore } from '../stores/storefront';
 import { useToast } from '../composables/useToast';
+import { useTheme } from '../composables/useTheme';
+import { loadMercadoPago } from '../utils/mercadopago';
 import { formatCurrency } from '../utils/format';
 
 const route = useRoute();
@@ -237,6 +245,7 @@ const router = useRouter();
 const auth = useAuthStore();
 const storefront = useStorefrontStore();
 const toast = useToast();
+const { theme } = useTheme();
 const referral = useReferral();
 const { companySlug, publicRoute } = useTenant();
 
@@ -251,6 +260,11 @@ const orderId = ref(null);
 const orderStatus = ref('pending');
 let pollTimer = null;
 
+// Checkout transparente de cartão (Card Payment Brick do Mercado Pago).
+// Só é usado quando a empresa cadastrou a Public Key; sem ela, mantém o Checkout Pro (redirecionamento).
+const brickLoading = ref(false);
+let brickController = null;
+
 const productSlug = computed(() => String(route.params.productSlug || ''));
 const fromInternal = computed(() => route.query.from === 'internal');
 const storeRoute = computed(() => (
@@ -264,6 +278,12 @@ const productRoute = computed(() => (
     : publicRoute('public-produto', { productSlug: productSlug.value })
 ));
 const gateway = computed(() => storefront.defaultGateway);
+const useCardBrick = computed(() => Boolean(
+  product.value
+  && !product.value.is_subscription
+  && method.value === 'credit_card'
+  && gateway.value?.public_key,
+));
 const currentPrice = computed(() => Number(product.value?.sale) > 0 ? product.value.sale : product.value?.price);
 const productPalette = computed(() => paletteAt(Number(product.value?.id) || 0));
 const productIcon = computed(() => productPalette.value.icon);
@@ -298,6 +318,111 @@ async function load() {
   }
 }
 
+watch(useCardBrick, async (active) => {
+  if (active) {
+    await nextTick();
+    await mountCardBrick();
+  } else {
+    unmountCardBrick();
+  }
+});
+
+function unmountCardBrick() {
+  if (brickController) {
+    try {
+      brickController.unmount();
+    } catch (e) {
+      /* já desmontado */
+    }
+
+    brickController = null;
+  }
+}
+
+async function mountCardBrick() {
+  unmountCardBrick();
+  brickLoading.value = true;
+
+  try {
+    const MercadoPago = await loadMercadoPago();
+    const mp = new MercadoPago(gateway.value.public_key, { locale: 'pt-BR' });
+
+    brickController = await mp.bricks().create('cardPayment', 'cardPaymentBrick_container', {
+      initialization: {
+        amount: Number(currentPrice.value) || 0,
+        payer: { email: auth.user?.email || '' },
+      },
+      customization: {
+        visual: { style: { theme: theme.value === 'dark' ? 'dark' : 'default' } },
+        paymentMethods: { maxInstallments: 12 },
+      },
+      callbacks: {
+        onReady: () => {
+          brickLoading.value = false;
+        },
+        onSubmit: (formData) => submitCard(formData),
+        onError: () => {
+          brickLoading.value = false;
+        },
+      },
+    });
+  } catch (e) {
+    brickLoading.value = false;
+    toast.error(e?.message || 'Não foi possível carregar o pagamento por cartão.');
+  }
+}
+
+async function ensureOrder() {
+  if (orderId.value) {
+    return orderId.value;
+  }
+
+  const order = await api.post('/me/orders', {
+    items: [{ store_product_id: product.value.id, quantity: 1 }],
+    coupon_code: coupon.value.trim() || null,
+    referral_code: referral.current(companySlug.value) || null,
+  });
+
+  orderId.value = order.data.data.id;
+
+  return orderId.value;
+}
+
+// Chamado pelo Brick ao clicar em "Pagar". Rejeitar a promise reabilita o formulário para nova tentativa.
+async function submitCard(formData) {
+  if (!gateway.value) {
+    toast.error('Pagamento indisponível para esta empresa.');
+    throw new Error('gateway_unavailable');
+  }
+
+  try {
+    const id = await ensureOrder();
+
+    const { data } = await api.post(`/me/orders/${id}/pay`, {
+      gateway_id: gateway.value.id,
+      method: 'credit_card',
+      card_token: formData.token,
+      card_payment_method_id: formData.payment_method_id,
+      issuer_id: formData.issuer_id ? String(formData.issuer_id) : null,
+      installments: Number(formData.installments) || 1,
+      device_id: window.MP_DEVICE_SESSION_ID || null,
+      payer: formData.payer,
+    });
+
+    if (data.data?.status === 'paid') {
+      toast.success('Pagamento aprovado! Seu acesso foi liberado.');
+    } else {
+      toast.success('Pagamento em análise. Avisaremos quando for aprovado.');
+    }
+
+    await router.push(publicRoute('public-pedido', { orderId: id }));
+  } catch (e) {
+    const firstError = e?.errors ? Object.values(e.errors).flat()[0] : null;
+    toast.error(firstError || e?.message || 'Não foi possível concluir o pagamento.');
+    throw e;
+  }
+}
+
 async function submit() {
   if (!gateway.value) {
     toast.error('Pagamento indisponível para esta empresa.');
@@ -328,13 +453,7 @@ async function submit() {
       return;
     }
 
-    const order = await api.post('/me/orders', {
-      items: [{ store_product_id: product.value.id, quantity: 1 }],
-      coupon_code: coupon.value.trim() || null,
-      referral_code: referral.current(companySlug.value) || null,
-    });
-
-    orderId.value = order.data.data.id;
+    await ensureOrder();
 
     const payment = await api.post(`/me/orders/${orderId.value}/pay`, {
       gateway_id: gateway.value.id,
@@ -408,10 +527,14 @@ async function switchCompanyAccount() {
   await router.push(publicRoute('public-login', {}, { redirect: route.fullPath }));
 }
 
-onBeforeUnmount(stopPolling);
+onBeforeUnmount(() => {
+  stopPolling();
+  unmountCardBrick();
+});
 </script>
 
 <style scoped>
+.card-brick-wrap{display:flex;flex-direction:column;gap:12px;min-width:0;}
 .checkout-page-head{display:flex;flex-direction:column;gap:5px;}
 .checkout-page-head h1{
   font-size:clamp(34px,3.6vw,48px);font-weight:800;line-height:1.04;letter-spacing:-.04em;

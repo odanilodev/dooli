@@ -40,20 +40,53 @@ class MercadoPagoGateway implements PaymentGatewayContract
             );
         }
 
+        // O Mercado Pago exige o e-mail do pagador (PIX) e o header X-Idempotency-Key.
+        $payment->loadMissing('order.user');
+        $user = $payment->order?->user;
+        $payer = $options['payer'] ?? [];
+
+        if (empty($payer['email']) && $user?->email) {
+            $payer['email'] = $user->email;
+        }
+
+        if (empty($payer['first_name']) && $user?->name) {
+            $payer['first_name'] = $user->name;
+        }
+
+        $body = [
+            'transaction_amount' => (float) $payment->amount,
+            'description' => 'Pedido #'.$payment->order_id,
+            'payment_method_id' => $options['payment_method_id'] ?? 'pix',
+            'external_reference' => (string) $payment->id,
+            'payer' => $payer,
+        ];
+
+        // Cartão (checkout transparente): token gerado no navegador pelo MP.js.
+        if (! empty($options['token'])) {
+            $body['token'] = $options['token'];
+            $body['installments'] = max(1, (int) ($options['installments'] ?? 1));
+
+            if (! empty($options['issuer_id'])) {
+                $body['issuer_id'] = (int) $options['issuer_id'];
+            }
+        }
+
+        $headers = ['X-Idempotency-Key' => 'payment-'.$payment->id];
+
+        if (! empty($options['device_id'])) {
+            $headers['X-meli-session-id'] = $options['device_id'];
+        }
+
         $response = Http::withToken($accessToken)
+            ->withHeaders($headers)
             ->acceptJson()
-            ->post('https://api.mercadopago.com/v1/payments', [
-                'transaction_amount' => (float) $payment->amount,
-                'description' => 'Pedido #'.$payment->order_id,
-                'payment_method_id' => $options['payment_method_id'] ?? 'pix',
-                'external_reference' => (string) $payment->id,
-                'payer' => $options['payer'] ?? [],
-            ]);
+            ->post('https://api.mercadopago.com/v1/payments', $body);
 
         if ($response->failed()) {
             Log::warning('MercadoPago charge failed', [
                 'payment_id' => $payment->id,
                 'status' => $response->status(),
+                'body' => $response->json() ?? $response->body(),
             ]);
 
             throw new PaymentException('Não foi possível criar a cobrança no MercadoPago.', 'gateway_charge_failed');
