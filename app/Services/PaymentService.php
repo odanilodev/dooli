@@ -131,6 +131,27 @@ class PaymentService
     }
 
     /**
+     * Mensagem amigável para um pagamento de cartão recusado (status_detail do Mercado Pago).
+     */
+    public function declinedMessage(Payment $payment): string
+    {
+        $detail = (string) (($payment->metadata['status_detail'] ?? null) ?: '');
+
+        return match (true) {
+            $detail === 'cc_rejected_insufficient_amount' => 'Saldo insuficiente no cartão.',
+            $detail === 'cc_rejected_bad_filled_security_code' => 'Código de segurança (CVV) inválido.',
+            $detail === 'cc_rejected_bad_filled_date' => 'Data de validade inválida.',
+            $detail === 'cc_rejected_bad_filled_other',
+            $detail === 'cc_rejected_bad_filled_card_number' => 'Confira os dados do cartão e tente novamente.',
+            $detail === 'cc_rejected_call_for_authorize' => 'Seu banco precisa autorizar este pagamento. Ligue para a operadora do cartão.',
+            $detail === 'cc_rejected_card_disabled' => 'Cartão desabilitado. Ative-o com seu banco ou use outro cartão.',
+            $detail === 'cc_rejected_duplicated_payment' => 'Você já fez um pagamento com este valor. Verifique seus pedidos.',
+            $detail === 'cc_rejected_high_risk' => 'Pagamento recusado por segurança. Tente outro cartão ou use PIX.',
+            default => 'Pagamento recusado. Tente outro cartão ou use PIX.',
+        };
+    }
+
+    /**
      * Creates a hosted card checkout (MercadoPago Checkout Pro) for an order.
      *
      * @return array{payment: Payment, checkout_url: string|null}

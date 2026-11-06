@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Student;
 use App\DTO\CreateOrderDTO;
 use App\DTO\CreatePaymentDTO;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Requests\Store\StoreOrderRequest;
@@ -61,6 +62,32 @@ class OrderController extends ApiController
         }
 
         $gateway = Gateway::query()->findOrFail((int) $request->validated('gateway_id'));
+
+        if ($request->validated('method') === 'credit_card' && $request->filled('card_token')) {
+            $payment = $this->payments->create(new CreatePaymentDTO(
+                orderId: (int) $order->id,
+                gatewayId: (int) $gateway->id,
+                method: 'credit_card',
+                amount: (float) $order->total,
+                metadata: [
+                    'payment_method_id' => $request->validated('card_payment_method_id'),
+                    'token' => $request->validated('card_token'),
+                    'issuer_id' => $request->validated('issuer_id'),
+                    'installments' => (int) ($request->validated('installments') ?? 1),
+                    'device_id' => $request->validated('device_id'),
+                    'payer' => $request->validated('payer') ?? [],
+                ],
+            ));
+
+            if ($payment->status === PaymentStatus::Failed->value) {
+                throw new BusinessRuleException(
+                    $this->payments->declinedMessage($payment),
+                    'card_declined',
+                );
+            }
+
+            return ApiResponse::success(new PaymentResource($payment), 201);
+        }
 
         if ($request->validated('method') === 'credit_card') {
             $result = $this->payments->createCardPreference($order, $gateway);
