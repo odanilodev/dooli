@@ -252,6 +252,8 @@ class MercadoPagoGateway implements PaymentGatewayContract
 
         // Fail closed: without a configured secret no webhook can be trusted.
         if (! $secret) {
+            Log::warning('MercadoPago webhook recusado: segredo do webhook não configurado no gateway.');
+
             return false;
         }
 
@@ -259,6 +261,11 @@ class MercadoPagoGateway implements PaymentGatewayContract
         $requestId = (string) $request->header('x-request-id');
 
         if ($signature === '' || $requestId === '') {
+            Log::warning('MercadoPago webhook recusado: cabeçalhos de assinatura ausentes.', [
+                'tem_x_signature' => $signature !== '',
+                'tem_x_request_id' => $requestId !== '',
+            ]);
+
             return false;
         }
 
@@ -268,13 +275,39 @@ class MercadoPagoGateway implements PaymentGatewayContract
 
         // Reject stale signatures to reduce replay window (5 minutes).
         if ($ts !== '' && abs((int) (microtime(true) * 1000) - (int) $ts) > 300000) {
+            Log::warning('MercadoPago webhook recusado: assinatura expirada (ts fora da janela de 5 minutos).');
+
             return false;
         }
 
-        $manifest = "id:{$dataId};request-id:{$requestId};ts:".$ts.';';
+        // Conforme a documentação do Mercado Pago, campos ausentes saem do manifesto
+        // (ex.: notificações sem data.id). O id alfanumérico vai em minúsculas.
+        $manifest = '';
+
+        if ($dataId !== '') {
+            $manifest .= 'id:'.(ctype_alnum($dataId) ? strtolower($dataId) : $dataId).';';
+        }
+
+        if ($requestId !== '') {
+            $manifest .= "request-id:{$requestId};";
+        }
+
+        if ($ts !== '') {
+            $manifest .= "ts:{$ts};";
+        }
+
         $expected = hash_hmac('sha256', $manifest, $secret);
 
-        return hash_equals($expected, $this->extractV1($signature));
+        $valid = hash_equals($expected, $this->extractV1($signature));
+
+        if (! $valid) {
+            Log::warning('MercadoPago webhook recusado: assinatura não confere (segredo do gateway diferente do gerado no Mercado Pago?).', [
+                'data_id' => $dataId,
+                'manifest' => $manifest,
+            ]);
+        }
+
+        return $valid;
     }
 
     /**
