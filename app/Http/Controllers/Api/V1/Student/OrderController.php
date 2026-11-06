@@ -105,6 +105,7 @@ class OrderController extends ApiController
             amount: (float) $order->total,
             metadata: [
                 'payment_method_id' => $request->validated('method'),
+                'payer' => $request->validated('payer') ?? [],
             ],
         ));
 

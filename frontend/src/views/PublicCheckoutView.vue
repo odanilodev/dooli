@@ -110,6 +110,21 @@
             </div>
           </div>
 
+          <div v-if="method === 'pix' && !product.is_subscription" class="form-group">
+            <label for="pix-cpf">CPF do pagador</label>
+            <input
+              id="pix-cpf"
+              class="form-control"
+              inputmode="numeric"
+              autocomplete="off"
+              maxlength="14"
+              placeholder="000.000.000-00"
+              :value="cpf"
+              @input="onCpfInput"
+            >
+            <span class="form-hint">Exigido pelo Mercado Pago para gerar o PIX.</span>
+          </div>
+
           <p v-if="!gateway" class="public-warning">Pagamento indisponível: a empresa ainda não configurou um gateway.</p>
 
           <div v-if="useCardBrick" class="card-brick-wrap">
@@ -255,6 +270,7 @@ const error = ref(null);
 const submitting = ref(false);
 const method = ref('pix');
 const coupon = ref('');
+const cpf = ref('');
 const pix = ref(null);
 const orderId = ref(null);
 const orderStatus = ref('pending');
@@ -423,9 +439,27 @@ async function submitCard(formData) {
   }
 }
 
+function onCpfInput(event) {
+  const digits = String(event.target.value || '').replace(/\D/g, '').slice(0, 11);
+  const masked = digits
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1-$2');
+
+  cpf.value = masked;
+  event.target.value = masked;
+}
+
 async function submit() {
   if (!gateway.value) {
     toast.error('Pagamento indisponível para esta empresa.');
+    return;
+  }
+
+  const cpfDigits = cpf.value.replace(/\D/g, '');
+
+  if (method.value === 'pix' && !product.value.is_subscription && cpfDigits.length !== 11) {
+    toast.error('Informe o CPF do pagador (11 dígitos) para gerar o PIX.');
     return;
   }
 
@@ -458,6 +492,14 @@ async function submit() {
     const payment = await api.post(`/me/orders/${orderId.value}/pay`, {
       gateway_id: gateway.value.id,
       method: method.value,
+      ...(method.value === 'pix'
+        ? {
+          payer: {
+            email: auth.user?.email || undefined,
+            identification: { type: 'CPF', number: cpfDigits },
+          },
+        }
+        : {}),
     });
 
     if (payment.data.data?.checkout_url) {
