@@ -86,7 +86,14 @@ class ResendDomainService
      */
     private function request(string $apiKey, string $method, string $path, array $payload = []): array
     {
-        $response = $this->client($apiKey)->{$method}($path, $payload);
+        $client = $this->client($apiKey);
+
+        // Um POST sem dados iria como "[]" (lista); o Resend exige um objeto JSON "{}".
+        if ($method === 'post' && $payload === []) {
+            $client = $client->withBody('{}', 'application/json');
+        }
+
+        $response = $client->{$method}($path, $payload);
 
         if ($response->failed()) {
             throw $this->exceptionFor($response);
