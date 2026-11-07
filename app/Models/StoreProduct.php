@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
     'course_id', 'company_id', 'title', 'image', 'description',
     'slug', 'tags', 'price', 'sale', 'status', 'release_at',
     'billing_type', 'billing_interval', 'access_duration_days', 'grace_days',
+    'drip_enabled',
 ])]
 class StoreProduct extends Model
 {
@@ -27,6 +28,7 @@ class StoreProduct extends Model
         'status' => 'active',
         'billing_type' => BillingType::OneTime->value,
         'grace_days' => 3,
+        'drip_enabled' => false,
     ];
 
     protected function casts(): array
@@ -38,6 +40,7 @@ class StoreProduct extends Model
             'release_at' => 'datetime',
             'access_duration_days' => 'integer',
             'grace_days' => 'integer',
+            'drip_enabled' => 'boolean',
         ];
     }
 

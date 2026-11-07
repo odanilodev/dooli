@@ -27,6 +27,10 @@ class StoreProductResource extends JsonResource
             'billing_interval' => $this->billing_interval,
             'access_duration_days' => $this->access_duration_days,
             'grace_days' => $this->grace_days,
+            'drip_enabled' => (bool) $this->drip_enabled,
+            'drip_modules' => $this->drip_enabled
+                ? app(\App\Services\DripReleaseService::class)->config($this->resource)
+                : [],
             'is_subscription' => $this->billing_type === BillingType::Subscription->value,
             'access_label' => $this->accessLabel(),
             'course' => new CourseResource($this->whenLoaded('course')),

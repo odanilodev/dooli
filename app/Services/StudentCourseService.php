@@ -23,6 +23,7 @@ class StudentCourseService
         private readonly TimelineRepository $timeline,
         private readonly ActionRepository $actions,
         private readonly ScheduleService $schedules,
+        private readonly DripReleaseService $drip,
     ) {}
 
     public function myCourses(User $user, int $perPage = 20, ?int $teamId = null): LengthAwarePaginator
@@ -162,7 +163,7 @@ class StudentCourseService
      */
     public function assertLessonUnlocked(User $user, Lesson $lesson, int $courseId, int $teamId): void
     {
-        $this->assertLessonScheduled($lesson, $courseId, $teamId);
+        $this->assertLessonScheduled($user, $lesson, $courseId, $teamId);
 
         $requiredLessonId = $lesson->required_lesson_id;
 
@@ -195,9 +196,15 @@ class StudentCourseService
      * Asserts the lesson is released for the team (course, module and lesson
      * schedules combined — the most restrictive date wins).
      */
-    private function assertLessonScheduled(Lesson $lesson, int $courseId, int $teamId): void
+    private function assertLessonScheduled(User $user, Lesson $lesson, int $courseId, int $teamId): void
     {
-        $availableAt = $this->schedules->effectiveForLesson($teamId, $courseId, $lesson->module_id, $lesson->id);
+        $availableAt = $this->schedules->effectiveForLesson(
+            $teamId,
+            $courseId,
+            $lesson->module_id,
+            $lesson->id,
+            $this->drip->moduleReleaseDates($user, $teamId, $courseId),
+        );
 
         $this->schedules->assertLessonAvailable($availableAt);
     }
@@ -219,7 +226,11 @@ class StudentCourseService
             ])
             ->findOrFail($courseId);
 
-        $this->schedules->applyToCourseContent($course, $team);
+        $this->schedules->applyToCourseContent(
+            $course,
+            $team,
+            $this->drip->moduleReleaseDates($user, $team->id, $courseId),
+        );
 
         $this->audit->log('student', 'view_course', 'course', "Aluno acessou o curso {$course->name}", $user->id);
 

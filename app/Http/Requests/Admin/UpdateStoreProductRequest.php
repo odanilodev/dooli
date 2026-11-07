@@ -48,6 +48,10 @@ class UpdateStoreProductRequest extends FormRequest
                 'prohibited_if:billing_type,'.BillingType::Subscription->value,
             ],
             'grace_days' => ['sometimes', 'integer', 'min:0', 'max:90'],
+            'drip_enabled' => ['sometimes', 'boolean'],
+            'module_drips' => ['sometimes', 'array'],
+            'module_drips.*.module_id' => ['required', 'integer'],
+            'module_drips.*.interval_days' => ['required', 'integer', 'min:0', 'max:365'],
             'team_ids' => ['sometimes', 'array', 'min:1'],
             'team_ids.*' => ['integer', $this->companyExists('teams')],
         ];

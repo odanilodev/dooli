@@ -87,6 +87,9 @@ class AccessGrantService
                 sourceId: $sourceId,
                 startsAt: $startsAt,
                 expiresAt: $expiresAt ?? $product->accessExpiresAt($startsAt),
+                dripProductId: $sourceType === AccessGrantSource::Order->value && $product->drip_enabled
+                    ? (int) $product->id
+                    : null,
             );
         }
     }
@@ -208,6 +211,7 @@ class AccessGrantService
         int $sourceId,
         Carbon $startsAt,
         ?Carbon $expiresAt,
+        ?int $dripProductId = null,
     ): void {
         AccessGrant::query()->withoutGlobalScope('company')->updateOrCreate([
             'company_id' => $companyId,
@@ -219,6 +223,7 @@ class AccessGrantService
             'starts_at' => $startsAt,
             'expires_at' => $expiresAt,
             'status' => GeneralStatus::Active->value,
+            'drip_product_id' => $dripProductId,
         ]);
 
         $this->syncTeamMembership($companyId, $teamId, $userId);
