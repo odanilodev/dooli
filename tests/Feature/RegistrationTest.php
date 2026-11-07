@@ -79,6 +79,35 @@ class RegistrationTest extends TestCase
             ->assertJsonPath('code', 'email_not_verified');
     }
 
+    public function test_registering_again_with_an_unverified_email_reuses_the_account_and_resends_the_code(): void
+    {
+        $this->register()->assertCreated();
+
+        $first = User::query()->withoutGlobalScope('company')->where('email', 'novo.aluno@example.com')->firstOrFail();
+
+        $this->register(['name' => 'Nome Corrigido', 'password' => 'outrasenha99', 'password_confirmation' => 'outrasenha99'])
+            ->assertCreated()
+            ->assertJsonPath('data.verification_required', true);
+
+        $this->assertSame(1, User::query()->withoutGlobalScope('company')->where('email', 'novo.aluno@example.com')->count());
+
+        $again = $first->fresh();
+        $this->assertSame('Nome Corrigido', $again->name);
+        $this->assertTrue(Hash::check('outrasenha99', $again->password));
+        $this->assertNull($again->email_verified_at);
+    }
+
+    public function test_registering_again_with_a_verified_email_is_still_blocked(): void
+    {
+        $this->register()->assertCreated();
+
+        User::query()->withoutGlobalScope('company')
+            ->where('email', 'novo.aluno@example.com')
+            ->update(['email_verified_at' => now()]);
+
+        $this->register()->assertStatus(422)->assertJsonValidationErrors('email');
+    }
+
     public function test_registration_requires_a_unique_email(): void
     {
         $this->register([
