@@ -38,13 +38,21 @@ export const useBrandingStore = defineStore('branding', () => {
   const logoLightUrl = ref(cached?.logo_light_url || cached?.logo_url || null);
   const logoDarkUrl = ref(cached?.logo_dark_url || null);
   const loaded = ref(false);
+  let platformApplied = false;
+  let fallbackRequested = false;
+
+  // Logo padrão (Dooli): usada quando a empresa do domínio/subdomínio ainda não cadastrou logo.
+  const fallbackLogoLightUrl = ref(null);
+  const fallbackLogoDarkUrl = ref(null);
 
   const logoUrl = computed(() => {
     if (theme.value === 'dark') {
-      return logoDarkUrl.value || logoLightUrl.value;
+      return logoDarkUrl.value || logoLightUrl.value
+        || fallbackLogoDarkUrl.value || fallbackLogoLightUrl.value;
     }
 
-    return logoLightUrl.value || logoDarkUrl.value;
+    return logoLightUrl.value || logoDarkUrl.value
+      || fallbackLogoLightUrl.value || fallbackLogoDarkUrl.value;
   });
 
   const hasLogo = computed(() => Boolean(logoUrl.value));
@@ -71,18 +79,62 @@ export const useBrandingStore = defineStore('branding', () => {
     root.style.setProperty('--accent-soft', rgba(color, 0.14));
   }
 
-  function set(data) {
+  function set(data, { persist = true } = {}) {
     companyName.value = data?.company_name || null;
     primaryColor.value = data?.primary_color || null;
     logoLightUrl.value = data?.logo_light_url || data?.logo_url || null;
     logoDarkUrl.value = data?.logo_dark_url || null;
-    writeCache({
-      company_name: companyName.value,
-      primary_color: primaryColor.value,
-      logo_light_url: logoLightUrl.value,
-      logo_dark_url: logoDarkUrl.value,
-    });
+    if (persist) {
+      writeCache({
+        company_name: companyName.value,
+        primary_color: primaryColor.value,
+        logo_light_url: logoLightUrl.value,
+        logo_dark_url: logoDarkUrl.value,
+      });
+    }
+
     apply();
+
+    if (!logoLightUrl.value && !logoDarkUrl.value) {
+      loadFallbackLogo();
+    }
+  }
+
+  async function loadFallbackLogo() {
+    if (fallbackRequested) {
+      return;
+    }
+
+    fallbackRequested = true;
+
+    try {
+      const slug = import.meta.env.VITE_PLATFORM_COMPANY_SLUG || 'dooli';
+      const { data } = await api.get(`/public/companies/${encodeURIComponent(slug)}`);
+      const platform = data.data?.branding;
+
+      fallbackLogoLightUrl.value = platform?.logo_light_url || platform?.logo_url || null;
+      fallbackLogoDarkUrl.value = platform?.logo_dark_url || null;
+    } catch (e) {
+      fallbackRequested = false;
+    }
+  }
+
+  // Identidade padrão da plataforma (domínio principal, sem usuário logado): a empresa
+  // dona da plataforma (Dooli). Não é gravada no cache para não vazar para o login de outra empresa.
+  async function ensurePlatformDefault() {
+    if (platformApplied) {
+      return;
+    }
+
+    platformApplied = true;
+
+    try {
+      const slug = import.meta.env.VITE_PLATFORM_COMPANY_SLUG || 'dooli';
+      const { data } = await api.get(`/public/companies/${encodeURIComponent(slug)}`);
+      set(data.data?.branding, { persist: false });
+    } catch (e) {
+      platformApplied = false;
+    }
   }
 
   async function fetch() {
@@ -101,6 +153,7 @@ export const useBrandingStore = defineStore('branding', () => {
   }
 
   function reset() {
+    platformApplied = false;
     companyName.value = null;
     primaryColor.value = null;
     logoLightUrl.value = null;
@@ -122,6 +175,7 @@ export const useBrandingStore = defineStore('branding', () => {
     hasLogo,
     fetch,
     set,
+    ensurePlatformDefault,
     apply,
     reset,
   };
