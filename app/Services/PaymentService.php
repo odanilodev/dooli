@@ -259,6 +259,24 @@ class PaymentService
                 return $payment;
             }
 
+            // Pedido/pagamento já estornado: uma confirmação tardia ou reenviada pelo gateway
+            // não pode reabrir o pedido nem devolver o acesso ao aluno.
+            if ($order->status === OrderStatus::Refunded->value
+                || $payment->status === PaymentStatus::Refunded->value) {
+                $this->orderEvents->record($order, OrderEventType::PaymentBlocked, [
+                    'payment_id' => $payment->id,
+                    'status' => OrderStatus::Refunded->value,
+                    'description' => 'A confirmação foi ignorada porque o pedido já foi estornado.',
+                    'actor_type' => OrderEventActorType::Gateway->value,
+                    'actor_name' => $payment->gateway?->name,
+                    'source_type' => 'payment',
+                    'source_id' => (int) $payment->id,
+                    'metadata' => ['source' => $context['source'] ?? null],
+                ]);
+
+                return $payment;
+            }
+
             // O Mercado Pago devolve date_approved com offset (ex.: -04:00). Converte para o fuso da
             // aplicação antes de gravar; senão o horário é salvo com o relógio do offset original
             // (1 hora de diferença em relação ao horário de Brasília).
@@ -453,7 +471,7 @@ class PaymentService
             $result = $this->gatewayManager->for($payment->gateway)->refund($payment, $amount, $reason);
             $order = $payment->order()->firstOrFail();
             $refundedAt = ! empty($result->raw['date_created'])
-                ? Carbon::parse($result->raw['date_created'])
+                ? Carbon::parse($result->raw['date_created'])->setTimezone(config('app.timezone'))
                 : now();
 
             $refund = $payment->refunds()->create([
@@ -525,19 +543,32 @@ class PaymentService
         ?string $gatewayName,
         array $metadata,
     ): void {
+        // O gateway notifica o mesmo estorno várias vezes (e também avisa os estornos pedidos por
+        // aqui). Se o pagamento já está estornado, não duplica estorno, evento nem notificação.
+        if ($payment->status === PaymentStatus::Refunded->value) {
+            return;
+        }
+
+        // Converte para o fuso da aplicação: o Mercado Pago manda offset (ex.: -04:00) e, sem
+        // converter, o horário do estorno sairia 1h antes do real.
         $refundedAt = Carbon::parse(
             $metadata['date_last_updated']
                 ?? $metadata['date_created']
                 ?? now(),
-        );
+        )->setTimezone(config('app.timezone'));
 
         $amount = $metadata['transaction_amount_refunded']
             ?? $metadata['transaction_amount']
             ?? null;
 
-        $refund = is_numeric($amount) && (float) $amount > 0
+        // O valor informado é o total estornado no gateway: registra só a diferença.
+        $newAmount = is_numeric($amount)
+            ? round((float) $amount - (float) $payment->refunds()->sum('amount'), 2)
+            : 0;
+
+        $refund = $newAmount > 0
             ? $payment->refunds()->create([
-                'amount' => round((float) $amount, 2),
+                'amount' => $newAmount,
                 'reason' => 'Estorno informado pelo gateway.',
                 'status' => RefundStatus::Refunded->value,
                 'refunded_at' => $refundedAt,
