@@ -61,21 +61,40 @@ class AuthService
             throw new ApiException('Cadastro indisponível para esta empresa.', 422, 'registration_unavailable');
         }
 
-        $user = $this->users->create([
-            'company_id' => $companyId,
-            'user_type_id' => $studentType->id,
-            'name' => $data['name'],
-            'username' => $this->uniqueUsername($data['email'], $companyId),
-            'email' => $data['email'],
-            'email_verified_at' => null,
-            'password' => $data['password'],
-            'status' => GeneralStatus::Active->value,
-            'registration_source' => UserRegistrationSource::Store->value,
-        ]);
+        // Cadastro anterior da loja que nunca confirmou o e-mail: reaproveita a conta
+        // (nova senha e dados) e reenvia o código, em vez de bloquear com "já existe".
+        $user = User::query()
+            ->withoutGlobalScope('company')
+            ->where('company_id', $companyId)
+            ->where('email', $data['email'])
+            ->whereNull('email_verified_at')
+            ->where('registration_source', UserRegistrationSource::Store->value)
+            ->first();
+
+        if ($user) {
+            $user->forceFill([
+                'name' => $data['name'],
+                'password' => $data['password'],
+            ])->save();
+
+            $this->audit->log('auth', 'register_retry', 'user', 'Cadastro não confirmado retomado', $user->id);
+        } else {
+            $user = $this->users->create([
+                'company_id' => $companyId,
+                'user_type_id' => $studentType->id,
+                'name' => $data['name'],
+                'username' => $this->uniqueUsername($data['email'], $companyId),
+                'email' => $data['email'],
+                'email_verified_at' => null,
+                'password' => $data['password'],
+                'status' => GeneralStatus::Active->value,
+                'registration_source' => UserRegistrationSource::Store->value,
+            ]);
+
+            $this->audit->log('auth', 'register', 'user', 'Novo aluno cadastrado', $user->id);
+        }
 
         $this->sellerAttribution->rememberFromCode($user, $data['referral_code'] ?? null);
-
-        $this->audit->log('auth', 'register', 'user', 'Novo aluno cadastrado', $user->id);
 
         try {
             $this->emailVerification->sendCode($user);
