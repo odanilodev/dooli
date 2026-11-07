@@ -41,7 +41,7 @@
               v-for="item in notifications.items"
               :key="item.id"
               class="notif-item"
-              :class="{ unread: !item.read_at }"
+              :class="{ unread: isNew(item) }"
               type="button"
               @click="read(item)"
             >
@@ -51,7 +51,7 @@
               <span class="notif-body">
                 <span class="notif-head">
                   <span class="notif-type">{{ item.title || label(item) }}</span>
-                  <span v-if="!item.read_at" class="notif-dot"></span>
+                  <span v-if="isNew(item)" class="notif-dot"></span>
                 </span>
                 <span v-if="item.message" class="notif-message">{{ item.message }}</span>
                 <span class="notif-date">{{ formatDate(item.release_at || item.created_at) }}</span>
@@ -69,7 +69,7 @@
         <button class="user-trigger" @click="userMenuOpen = !userMenuOpen">
           <span class="avatar">{{ auth.initials }}</span>
           <span class="user-text">
-            <span class="user-name">{{ auth.user?.name || 'Visitante' }}</span>
+            <span class="user-name">{{ auth.shortName || 'Visitante' }}</span>
             <span class="user-role">{{ auth.role || 'Aluno' }}</span>
           </span>
           <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
@@ -131,6 +131,34 @@ const userMenuOpen = ref(false);
 const menuRef = ref(null);
 const notifOpen = ref(false);
 const notifRef = ref(null);
+
+// Ao abrir o sininho, tudo que era não lido é marcado como visto. Os ids ficam guardados só
+// enquanto o menu está aberto, para o aluno ainda enxergar quais eram novas (destaque/ponto).
+const freshIds = ref(new Set());
+
+function isNew(item) {
+  return !item.read_at || freshIds.value.has(item.id);
+}
+
+watch([notifOpen, unreadCount], async ([open, unread]) => {
+  if (!open) {
+    freshIds.value = new Set();
+    return;
+  }
+
+  if (unread > 0) {
+    freshIds.value = new Set([
+      ...freshIds.value,
+      ...notifications.items.filter((item) => !item.read_at).map((item) => item.id),
+    ]);
+
+    try {
+      await notifications.markAllAsRead();
+    } catch (e) {
+      /* tenta de novo na próxima abertura */
+    }
+  }
+});
 
 const NOTIF_LABELS = {
   course_completed: 'Curso concluído',
