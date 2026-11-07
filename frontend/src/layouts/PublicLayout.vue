@@ -39,7 +39,7 @@
             >
               <span class="avatar">{{ auth.initials }}</span>
               <span class="user-text">
-                <span class="user-name">{{ auth.user?.name || 'Visitante' }}</span>
+                <span class="user-name">{{ auth.shortName || 'Visitante' }}</span>
                 <span class="user-role">{{ auth.role || 'Aluno' }}</span>
               </span>
               <svg class="icon" width="15" height="15" viewBox="0 0 24 24" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>

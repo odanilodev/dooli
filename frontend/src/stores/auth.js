@@ -18,6 +18,17 @@ export const useAuthStore = defineStore('auth', () => {
   const canAccessAdmin = computed(
     () => isAdmin.value || (user.value?.user_type?.permission_menu?.length ?? 0) > 0,
   );
+  // Só o primeiro e o último nome (ex.: "Luis Felipe Santos Silva" -> "Luis Silva").
+  const shortName = computed(() => {
+    const parts = user.value?.name?.trim().split(/\s+/).filter(Boolean) ?? [];
+
+    if (!parts.length) {
+      return '';
+    }
+
+    return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1]}` : parts[0];
+  });
+
   const initials = computed(() => {
     const name = user.value?.name?.trim();
 
@@ -193,6 +204,7 @@ export const useAuthStore = defineStore('auth', () => {
     isSuperAdmin,
     canAccessAdmin,
     initials,
+    shortName,
     login,
     register,
     verifyEmail,
