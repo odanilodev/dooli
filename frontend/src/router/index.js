@@ -407,6 +407,11 @@ router.beforeEach(async (to) => {
     await auth.init();
   }
 
+  // Domínio principal sem usuário logado: usa a identidade (logo/cor) da empresa da plataforma.
+  if (tenant.isPlatform && !auth.isAuthenticated && !isLegacyRoute(to)) {
+    await useBrandingStore().ensurePlatformDefault();
+  }
+
   const legacy = isLegacyRoute(to);
 
   if (!tenant.isDomainMode && !legacy && PUBLIC_ONLY_ROUTES.has(to.name)) {
@@ -462,7 +467,7 @@ router.beforeEach(async (to) => {
 // O título da aba é sempre o nome da empresa (fallback: plataforma)
 export function atualizarTituloPagina() {
   const tenant = useTenantStore();
-  document.title = useBrandingStore().companyName || tenant.company?.name || 'Delta Class';
+  document.title = useBrandingStore().companyName || tenant.company?.name || 'Dooli';
 }
 
 router.afterEach((to) => {
