@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'company_id', 'user_id', 'team_id', 'source_type', 'source_id',
+    'company_id', 'user_id', 'team_id', 'source_type', 'source_id', 'drip_product_id',
     'starts_at', 'expires_at', 'status',
 ])]
 class AccessGrant extends Model

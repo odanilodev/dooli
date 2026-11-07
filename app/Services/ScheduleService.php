@@ -67,8 +67,13 @@ class ScheduleService
      * three relevant rows (course, module and lesson) instead of every
      * schedule of the team.
      */
-    public function effectiveForLesson(int $teamId, int $courseId, ?int $moduleId, ?int $lessonId): ?Carbon
-    {
+    public function effectiveForLesson(
+        int $teamId,
+        int $courseId,
+        ?int $moduleId,
+        ?int $lessonId,
+        array $dripDates = [],
+    ): ?Carbon {
         $targets = [
             ScheduleLevel::Course->value => $courseId,
             ScheduleLevel::Module->value => $moduleId,
@@ -94,7 +99,27 @@ class ScheduleService
             }
         }
 
-        return $this->effectiveAt($map, $courseId, $moduleId, $lessonId);
+        return $this->effectiveAt($this->withDrip($map, $dripDates), $courseId, $moduleId, $lessonId);
+    }
+
+    /**
+     * Soma a liberação gradual (por aluno) às datas dos módulos: vale a mais restritiva.
+     *
+     * @param  array{course: array<int, Carbon>, module: array<int, Carbon>, lesson: array<int, Carbon>}  $map
+     * @param  array<int, Carbon>  $dripDates
+     * @return array{course: array<int, Carbon>, module: array<int, Carbon>, lesson: array<int, Carbon>}
+     */
+    private function withDrip(array $map, array $dripDates): array
+    {
+        foreach ($dripDates as $moduleId => $date) {
+            $current = $map['module'][$moduleId] ?? null;
+
+            if ($current === null || $date->greaterThan($current)) {
+                $map['module'][$moduleId] = $date;
+            }
+        }
+
+        return $map;
     }
 
     public function locked(?Carbon $availableAt): bool
@@ -245,9 +270,9 @@ class ScheduleService
      * Flags each course/module/lesson with its effective availability so the
      * student resources can expose what is still locked.
      */
-    public function applyToCourseContent(Course $course, Team $team): void
+    public function applyToCourseContent(Course $course, Team $team, array $dripDates = []): void
     {
-        $map = $this->forTeam($team);
+        $map = $this->withDrip($this->forTeam($team), $dripDates);
 
         $courseAt = $map['course'][$course->id] ?? null;
         $course->setAttribute('schedule_available_at', $courseAt);

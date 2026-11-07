@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreStoreProductRequest;
 use App\Http\Requests\Admin\UpdateStoreProductRequest;
 use App\Http\Resources\StoreProductResource;
 use App\Models\StoreProduct;
+use App\Services\DripReleaseService;
 use App\Services\StoreProductService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +15,10 @@ use Illuminate\Http\Request;
 
 class StoreProductController extends ApiController
 {
-    public function __construct(private readonly StoreProductService $storeProducts) {}
+    public function __construct(
+        private readonly StoreProductService $storeProducts,
+        private readonly DripReleaseService $drip,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -33,12 +37,16 @@ class StoreProductController extends ApiController
         $this->authorize('create', StoreProduct::class);
 
         $data = $request->validated();
-        unset($data['image_file']);
+        unset($data['image_file'], $data['module_drips']);
 
         $storeProduct = $this->storeProducts->create($data, $request->file('image_file'));
 
         if ($request->has('team_ids')) {
             $this->storeProducts->syncTeams($storeProduct, $request->validated('team_ids') ?? []);
+        }
+
+        if ($request->has('module_drips')) {
+            $this->drip->syncIntervals($storeProduct, $request->validated('module_drips') ?? []);
         }
 
         return ApiResponse::success(new StoreProductResource($storeProduct->load(['course', 'teams.courses'])), 201);
@@ -56,9 +64,9 @@ class StoreProductController extends ApiController
         $this->authorize('update', $storeProduct);
 
         $data = $request->validated();
-        unset($data['image_file']);
+        unset($data['image_file'], $data['module_drips']);
 
-        $updated = $this->storeProducts->update(
+        $updated =$this->storeProducts->update(
             $storeProduct,
             $data,
             $request->file('image_file'),
@@ -67,6 +75,10 @@ class StoreProductController extends ApiController
 
         if ($request->has('team_ids')) {
             $this->storeProducts->syncTeams($updated, $request->validated('team_ids') ?? []);
+        }
+
+        if ($request->has('module_drips')) {
+            $this->drip->syncIntervals($updated, $request->validated('module_drips') ?? []);
         }
 
         return ApiResponse::success(new StoreProductResource($updated->load(['course', 'teams.courses'])));

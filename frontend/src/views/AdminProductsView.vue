@@ -99,6 +99,41 @@
         <span class="form-hint">Ex.: 7 para uma semana, contando da confirmação do pagamento.</span>
       </div>
 
+      <div v-if="form.billing_type === 'one_time'" class="form-group">
+        <label for="p-drip">Liberação do conteúdo</label>
+        <select id="p-drip" class="form-control" v-model="form.drip_enabled">
+          <option :value="false">Acesso total imediato</option>
+          <option :value="true">Gradual (módulo por módulo)</option>
+        </select>
+        <span class="form-hint">
+          A liberação gradual vale só para compras novas e conta a partir da confirmação do pagamento.
+        </span>
+      </div>
+
+      <div v-if="form.billing_type === 'one_time' && form.drip_enabled" class="form-group">
+        <label>Prazo de cada módulo</label>
+        <div v-if="dripModules.length" class="drip-list">
+          <div v-for="(item, index) in dripModules" :key="item.module_id" class="drip-row">
+            <span class="drip-name">{{ item.name }}</span>
+            <span v-if="index === 0" class="drip-fixed">Libera na hora</span>
+            <label v-else class="drip-interval">
+              <input
+                type="number"
+                min="0"
+                max="365"
+                class="form-control"
+                v-model.number="item.interval_days"
+              >
+              <span>dia(s) após o módulo anterior</span>
+            </label>
+            <span class="drip-day">dia {{ dripReleaseDay(index) }}</span>
+          </div>
+        </div>
+        <span v-else class="form-hint">
+          Salve o produto para listar os módulos do curso. O padrão é 1 dia entre cada módulo.
+        </span>
+      </div>
+
       <div v-if="form.billing_type === 'subscription'" class="form-hint" style="margin-bottom:14px;">
         A primeira cobrança ocorre na autorização. O acesso fica ativo enquanto a assinatura estiver paga.
       </div>
@@ -256,7 +291,17 @@ const form = reactive({
   access_type: 'permanent',
   access_duration_days: '',
   grace_days: 3,
+  drip_enabled: false,
 });
+
+const dripModules = ref([]);
+
+// Dia (contado da compra) em que o módulo libera: soma dos prazos até ele.
+function dripReleaseDay(index) {
+  return dripModules.value
+    .slice(1, index + 1)
+    .reduce((total, item) => total + (Number(item.interval_days) || 0), 0);
+}
 
 let searchTimer = null;
 
@@ -340,6 +385,8 @@ function resetForm() {
   form.access_type = 'permanent';
   form.access_duration_days = '';
   form.grace_days = 3;
+  form.drip_enabled = false;
+  dripModules.value = [];
   selectedTeams.value = [];
   imageFile.value = null;
   cropFile.value = null;
@@ -388,7 +435,9 @@ async function openEdit(product) {
     form.access_type = item.access_duration_days ? 'limited' : 'permanent';
     form.access_duration_days = item.access_duration_days ?? '';
     form.grace_days = item.grace_days ?? 3;
-    selectedTeams.value = (item.teams ?? []).map((team) => ({ id: team.id, name: team.name }));
+    form.drip_enabled = Boolean(item.drip_enabled);
+    dripModules.value = (item.drip_modules ?? []).map((module) => ({ ...module }));
+    selectedTeams.value =(item.teams ?? []).map((team) => ({ id: team.id, name: team.name }));
     imageFile.value = null;
 
     if (imagePreview.value.startsWith('blob:')) {
@@ -467,7 +516,16 @@ function payload() {
       ? Number(form.access_duration_days) || ''
       : '',
     grace_days: Number(form.grace_days) || 0,
+    drip_enabled: form.billing_type === 'one_time' && form.drip_enabled,
   };
+
+  // O primeiro módulo sempre libera na hora; só os seguintes têm prazo.
+  if (data.drip_enabled && dripModules.value.length) {
+    data.module_drips = dripModules.value.slice(1).map((item) => ({
+      module_id: item.module_id,
+      interval_days: Math.max(0, Number(item.interval_days) || 0),
+    }));
+  }
 
   if (form.slug.trim()) {
     data.slug = form.slug.trim();
@@ -504,6 +562,13 @@ async function save() {
       Object.entries(data).forEach(([key, value]) => {
         if (key === 'team_ids' || key === 'tags') {
           value.forEach((item) => body.append(`${key}[]`, item));
+        } else if (key === 'module_drips') {
+          value.forEach((item, index) => {
+            body.append(`module_drips[${index}][module_id]`, item.module_id);
+            body.append(`module_drips[${index}][interval_days]`, item.interval_days);
+          });
+        } else if (typeof value === 'boolean') {
+          body.append(key, value ? '1' : '0');
         } else if (value !== null && value !== undefined) {
           body.append(key, value);
         }
@@ -532,7 +597,9 @@ async function save() {
     toast.success('Produto salvo.');
     await load();
   } catch (e) {
-    toast.error(e?.message || 'Não foi possível salvar o produto.');
+    // Mostra o motivo real da validação (primeiro erro de campo) em vez da mensagem genérica
+    const primeiroErro = e?.errors ? Object.values(e.errors).flat()[0] : null;
+    toast.error(primeiroErro || e?.message || 'Não foi possível salvar o produto.');
   } finally {
     saving.value = false;
   }
@@ -580,4 +647,11 @@ onBeforeUnmount(() => {
   position:absolute;top:8px;right:8px;background:rgba(0,0,0,.62);color:#fff;border:none;border-radius:8px;
   padding:4px 9px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;
 }
+.drip-list{display:flex;flex-direction:column;gap:8px;}
+.drip-row{display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;}
+.drip-name{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.drip-fixed{font-size:12.5px;color:var(--text-muted);}
+.drip-interval{display:flex;align-items:center;gap:8px;margin:0;font-size:12.5px;font-weight:400;color:var(--text-muted);}
+.drip-interval .form-control{width:72px;}
+.drip-day{font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap;}
 </style>
