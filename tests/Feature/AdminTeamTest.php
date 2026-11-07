@@ -123,6 +123,34 @@ class AdminTeamTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_remove_a_student_whose_access_came_from_a_purchase(): void
+    {
+        $team = Team::factory()->create(['company_id' => $this->company->id]);
+
+        \App\Models\AccessGrant::query()->withoutGlobalScope('company')->create([
+            'company_id' => $this->company->id,
+            'user_id' => $this->student->id,
+            'team_id' => $team->id,
+            'source_type' => \App\Enums\AccessGrantSource::Order->value,
+            'source_id' => 99,
+            'starts_at' => now(),
+        ]);
+        app(\App\Services\AccessGrantService::class)->syncTeamMembership($this->company->id, $team->id, $this->student->id);
+
+        $this->assertDatabaseHas('team_users', ['team_id' => $team->id, 'user_id' => $this->student->id, 'status' => 'active']);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->deleteJson("/api/v1/admin/teams/{$team->id}/students/{$this->student->id}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('team_users', ['team_id' => $team->id, 'user_id' => $this->student->id]);
+        $this->assertDatabaseMissing('access_grants', [
+            'team_id' => $team->id,
+            'user_id' => $this->student->id,
+            'status' => 'active',
+        ]);
+    }
+
     public function test_admin_can_attach_and_detach_course(): void
     {
         ['course' => $course] = $this->buildCourse($this->company->id);
