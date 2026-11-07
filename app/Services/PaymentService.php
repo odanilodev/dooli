@@ -102,6 +102,10 @@ class PaymentService
                     ? PaymentStatus::Pending->value
                     : $result->status,
                 'metadata' => $result->raw ?: null,
+                // O checkout envia "credit_card" para qualquer cartão; o gateway informa se foi débito.
+                'method' => ($result->raw['payment_type_id'] ?? null) === 'debit_card'
+                    ? 'debit_card'
+                    : $payment->method,
             ]);
 
             PaymentEvent::query()->create([
