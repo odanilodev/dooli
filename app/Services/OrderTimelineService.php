@@ -373,7 +373,7 @@ class OrderTimelineService
     {
         return match ($payment->method) {
             'pix' => 'Aguardando a confirmação do PIX.',
-            'credit_card' => 'Aguardando a confirmação do cartão.',
+            'credit_card', 'debit_card' => 'Aguardando a confirmação do cartão.',
             default => 'Aguardando a confirmação do gateway.',
         };
     }

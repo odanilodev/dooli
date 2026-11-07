@@ -26,7 +26,8 @@
       </select>
       <select v-model="filters.method" class="form-control">
         <option value="">Todos os métodos</option>
-        <option value="credit_card">Cartão</option>
+        <option value="credit_card">Cartão de crédito</option>
+        <option value="debit_card">Cartão de débito</option>
         <option value="pix">PIX</option>
       </select>
       <select v-model="filters.gateway_id" class="form-control">

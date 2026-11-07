@@ -158,6 +158,7 @@ class OrderController extends ApiController
     {
         return match ($method) {
             'credit_card' => 'Cartão',
+            'debit_card' => 'Cartão de débito',
             'pix' => 'PIX',
             default => $method ?? '—',
         };
