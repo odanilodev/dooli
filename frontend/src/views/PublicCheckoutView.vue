@@ -254,6 +254,7 @@ import { useToast } from '../composables/useToast';
 import { useTheme } from '../composables/useTheme';
 import { loadMercadoPago } from '../utils/mercadopago';
 import { formatCurrency } from '../utils/format';
+import { isValidCpf } from '../utils/cpf';
 
 const route = useRoute();
 const router = useRouter();
@@ -458,8 +459,8 @@ async function submit() {
 
   const cpfDigits = cpf.value.replace(/\D/g, '');
 
-  if (method.value === 'pix' && !product.value.is_subscription && cpfDigits.length !== 11) {
-    toast.error('Informe o CPF do pagador (11 dígitos) para gerar o PIX.');
+  if (method.value === 'pix' && !product.value.is_subscription && !isValidCpf(cpfDigits)) {
+    toast.error('Informe um CPF válido do pagador para gerar o PIX.');
     return;
   }
 
