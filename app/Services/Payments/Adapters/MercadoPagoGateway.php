@@ -13,6 +13,7 @@ use App\Services\Payments\Contracts\PaymentGatewayContract;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * MercadoPago adapter (real integration).
@@ -233,14 +234,29 @@ class MercadoPagoGateway implements PaymentGatewayContract
             throw new PaymentException('Gateway sem credenciais para estorno.', 'gateway_refund_unavailable');
         }
 
+        // A API de estorno do Mercado Pago pede o X-Idempotency-Key (como a de pagamento).
         $response = Http::withToken($accessToken)
+            ->withHeaders(['X-Idempotency-Key' => 'refund-'.$payment->id.'-'.Str::uuid()])
             ->acceptJson()
             ->post("https://api.mercadopago.com/v1/payments/{$payment->transaction_id}/refunds", [
                 'amount' => $amount,
             ]);
 
         if ($response->failed()) {
-            throw new PaymentException('Falha ao solicitar estorno.', 'gateway_refund_failed');
+            Log::warning('MercadoPago refund failed', [
+                'payment_id' => $payment->id,
+                'status' => $response->status(),
+                'body' => $response->json() ?? $response->body(),
+            ]);
+
+            // Motivo devolvido pelo Mercado Pago (sem dados sensíveis), para diagnosticar a falha.
+            $error = $response->json() ?? [];
+            $reason = $error['cause'][0]['description'] ?? $error['message'] ?? $error['error'] ?? null;
+
+            throw new PaymentException(
+                'Falha ao solicitar estorno.'.($reason ? ' Motivo: '.$reason : ''),
+                'gateway_refund_failed',
+            );
         }
 
         return new GatewayRefundResult(success: true, status: 'refunded', raw: $response->json());
