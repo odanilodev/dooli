@@ -356,6 +356,38 @@ function unmountCardBrick() {
   }
 }
 
+function cssVar(name, fallback) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  return value || fallback;
+}
+
+// O formulário do cartão (Brick) é do Mercado Pago, mas aceita variáveis de estilo: usa as cores
+// e o arredondamento do site (inclusive a cor da empresa) para ele não parecer um corpo estranho.
+function brickCustomVariables() {
+  const accent = cssVar('--accent', '#17c993');
+  const border = cssVar('--border', '#22304a');
+
+  return {
+    formBackgroundColor: cssVar('--bg-card', '#141f30'),
+    formPadding: '0px',
+    inputBackgroundColor: cssVar('--bg-input', '#101a29'),
+    textPrimaryColor: cssVar('--text-primary', '#eef2f7'),
+    textSecondaryColor: cssVar('--text-secondary', '#95a3b8'),
+    baseColor: accent,
+    baseColorFirstVariant: accent,
+    baseColorSecondVariant: accent,
+    buttonTextColor: cssVar('--accent-ink', '#06281d'),
+    outlinePrimaryColor: border,
+    outlineSecondaryColor: border,
+    inputBorderWidth: '1px',
+    inputFocusedBorderWidth: '1px',
+    borderRadiusSmall: '10px',
+    borderRadiusMedium: '12px',
+    borderRadiusLarge: '14px',
+  };
+}
+
 async function mountCardBrick() {
   unmountCardBrick();
   brickLoading.value = true;
@@ -370,7 +402,13 @@ async function mountCardBrick() {
         payer: { email: auth.user?.email || '' },
       },
       customization: {
-        visual: { style: { theme: theme.value === 'dark' ? 'dark' : 'default' } },
+        visual: {
+          hideFormTitle: true,
+          style: {
+            theme: theme.value === 'dark' ? 'dark' : 'default',
+            customVariables: brickCustomVariables(),
+          },
+        },
         paymentMethods: { maxInstallments: 12 },
       },
       callbacks: {
