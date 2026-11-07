@@ -135,6 +135,8 @@ import { api } from '../api/http';
 import { paletteAt } from '../data/palette';
 import { useTenant } from '../composables/useTenant';
 import { useToast } from '../composables/useToast';
+import { useCoursesStore } from '../stores/courses';
+import { useStudentTeamsStore } from '../stores/studentTeams';
 import { formatCurrency, formatDateTime } from '../utils/format';
 import { orderStatusClass, orderStatusLabel } from '../utils/orderStatus';
 import OrderTimeline from '../components/OrderTimeline.vue';
@@ -143,6 +145,8 @@ import PaymentDetailsCard from '../components/PaymentDetailsCard.vue';
 const route = useRoute();
 const { publicRoute } = useTenant();
 const toast = useToast();
+const coursesStore = useCoursesStore();
+const teamsStore = useStudentTeamsStore();
 const refunding = ref(false);
 const order = ref(null);
 const loading = ref(true);
@@ -151,12 +155,24 @@ let timer = null;
 
 const orderId = computed(() => String(route.params.orderId || ''));
 
+function refreshStudentAccess() {
+  coursesStore.reset();
+  teamsStore.fetchTeams(true);
+}
+
 load();
 
 async function load() {
   try {
     const { data } = await api.get(`/me/orders/${orderId.value}`);
+    const previousStatus = order.value?.status;
     order.value = data.data;
+
+    // Compra aprovada ou estornada muda os cursos do aluno: descarta o cache da área do aluno
+    // para o curso aparecer (ou sumir) sem precisar recarregar a página.
+    if (['paid', 'refunded'].includes(data.data?.status) && previousStatus !== data.data.status) {
+      refreshStudentAccess();
+    }
   } catch (e) {
     error.value = e?.message || 'Não foi possível carregar o pedido.';
   } finally {
@@ -178,6 +194,7 @@ async function requestRefund() {
   try {
     const { data } = await api.post(`/me/orders/${orderId.value}/refund`, {});
     order.value = data.data;
+    refreshStudentAccess();
     toast.success('Reembolso solicitado. O valor será devolvido na forma de pagamento original.');
   } catch (e) {
     const firstError = e?.errors ? Object.values(e.errors).flat()[0] : null;
