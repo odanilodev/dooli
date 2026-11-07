@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Enums\ActionCode;
 use App\Enums\GeneralStatus;
 use App\Enums\UserRegistrationSource;
 use App\Enums\UserTypeCode;
+use App\Models\Action;
 use App\Models\Company;
 use App\Models\User;
 use App\Models\UserType;
@@ -44,6 +46,7 @@ class CompanyService
                 $adminType = $this->createUserType($company->id, UserTypeCode::Admin->value, 'Administrador');
                 $this->createUserType($company->id, UserTypeCode::Instructor->value, 'Instrutor');
                 $this->createUserType($company->id, UserTypeCode::Student->value, 'Aluno');
+                $this->createDefaultActions($company->id);
 
                 $admin = User::query()->create([
                     'company_id' => $company->id,
@@ -75,6 +78,28 @@ class CompanyService
         $this->audit->log('company', 'update', 'company', "Empresa atualizada: {$company->name}");
 
         return $company->refresh();
+    }
+
+    /**
+     * Ações de progresso do aluno (iniciou, visualizou, concluiu). Sem elas a empresa não
+     * consegue registrar conclusão de aula ("Ação de conclusão não configurada").
+     */
+    private function createDefaultActions(int $companyId): void
+    {
+        $actions = [
+            ActionCode::Started->value => 'Iniciou',
+            ActionCode::Viewed->value => 'Visualizou',
+            ActionCode::Completed->value => 'Concluiu',
+        ];
+
+        foreach ($actions as $code => $name) {
+            Action::query()->create([
+                'company_id' => $companyId,
+                'code' => $code,
+                'name' => $name,
+                'status' => GeneralStatus::Active->value,
+            ]);
+        }
     }
 
     private function createUserType(int $companyId, string $code, string $name): UserType

@@ -127,6 +127,12 @@ class SuperAdminTest extends TestCase
 
         $this->assertEqualsCanonicalizing(['admin', 'instructor', 'student'], $codes);
 
+        // Sem as ações de progresso a conclusão de aula falha ("Ação de conclusão não configurada").
+        $this->assertEqualsCanonicalizing(
+            ['started', 'viewed', 'completed'],
+            \App\Models\Action::withoutGlobalScopes()->where('company_id', $companyId)->pluck('code')->all(),
+        );
+
         $admin = User::withoutGlobalScopes()->where('email', 'novoadmin@escola.test')->first();
 
         $this->assertNotNull($admin);
