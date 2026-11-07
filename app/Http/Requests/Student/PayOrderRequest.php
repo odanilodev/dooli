@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Student;
 
+use App\Rules\Cpf;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -33,7 +34,14 @@ class PayOrderRequest extends FormRequest
             'payer.email' => ['nullable', 'email', 'max:255'],
             'payer.identification' => ['nullable', 'array'],
             'payer.identification.type' => ['nullable', 'string', 'max:20'],
-            'payer.identification.number' => ['nullable', 'string', 'max:30'],
+            'payer.identification.number' => [
+                'nullable', 'string', 'max:30',
+                // Só valida quando o documento é CPF (o cartão também aceita CNPJ).
+                Rule::when(
+                    strtoupper((string) $this->input('payer.identification.type', 'CPF')) === 'CPF',
+                    [new Cpf],
+                ),
+            ],
         ];
     }
 }
