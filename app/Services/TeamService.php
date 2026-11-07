@@ -241,24 +241,13 @@ class TeamService
             ->where('company_id', $team->company_id)
             ->where('team_id', $team->id)
             ->where('user_id', $userId)
-            ->where('source_type', AccessGrantSource::Manual->value)
-            ->where('source_id', 0)
             ->update(['status' => GeneralStatus::Inactive->value]);
 
+        // Remoção explícita pelo admin vale para qualquer origem do acesso (manual, compra
+        // ou assinatura); senão o aluno continuava na turma e o botão parecia não funcionar.
         $this->accessGrants->syncTeamMembership((int) $team->company_id, (int) $team->id, $userId);
 
-        $activeGrants = AccessGrant::query()
-            ->withoutGlobalScope('company')
-            ->where('company_id', $team->company_id)
-            ->where('team_id', $team->id)
-            ->where('user_id', $userId)
-            ->where('status', GeneralStatus::Active->value)
-            ->get()
-            ->filter(fn (AccessGrant $grant) => $grant->isActive());
-
-        if ($activeGrants->isEmpty()) {
-            $team->users()->detach($userId);
-        }
+        $team->users()->detach($userId);
 
         $this->audit->log('team', 'remove_student', 'team', "Aluno {$userId} removido da turma {$team->name}");
     }
