@@ -24,12 +24,14 @@ class CreateTestCourses extends Command
         {--video= : ID de um vídeo já existente, usado em todas as aulas (padrão: primeiro vídeo ativo da empresa)}
         {--store : Também cria um produto na loja para cada curso (inativo, a menos que use --publish)}
         {--teams : Libera cada curso e cada produto para TODAS as turmas da empresa}
+        {--team-per-course : Cria a "Turma <curso>" de cada curso (só com ele) e liga o produto somente a essa turma}
+        {--only-existing : Não cria cursos, módulos nem aulas: só age sobre o que já existe (por nome/slug)}
         {--publish : Com --store, deixa os produtos ativos}
         {--force : Com --purge, não pede confirmação}
         {--purge : Remove os cursos deste catálogo (identificados pelo nome exato)}
         {--dry-run : Mostra o que seria feito sem gravar nada}';
 
-    protected $description = 'Cria cursos de trade de exemplo reaproveitando um vídeo existente. Idempotente.';
+    protected $description = 'Cria cursos de trade de exemplo reaproveitando um vídeo existente. Só cria o que falta, nunca sobrescreve o que já existe.';
 
     /** @return array<int, array{name: string, description: string, tags: list<string>, modules: array<string, array<string, list<string>>>}> */
     private function catalog(): array
@@ -130,6 +132,12 @@ class CreateTestCourses extends Command
             return $this->purge($company);
         }
 
+        if ($this->option('teams') && $this->option('team-per-course')) {
+            $this->error('Use --teams ou --team-per-course, não os dois.');
+
+            return self::FAILURE;
+        }
+
         $videos = Video::query()->withoutGlobalScopes()
             ->where('company_id', $company->id)
             ->orderBy('id');
@@ -138,14 +146,14 @@ class CreateTestCourses extends Command
             ? $videos->find((int) $this->option('video'))
             : $videos->where('status', GeneralStatus::Active->value)->first();
 
-        if (! $video) {
+        if (! $video && ! $this->option('only-existing')) {
             $this->error('Vídeo não encontrado nessa empresa. Cadastre um vídeo ou informe --video=ID.');
 
             return self::FAILURE;
         }
 
         $dry = (bool) $this->option('dry-run');
-        $this->info(($dry ? '[dry-run] ' : '')."Empresa #{$company->id} ({$company->name}), vídeo #{$video->id} ({$video->title})");
+        $this->info(($dry ? '[dry-run] ' : '')."Empresa #{$company->id} ({$company->name})".($video ? ", vídeo #{$video->id} ({$video->title})" : ''));
 
         $run = function () use ($company, $video, $dry) {
             foreach ($this->catalog() as $i => $data) {
@@ -160,11 +168,12 @@ class CreateTestCourses extends Command
         return self::SUCCESS;
     }
 
-    private function createCourse(Company $company, Video $video, array $data, int $order, bool $dry): void
+    private function createCourse(Company $company, ?Video $video, array $data, int $order, bool $dry): void
     {
         $companyId = $company->id;
         $name = $data['name'];
         $lessons = collect($data['modules'])->flatten(2)->count();
+        $onlyExisting = (bool) $this->option('only-existing');
 
         $this->line("  • {$name} ({$lessons} aulas)");
 
@@ -172,72 +181,48 @@ class CreateTestCourses extends Command
             return;
         }
 
-        $course = Course::query()->withoutGlobalScopes()->updateOrCreate(
-            ['company_id' => $companyId, 'name' => $name],
-            [
-                'description' => $data['description'],
-                'status' => GeneralStatus::Active->value,
-                'sort_order' => 900 + $order,
-            ],
-        );
+        // Só cria o que falta: nunca sobrescreve nome, descrição, preço, status ou vídeo já editados.
+        if ($onlyExisting) {
+            $course = Course::query()->withoutGlobalScopes()
+                ->where('company_id', $companyId)->where('name', $name)->first();
 
-        $moduleSort = 0;
+            if (! $course) {
+                $this->warn('    curso não existe, ignorado');
 
-        foreach ($data['modules'] as $moduleName => $topics) {
-            $module = Module::query()->withoutGlobalScopes()->updateOrCreate(
-                ['company_id' => $companyId, 'name' => $moduleName.' · '.$name],
-                ['description' => $moduleName.' do curso '.$name.'.', 'status' => GeneralStatus::Active->value],
+                return;
+            }
+        } else {
+            $course = Course::query()->withoutGlobalScopes()->firstOrCreate(
+                ['company_id' => $companyId, 'name' => $name],
+                [
+                    'description' => $data['description'],
+                    'status' => GeneralStatus::Active->value,
+                    'sort_order' => 900 + $order,
+                ],
             );
 
-            $course->modules()->syncWithoutDetaching([
-                $module->id => [
-                    'company_id' => $companyId,
-                    'status' => GeneralStatus::Active->value,
-                    'sort_order' => ++$moduleSort,
-                ],
-            ]);
-
-            $topicSort = 0;
-
-            foreach ($topics as $topicName => $lessonNames) {
-                $topic = Topic::query()->withoutGlobalScopes()->updateOrCreate(
-                    ['company_id' => $companyId, 'module_id' => $module->id, 'name' => $topicName],
-                    ['sort_order' => ++$topicSort, 'status' => GeneralStatus::Active->value],
-                );
-
-                foreach (array_values($lessonNames) as $index => $lessonName) {
-                    Lesson::query()->withoutGlobalScopes()->updateOrCreate(
-                        ['company_id' => $companyId, 'topic_id' => $topic->id, 'name' => $lessonName],
-                        [
-                            'module_id' => $module->id,
-                            'description' => $lessonName.' — '.$name.'.',
-                            'content' => '<p>'.e($lessonName).'</p>',
-                            'sort_order' => $index + 1,
-                            'status' => GeneralStatus::Active->value,
-                            'content_type' => LessonContentType::Video->value,
-                            'video_id' => $video->id,
-                            'published_at' => now(),
-                        ],
-                    );
-                }
-            }
+            $this->createContent($companyId, $course, $video, $data);
         }
 
-        $product = null;
+        $product = StoreProduct::query()->withoutGlobalScopes()
+            ->where('company_id', $companyId)->where('slug', Str::slug($name))->first();
 
-        if ($this->option('store')) {
-            $product = StoreProduct::query()->withoutGlobalScopes()->updateOrCreate(
-                ['company_id' => $companyId, 'slug' => Str::slug($name)],
-                [
-                    'course_id' => $course->id,
-                    'title' => $name,
-                    'description' => $data['description'],
-                    'price' => 97.00,
-                    'sale' => 0,
-                    'status' => $this->option('publish') ? GeneralStatus::Active->value : GeneralStatus::Inactive->value,
-                    'tags' => $data['tags'],
-                ],
-            );
+        if (! $product && $this->option('store') && ! $onlyExisting) {
+            $product = StoreProduct::query()->withoutGlobalScopes()->create([
+                'company_id' => $companyId,
+                'slug' => Str::slug($name),
+                'course_id' => $course->id,
+                'title' => $name,
+                'description' => $data['description'],
+                'price' => 97.00,
+                'sale' => 0,
+                'status' => $this->option('publish') ? GeneralStatus::Active->value : GeneralStatus::Inactive->value,
+                'tags' => $data['tags'],
+            ]);
+        }
+
+        if ($this->option('team-per-course')) {
+            $this->linkTeamPerCourse($companyId, $course, $product, $order);
         }
 
         if ($this->option('teams')) {
@@ -257,6 +242,85 @@ class CreateTestCourses extends Command
         }
     }
 
+    /**
+     * "Turma <curso>" contém só aquele curso e é a única turma do produto: comprar o
+     * produto libera apenas o curso dele.
+     */
+    private function linkTeamPerCourse(int $companyId, Course $course, ?StoreProduct $product, int $order): void
+    {
+        $pivot = ['company_id' => $companyId, 'status' => GeneralStatus::Active->value];
+
+        $team = Team::query()->withoutGlobalScopes()->firstOrCreate(
+            ['company_id' => $companyId, 'name' => self::teamName($course->name)],
+            ['status' => GeneralStatus::Active->value, 'sort_order' => 900 + $order],
+        );
+
+        // A turma é nossa (criada por nome): fica só com o curso dela.
+        $team->courses()->sync([$course->id => $pivot]);
+
+        if (! $product) {
+            $this->warn('    produto não encontrado: turma criada, mas sem produto ligado');
+
+            return;
+        }
+
+        // sync remove as outras turmas do produto (ex.: as turmas gerais que liberavam tudo).
+        $changes = $product->teams()->sync([$team->id => $pivot]);
+
+        $this->line("    {$team->name}: produto ligado só a essa turma (".count($changes['detached']).' turma(s) removida(s) do produto)');
+    }
+
+    private static function teamName(string $courseName): string
+    {
+        return 'Turma '.$courseName;
+    }
+
+    private function createContent(int $companyId, Course $course, Video $video, array $data): void
+    {
+        $name = $data['name'];
+        $moduleSort = 0;
+
+        foreach ($data['modules'] as $moduleName => $topics) {
+            $module = Module::query()->withoutGlobalScopes()->firstOrCreate(
+                ['company_id' => $companyId, 'name' => $moduleName.' · '.$name],
+                ['description' => $moduleName.' do curso '.$name.'.', 'status' => GeneralStatus::Active->value],
+            );
+
+            $course->modules()->syncWithoutDetaching([
+                $module->id => [
+                    'company_id' => $companyId,
+                    'status' => GeneralStatus::Active->value,
+                    'sort_order' => ++$moduleSort,
+                ],
+            ]);
+
+            $topicSort = 0;
+
+            foreach ($topics as $topicName => $lessonNames) {
+                $topic = Topic::query()->withoutGlobalScopes()->firstOrCreate(
+                    ['company_id' => $companyId, 'module_id' => $module->id, 'name' => $topicName],
+                    ['sort_order' => ++$topicSort, 'status' => GeneralStatus::Active->value],
+                );
+
+                foreach (array_values($lessonNames) as $index => $lessonName) {
+                    Lesson::query()->withoutGlobalScopes()->firstOrCreate(
+                        ['company_id' => $companyId, 'topic_id' => $topic->id, 'name' => $lessonName],
+                        [
+                            'module_id' => $module->id,
+                            'description' => $lessonName.' — '.$name.'.',
+                            'content' => '<p>'.e($lessonName).'</p>',
+                            'sort_order' => $index + 1,
+                            'status' => GeneralStatus::Active->value,
+                            'content_type' => LessonContentType::Video->value,
+                            'video_id' => $video->id,
+                            'published_at' => now(),
+                        ],
+                    );
+                }
+            }
+        }
+    }
+
     private function purge(Company $company): int
     {
         $courses = Course::query()->withoutGlobalScopes()
@@ -271,13 +335,25 @@ class CreateTestCourses extends Command
         }
 
         $this->table(['ID', 'Curso'], $courses->map(fn ($c) => [$c->id, $c->name])->all());
-        $this->warn('Atenção: se algum desses cursos já tinha alunos/vendas reais, NÃO remova.');
+
+        $teams = Team::query()->withoutGlobalScopes()
+            ->where('company_id', $company->id)
+            ->whereIn('name', array_map(fn ($n) => self::teamName($n), array_column($this->catalog(), 'name')))
+            ->get();
+
+        if ($teams->contains(fn (Team $t) => $t->users()->exists())) {
+            $this->error('Há alunos matriculados nas turmas destes cursos. Nada foi removido.');
+
+            return self::FAILURE;
+        }
+
+        $this->warn('Atenção: se algum desses cursos já tinha vendas reais, NÃO remova.');
 
         if ($this->option('dry-run') || (! $this->option('force') && ! $this->confirm('Remover esses cursos e seus módulos/aulas?'))) {
             return self::SUCCESS;
         }
 
-        DB::transaction(function () use ($courses) {
+        DB::transaction(function () use ($courses, $teams) {
             $moduleIds = DB::table('course_modules')->whereIn('course_id', $courses->pluck('id'))->pluck('module_id');
 
             Lesson::query()->withoutGlobalScopes()->whereIn('module_id', $moduleIds)->get()->each->delete();
@@ -289,6 +365,8 @@ class CreateTestCourses extends Command
             });
 
             DB::table('team_courses')->whereIn('course_id', $courses->pluck('id'))->delete();
+            DB::table('store_product_teams')->whereIn('team_id', $teams->pluck('id'))->delete();
+            $teams->each->delete();
             $courses->each(fn (Course $c) => $c->modules()->detach());
             $courses->each->delete();
             Module::query()->withoutGlobalScopes()->whereIn('id', $moduleIds)->delete();
