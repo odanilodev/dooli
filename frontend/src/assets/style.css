@@ -661,10 +661,14 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 }
 .auth-visual{
   flex:1;position:relative;display:flex;flex-direction:column;justify-content:space-between;
-  padding:48px;background:linear-gradient(150deg,#0a1e2a 0%,#0d372f 55%,#10392a 100%);color:#fff;overflow:hidden;
+  padding:48px;color:#fff;overflow:hidden;
+  background:linear-gradient(150deg,
+    color-mix(in srgb,var(--accent) 10%,#0a1420) 0%,
+    color-mix(in srgb,var(--accent) 26%,#0a1420) 55%,
+    color-mix(in srgb,var(--accent) 20%,#0b1420) 100%);
 }
 .auth-visual-glow{position:absolute;width:520px;height:520px;border-radius:50%;
-  background:radial-gradient(circle,rgba(34,197,94,.28),transparent 70%);right:-160px;top:-120px;pointer-events:none;}
+  background:radial-gradient(circle,color-mix(in srgb,var(--accent) 40%,transparent),transparent 70%);right:-160px;top:-120px;pointer-events:none;}
 .auth-visual-quote{position:relative;font-size:22px;font-weight:700;line-height:1.4;max-width:420px;}
 .auth-visual-quote span{color:var(--accent);}
 .auth-visual-foot{position:relative;font-size:12.5px;color:var(--hero-quote);}
