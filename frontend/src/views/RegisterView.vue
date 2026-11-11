@@ -130,8 +130,9 @@ watch(
   },
   { immediate: true },
 );
-const loginRoute = computed(() => tenantLoginRoute());
 const nextUrl = computed(() => safeNext(route.query.next));
+// Mantém o destino (ex.: checkout do produto) ao trocar de cadastro para login.
+const loginRoute = computed(() => tenantLoginRoute(nextUrl.value ? { redirect: nextUrl.value } : {}));
 
 function termsLink(hash) {
   const target = publicRoute('public-termos');

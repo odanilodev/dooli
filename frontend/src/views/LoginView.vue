@@ -57,8 +57,18 @@ const forgotRoute = computed(() => ({
   path: '/recuperar-senha',
   query: legacySlug.value ? { company: legacySlug.value } : {},
 }));
+// Destino pós-login: `redirect` (guard de rota) ou `next` (vindo do botão Comprar → cadastro → entrar).
+const target = computed(() => {
+  const redirect = route.query.redirect;
+
+  if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
+    return redirect;
+  }
+
+  return safeNext(route.query.next);
+});
 const registerTarget = computed(() => {
-  const next = safeNext(route.query.redirect);
+  const next = safeNext(target.value);
 
   return registerRoute(next ? { next } : {});
 });
@@ -75,17 +85,15 @@ async function submit() {
     await auth.login({ email: form.email.trim(), password: form.password }, companySlug.value);
     toast.success('Login efetuado! Redirecionando...');
 
-    const redirect = typeof route.query.redirect === 'string'
-      && route.query.redirect.startsWith('/')
-      && !route.query.redirect.startsWith('//')
-      ? route.query.redirect
+    const redirect = target.value
+      ? target.value
       : companySlug.value
         ? publicRoute('public-loja')
         : { name: 'dashboard' };
     setTimeout(() => router.push(redirect), 500);
   } catch (e) {
     if (e?.code === 'email_not_verified') {
-      const next = safeNext(route.query.redirect);
+      const next = safeNext(target.value);
 
       toast.info('Confirme seu e-mail para continuar.');
 

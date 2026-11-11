@@ -43,12 +43,14 @@ export function useTenant() {
     };
   }
 
-  function loginRoute() {
+  function loginRoute(query = {}) {
     if (isLegacy.value) {
-      return publicRoute('public-login');
+      return publicRoute('public-login', {}, query);
     }
 
-    return tenant.isDomainMode ? { name: 'public-login' } : { name: 'login' };
+    const withQuery = Object.keys(query).length ? { query } : {};
+
+    return tenant.isDomainMode ? { name: 'public-login', ...withQuery } : { name: 'login', ...withQuery };
   }
 
   function registerRoute(query = {}) {
