@@ -163,4 +163,39 @@ class PublicStorefrontTest extends TestCase
             ->assertJsonPath('data.access_label', 'Acesso por 7 dias')
             ->assertJsonCount(2, 'data.included_courses');
     }
+
+    public function test_public_product_hides_internal_teams_and_inactive_courses(): void
+    {
+        $active = $this->buildCourse($this->company->id);
+        $draft = $this->buildCourse($this->company->id);
+        $draft['course']->update(['status' => 'inactive']);
+
+        $team = Team::factory()->create(['company_id' => $this->company->id, 'name' => 'Turma Interna']);
+        $inactiveTeam = Team::factory()->create(['company_id' => $this->company->id, 'status' => 'inactive']);
+
+        $team->courses()->attach($active['course']->id, ['company_id' => $this->company->id, 'status' => 'active']);
+        $team->courses()->attach($draft['course']->id, ['company_id' => $this->company->id, 'status' => 'active']);
+        $inactiveTeam->courses()->attach($draft['course']->id, ['company_id' => $this->company->id, 'status' => 'active']);
+
+        $product = StoreProduct::factory()->create([
+            'company_id' => $this->company->id,
+            'course_id' => $active['course']->id,
+            'slug' => 'sem-vazamento',
+        ]);
+
+        $product->teams()->attach($team->id, ['company_id' => $this->company->id, 'status' => 'active']);
+        $product->teams()->attach($inactiveTeam->id, ['company_id' => $this->company->id, 'status' => 'active']);
+
+        $response = $this->getJson('/api/v1/public/companies/'.$this->company->slug.'/store/products/sem-vazamento')
+            ->assertOk()
+            ->assertJsonMissingPath('data.teams')
+            ->assertJsonCount(1, 'data.included_courses')
+            ->assertJsonPath('data.included_courses.0.id', $active['course']->id);
+
+        $this->assertStringNotContainsString('Turma Interna', $response->getContent());
+
+        $this->getJson('/api/v1/public/companies/'.$this->company->slug.'/store/products')
+            ->assertOk()
+            ->assertJsonMissingPath('data.0.teams');
+    }
 }
