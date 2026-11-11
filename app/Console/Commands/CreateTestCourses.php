@@ -9,6 +9,7 @@ use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\Module;
 use App\Models\StoreProduct;
+use App\Models\Team;
 use App\Models\Topic;
 use App\Models\Video;
 use Illuminate\Console\Command;
@@ -22,6 +23,7 @@ class CreateTestCourses extends Command
         {--domain= : Domínio da empresa (alternativa ao --company), ex.: deltaclass.com.br}
         {--video= : ID de um vídeo já existente, usado em todas as aulas (padrão: primeiro vídeo ativo da empresa)}
         {--store : Também cria um produto na loja para cada curso (inativo, a menos que use --publish)}
+        {--teams : Libera cada curso e cada produto para TODAS as turmas da empresa}
         {--publish : Com --store, deixa os produtos ativos}
         {--force : Com --purge, não pede confirmação}
         {--purge : Remove os cursos deste catálogo (identificados pelo nome exato)}
@@ -221,8 +223,10 @@ class CreateTestCourses extends Command
             }
         }
 
+        $product = null;
+
         if ($this->option('store')) {
-            StoreProduct::query()->withoutGlobalScopes()->updateOrCreate(
+            $product = StoreProduct::query()->withoutGlobalScopes()->updateOrCreate(
                 ['company_id' => $companyId, 'slug' => Str::slug($name)],
                 [
                     'course_id' => $course->id,
@@ -234,6 +238,22 @@ class CreateTestCourses extends Command
                     'tags' => $data['tags'],
                 ],
             );
+        }
+
+        if ($this->option('teams')) {
+            $teams = Team::query()->withoutGlobalScopes()->where('company_id', $companyId)->get();
+
+            foreach ($teams as $team) {
+                $pivot = ['company_id' => $companyId, 'status' => GeneralStatus::Active->value];
+
+                // Quem já está na turma passa a ver o curso.
+                $team->courses()->syncWithoutDetaching([$course->id => $pivot]);
+
+                // Uma compra do produto matricula o aluno nessas turmas (EnrollmentService).
+                $product?->teams()->syncWithoutDetaching([$team->id => $pivot]);
+            }
+
+            $this->line('    liberado para '.$teams->count().' turma(s)');
         }
     }
 
@@ -268,6 +288,7 @@ class CreateTestCourses extends Command
                 $p->delete();
             });
 
+            DB::table('team_courses')->whereIn('course_id', $courses->pluck('id'))->delete();
             $courses->each(fn (Course $c) => $c->modules()->detach());
             $courses->each->delete();
             Module::query()->withoutGlobalScopes()->whereIn('id', $moduleIds)->delete();
