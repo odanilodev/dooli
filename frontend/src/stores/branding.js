@@ -55,6 +55,10 @@ export const useBrandingStore = defineStore('branding', () => {
       || fallbackLogoLightUrl.value || fallbackLogoDarkUrl.value;
   });
 
+  // Telas sobre fundo sempre escuro (login/cadastro) usam a logo do tema escuro, qualquer que seja o tema do usuário.
+  const logoUrlOnDark = computed(() => logoDarkUrl.value || logoLightUrl.value
+    || fallbackLogoDarkUrl.value || fallbackLogoLightUrl.value);
+
   const hasLogo = computed(() => Boolean(logoUrl.value));
 
   function apply() {
@@ -171,6 +175,7 @@ export const useBrandingStore = defineStore('branding', () => {
     logoLightUrl,
     logoDarkUrl,
     logoUrl,
+    logoUrlOnDark,
     loaded,
     hasLogo,
     fetch,

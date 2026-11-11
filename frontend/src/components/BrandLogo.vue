@@ -1,5 +1,5 @@
 <template>
-  <img v-if="branding.hasLogo" :src="branding.logoUrl" class="brand-logo" alt="Logo">
+  <img v-if="branding.hasLogo" :src="onMedia ? branding.logoUrlOnDark : branding.logoUrl" class="brand-logo" alt="Logo">
   <template v-else>
     <span class="brand-mark">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 18H3z"/></svg>
