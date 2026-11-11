@@ -18,10 +18,12 @@ use Illuminate\Support\Str;
 class CreateTestCourses extends Command
 {
     protected $signature = 'courses:create-test
-        {--company= : ID da empresa (obrigatório)}
-        {--video= : ID de um vídeo já existente, usado em todas as aulas (obrigatório, exceto com --purge)}
+        {--company= : ID da empresa}
+        {--domain= : Domínio da empresa (alternativa ao --company), ex.: deltaclass.com.br}
+        {--video= : ID de um vídeo já existente, usado em todas as aulas (padrão: primeiro vídeo ativo da empresa)}
         {--store : Também cria um produto na loja para cada curso (inativo, a menos que use --publish)}
         {--publish : Com --store, deixa os produtos ativos}
+        {--force : Com --purge, não pede confirmação}
         {--purge : Remove os cursos deste catálogo (identificados pelo nome exato)}
         {--dry-run : Mostra o que seria feito sem gravar nada}';
 
@@ -110,10 +112,14 @@ class CreateTestCourses extends Command
 
     public function handle(): int
     {
-        $company = Company::query()->find((int) $this->option('company'));
+        $domain = Company::normalizeDomain($this->option('domain'));
+
+        $company = $domain
+            ? Company::query()->where('domain', $domain)->first()
+            : Company::query()->find((int) $this->option('company'));
 
         if (! $company) {
-            $this->error('Informe uma empresa válida com --company=ID.');
+            $this->error('Empresa não encontrada. Informe --company=ID ou --domain=dominio.com.br.');
 
             return self::FAILURE;
         }
@@ -122,12 +128,16 @@ class CreateTestCourses extends Command
             return $this->purge($company);
         }
 
-        $video = Video::query()->withoutGlobalScopes()
+        $videos = Video::query()->withoutGlobalScopes()
             ->where('company_id', $company->id)
-            ->find((int) $this->option('video'));
+            ->orderBy('id');
+
+        $video = $this->option('video')
+            ? $videos->find((int) $this->option('video'))
+            : $videos->where('status', GeneralStatus::Active->value)->first();
 
         if (! $video) {
-            $this->error('Vídeo não encontrado nessa empresa. Informe --video=ID de um vídeo existente.');
+            $this->error('Vídeo não encontrado nessa empresa. Cadastre um vídeo ou informe --video=ID.');
 
             return self::FAILURE;
         }
@@ -243,7 +253,7 @@ class CreateTestCourses extends Command
         $this->table(['ID', 'Curso'], $courses->map(fn ($c) => [$c->id, $c->name])->all());
         $this->warn('Atenção: se algum desses cursos já tinha alunos/vendas reais, NÃO remova.');
 
-        if ($this->option('dry-run') || ! $this->confirm('Remover esses cursos e seus módulos/aulas?')) {
+        if ($this->option('dry-run') || (! $this->option('force') && ! $this->confirm('Remover esses cursos e seus módulos/aulas?'))) {
             return self::SUCCESS;
         }
 
