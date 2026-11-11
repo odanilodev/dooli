@@ -159,6 +159,11 @@ class OrderService
         return DB::transaction(function () use ($order) {
             $order = $this->orders->update($order, ['status' => OrderStatus::Canceled->value]);
 
+            // O uso do cupom é consumido ao criar o pedido; pedido cancelado devolve o uso.
+            if ($order->coupon_id) {
+                $this->coupons->releaseUsage((int) $order->coupon_id);
+            }
+
             $this->events->record($order, OrderEventType::OrderCanceled, [
                 'status' => $order->status,
                 'description' => 'O pedido foi encerrado antes da confirmação do pagamento.',

@@ -3,11 +3,18 @@
 namespace App\Http\Resources;
 
 use App\Enums\BillingType;
+use App\Enums\GeneralStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class StoreProductResource extends JsonResource
 {
+    /**
+     * Quando verdadeiro, included_courses lista só o que o aluno de fato recebe
+     * (turma, vínculo e curso ativos), espelhando o EnrollmentService::grantAccess.
+     */
+    protected bool $activeOnly = false;
+
     public function toArray(Request $request): array
     {
         return [
@@ -46,8 +53,22 @@ class StoreProductResource extends JsonResource
             return null;
         }
 
-        $courses = $this->teams
-            ->flatMap(fn ($team) => $team->relationLoaded('courses') ? $team->courses : collect())
+        $teams = $this->activeOnly
+            ? $this->teams->filter(fn ($team) => $team->status === GeneralStatus::Active->value
+                && $team->pivot?->status === GeneralStatus::Active->value)
+            : $this->teams;
+
+        $courses = $teams
+            ->flatMap(function ($team) {
+                if (! $team->relationLoaded('courses')) {
+                    return collect();
+                }
+
+                return $this->activeOnly
+                    ? $team->courses->filter(fn ($course) => $course->status === GeneralStatus::Active->value
+                        && $course->pivot?->status === GeneralStatus::Active->value)
+                    : $team->courses;
+            })
             ->unique('id')
             ->values();
 

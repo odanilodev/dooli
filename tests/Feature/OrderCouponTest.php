@@ -96,4 +96,69 @@ class OrderCouponTest extends TestCase
             ->getJson("/api/v1/me/orders/{$orderId}")
             ->assertStatus(403);
     }
+
+    public function test_coupon_global_usage_limit_is_enforced(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $storeProduct = StoreProduct::factory()->create([
+            'company_id' => $this->company->id,
+            'course_id' => $course['course']->id,
+            'price' => 100,
+        ]);
+
+        $coupon = Coupon::factory()->create([
+            'company_id' => $this->company->id,
+            'code' => 'ULTIMO',
+            'type' => CouponType::Fixed->value,
+            'value' => 5,
+            'usage_limit' => 1,
+        ]);
+
+        $payload = [
+            'items' => [['store_product_id' => $storeProduct->id, 'quantity' => 1]],
+            'coupon_code' => 'ULTIMO',
+        ];
+
+        $this->withToken($this->apiLogin($this->student))->postJson('/api/v1/me/orders', $payload)->assertCreated();
+        $this->withToken($this->apiLogin($this->student))->postJson('/api/v1/me/orders', $payload)->assertStatus(422);
+
+        $this->assertSame(1, $coupon->fresh()->usage_count);
+    }
+
+    public function test_canceling_an_order_releases_the_coupon_usage(): void
+    {
+        $course = $this->buildCourse($this->company->id);
+        $storeProduct = StoreProduct::factory()->create([
+            'company_id' => $this->company->id,
+            'course_id' => $course['course']->id,
+            'price' => 100,
+        ]);
+
+        $coupon = Coupon::factory()->create([
+            'company_id' => $this->company->id,
+            'code' => 'DEVOLVE',
+            'type' => CouponType::Fixed->value,
+            'value' => 5,
+            'usage_limit' => 1,
+        ]);
+
+        $token = $this->apiLogin($this->student);
+
+        $orderId = $this->withToken($token)->postJson('/api/v1/me/orders', [
+            'items' => [['store_product_id' => $storeProduct->id, 'quantity' => 1]],
+            'coupon_code' => 'DEVOLVE',
+        ])->assertCreated()->json('data.id');
+
+        $this->assertSame(1, $coupon->fresh()->usage_count);
+
+        $this->withToken($token)->postJson("/api/v1/me/orders/{$orderId}/cancel")->assertOk();
+
+        $this->assertSame(0, $coupon->fresh()->usage_count);
+
+        // O uso devolvido permite um novo pedido com o mesmo cupom.
+        $this->withToken($token)->postJson('/api/v1/me/orders', [
+            'items' => [['store_product_id' => $storeProduct->id, 'quantity' => 1]],
+            'coupon_code' => 'DEVOLVE',
+        ])->assertCreated();
+    }
 }

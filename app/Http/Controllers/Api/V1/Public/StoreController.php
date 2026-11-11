@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1\Public;
 
 use App\Enums\GeneralStatus;
 use App\Http\Controllers\Api\V1\ApiController;
-use App\Http\Resources\StoreProductResource;
+use App\Http\Resources\PublicStoreProductResource;
 use App\Repositories\StoreProductRepository;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +25,7 @@ class StoreController extends ApiController
             with: ['course', 'teams.courses'],
         );
 
-        return ApiResponse::paginated($paginator, StoreProductResource::class);
+        return ApiResponse::paginated($paginator, PublicStoreProductResource::class);
     }
 
     public function show(string $slug): JsonResponse
@@ -34,7 +34,7 @@ class StoreController extends ApiController
 
         abort_unless($storeProduct, 404, 'Produto não encontrado.');
 
-        return ApiResponse::success(new StoreProductResource($storeProduct->load(['course', 'teams.courses'])));
+        return ApiResponse::success(new PublicStoreProductResource($storeProduct->load(['course', 'teams.courses'])));
     }
 
     public function showPublic(Request $request): JsonResponse
@@ -44,6 +44,6 @@ class StoreController extends ApiController
 
         abort_unless($storeProduct, 404, 'Produto não encontrado.');
 
-        return ApiResponse::success(new StoreProductResource($storeProduct->load(['course', 'teams.courses'])));
+        return ApiResponse::success(new PublicStoreProductResource($storeProduct->load(['course', 'teams.courses'])));
     }
 }

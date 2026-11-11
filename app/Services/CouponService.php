@@ -162,9 +162,37 @@ class CouponService
         ])->all();
     }
 
+    /**
+     * Consome um uso do cupom de forma atômica: o limite é conferido no próprio UPDATE,
+     * então dois pedidos simultâneos não passam do usage_limit.
+     *
+     * @throws InvalidCouponException
+     */
     public function registerUsage(Coupon $coupon): void
     {
-        $coupon->increment('usage_count');
+        $updated = Coupon::query()
+            ->withoutGlobalScopes()
+            ->whereKey($coupon->id)
+            ->where(function ($query) {
+                $query->whereNull('usage_limit')->orWhereColumn('usage_count', '<', 'usage_limit');
+            })
+            ->increment('usage_count');
+
+        if ($updated === 0) {
+            throw new InvalidCouponException('Cupom atingiu o limite de usos.', 'coupon_usage_limit');
+        }
+    }
+
+    /**
+     * Devolve o uso consumido por um pedido que não foi concluído (ex.: cancelado).
+     */
+    public function releaseUsage(int $couponId): void
+    {
+        Coupon::query()
+            ->withoutGlobalScopes()
+            ->whereKey($couponId)
+            ->where('usage_count', '>', 0)
+            ->decrement('usage_count');
     }
 
     /**
