@@ -123,6 +123,22 @@
               <p class="product-about">
                 {{ product.description || 'Conteúdo digital com acesso liberado após a confirmação do pagamento.' }}
               </p>
+
+              <template v-if="includedCourses.length">
+                <h3 class="product-subtitle">
+                  {{ includedCourses.length === 1 ? 'Curso incluído' : 'Cursos incluídos' }}
+                </h3>
+                <ul class="product-course-grid">
+                  <li v-for="course in includedCourses" :key="course.id" class="product-course-tile">
+                    <span class="product-course-cover" :style="{ background: grad }">
+                      <img v-if="course.image_url || course.image" :src="course.image_url || course.image" :alt="course.name" loading="lazy" />
+                      <svg v-else class="icon" width="26" height="26" viewBox="0 0 24 24"><path :d="icon" /></svg>
+                    </span>
+                    <strong>{{ course.name }}</strong>
+                    <span v-if="course.description" class="product-course-desc">{{ course.description }}</span>
+                  </li>
+                </ul>
+              </template>
             </template>
 
             <template v-else-if="activeTab === 'content'">
@@ -176,30 +192,6 @@
               </span>
             </header>
 
-            <section v-if="includedCourses.length" class="include-section">
-              <p class="include-label">Cursos liberados</p>
-              <ul class="include-courses">
-                <li v-for="course in visibleCourses" :key="course.id">
-                  <span class="include-tile" aria-hidden="true">
-                    <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
-                  </span>
-                  <div class="include-course-copy">
-                    <strong>{{ course.name }}</strong>
-                    <span v-if="course.description">{{ course.description }}</span>
-                  </div>
-                </li>
-              </ul>
-              <button
-                v-if="hiddenCoursesCount"
-                type="button"
-                class="include-more"
-                @click="openContentTab"
-              >
-                +{{ hiddenCoursesCount }} {{ hiddenCoursesCount === 1 ? 'curso' : 'cursos' }} · ver conteúdo
-                <svg class="icon" width="13" height="13" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-              </button>
-            </section>
-
             <ul class="include-benefits">
               <li>
                 <span class="include-tile" aria-hidden="true">
@@ -214,6 +206,17 @@
                 <span>Acesso online</span>
               </li>
             </ul>
+
+            <div class="include-buy">
+              <span class="product-price">
+                <span v-if="onSale" class="price-old">{{ formatCurrency(product.price) }}</span>
+                <span class="price-now">{{ formatCurrency(currentPrice) }}<small v-if="product.is_subscription">/mês</small></span>
+              </span>
+              <button type="button" class="btn btn-primary btn-block" :disabled="!storefront.gateways.length" @click="buy">
+                {{ product.is_subscription ? 'Assinar agora' : 'Comprar agora' }}
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </button>
+            </div>
 
             <div class="trust-note include-trust">
               <svg class="icon" width="18" height="18" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
@@ -279,17 +282,6 @@ const grad = computed(() => palette.value.grad);
 const onSale = computed(() => Number(product.value?.sale) > 0);
 const currentPrice = computed(() => (onSale.value ? product.value.sale : product.value?.price));
 const includedCourses = computed(() => product.value?.included_courses ?? []);
-const visibleCourses = computed(() => includedCourses.value.slice(0, 4));
-const hiddenCoursesCount = computed(() => Math.max(0, includedCourses.value.length - visibleCourses.value.length));
-
-function openContentTab() {
-  activeTab.value = 'content';
-
-  requestAnimationFrame(() => {
-    document.querySelector('.product-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-}
-
 async function buy() {
   const checkout = publicRoute('public-checkout', { productSlug: productSlug.value });
 
@@ -346,7 +338,8 @@ async function buy() {
 .product-buy .price-old{font-size:12px;}
 .product-buy-btn{width:100%;padding:13px 18px;border-radius:8px;font-size:13px;}
 .product-payment-note{color:var(--text-muted);font-size:10.5px;line-height:1.45;text-align:center;}
-.product-detail{display:flex;flex-direction:column;gap:26px;padding-top:clamp(32px,4vw,48px);border-top:1px solid var(--border);scroll-margin-top:96px;}
+/* align-items/grid-template-columns: neutralizam a regra global .product-detail (página do aluno), que encolhia a grade. */
+.product-detail{display:flex;flex-direction:column;align-items:stretch;grid-template-columns:none;gap:26px;padding-top:clamp(32px,4vw,48px);border-top:1px solid var(--border);scroll-margin-top:96px;}
 .product-tabs{display:flex;gap:26px;overflow-x:auto;border-bottom:1px solid var(--border);scrollbar-width:none;}
 .product-tabs::-webkit-scrollbar{display:none;}
 .product-tab{
@@ -356,7 +349,7 @@ async function buy() {
 }
 .product-tab:hover{color:var(--text-primary);}
 .product-tab.active{border-bottom-color:var(--accent);color:var(--text-primary);}
-.product-detail-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr);gap:clamp(30px,4vw,54px);align-items:start;}
+.product-detail-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(340px,.65fr);gap:clamp(32px,4vw,54px);align-items:start;}
 .product-tab-panel{min-width:0;}
 .product-tab-panel h2{margin:0 0 13px;font-size:21px;font-weight:800;letter-spacing:-.02em;}
 .product-about{color:var(--text-secondary);font-size:13.5px;line-height:1.75;white-space:pre-line;}
@@ -390,17 +383,6 @@ async function buy() {
   flex-shrink:0;padding:4px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);
   font-size:10px;font-weight:800;letter-spacing:.02em;white-space:nowrap;
 }
-.include-section{display:flex;flex-direction:column;gap:8px;}
-.include-label{
-  margin:0;color:var(--text-muted);font-size:10px;font-weight:800;
-  letter-spacing:.07em;text-transform:uppercase;
-}
-.include-courses{display:flex;flex-direction:column;margin:0;padding:0;}
-.include-courses li{
-  display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);
-}
-.include-courses li:first-child{padding-top:0;}
-.include-courses li:last-child{border-bottom:0;padding-bottom:0;}
 .include-tile{
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
   width:30px;height:30px;border-radius:9px;background:var(--accent-soft);color:var(--accent);
@@ -411,12 +393,6 @@ async function buy() {
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
   color:var(--text-muted);font-size:10.5px;line-height:1.45;
 }
-.include-more{
-  display:inline-flex;align-items:center;gap:5px;align-self:flex-start;margin-top:2px;
-  padding:0;border:0;background:none;color:var(--accent);font:inherit;
-  font-size:11px;font-weight:800;cursor:pointer;
-}
-.include-more:hover{text-decoration:underline;}
 .include-benefits{
   display:flex;flex-direction:column;gap:8px;margin:0;padding:16px 0 0;border-top:1px solid var(--border);
 }
@@ -425,6 +401,25 @@ async function buy() {
   font-size:11.5px;font-weight:600;line-height:1.4;
 }
 .include-benefits .include-tile{width:26px;height:26px;border-radius:8px;}
+.include-buy{display:flex;flex-direction:column;gap:12px;padding-top:16px;border-top:1px solid var(--border);}
+.include-buy .product-price{margin:0;}
+.include-buy .price-now{font-size:28px;line-height:1.1;letter-spacing:-.03em;}
+.include-buy .price-now small{font-size:11px;font-weight:700;color:var(--text-muted);}
+.include-buy .btn{padding:12px 18px;border-radius:8px;font-size:13px;}
+.product-subtitle{margin:28px 0 14px;font-size:15px;font-weight:800;letter-spacing:-.01em;}
+.product-course-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin:0;padding:0;list-style:none;}
+.product-course-tile{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.product-course-cover{
+  position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  aspect-ratio:16/9;border:1px solid var(--border);border-radius:10px;margin-bottom:4px;
+}
+.product-course-cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.product-course-cover .icon{color:#fff;opacity:.65;}
+.product-course-tile strong{font-size:13px;font-weight:700;line-height:1.35;}
+.product-course-desc{
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  color:var(--text-muted);font-size:11.5px;line-height:1.5;
+}
 .include-trust{margin-top:0;}
 .product-skeleton-media{background:var(--bg-card-alt);animation:product-pulse 1.4s ease-in-out infinite;}
 .product-skeleton-info{display:flex;flex-direction:column;gap:13px;padding-top:10px;}
@@ -437,7 +432,7 @@ async function buy() {
 @keyframes product-pulse{0%,100%{opacity:.55;}50%{opacity:1;}}
 @media(max-width:1000px){
   .product-top{grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:32px;}
-  .product-detail-grid{grid-template-columns:minmax(0,1fr) minmax(260px,.7fr);gap:30px;}
+  .product-detail-grid{grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:32px;}
 }
 @media(max-width:820px){
   .product-top{grid-template-columns:1fr;}
