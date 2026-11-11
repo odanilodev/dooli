@@ -91,6 +91,7 @@
           :title="item.title"
           :icon="item.icon"
           :grad="item.grad"
+          :image="item.image"
           :to="item.to"
         />
       </div>
@@ -148,6 +149,7 @@ const recommendedProducts = computed(() =>
         title: product.title,
         icon: palette.icon,
         grad: palette.grad,
+        image: product.image_url || product.image || '',
         to: { name: 'loja-produto', params: { slug: product.slug } },
       };
     }),

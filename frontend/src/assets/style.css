@@ -340,6 +340,8 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 
 .card-reco{position:relative;}
 .card-reco .card-thumb{height:98px;}
+.card-reco .card-thumb.has-image{height:auto;aspect-ratio:16/9;}
+.card-reco .reco-thumb-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .card-reco .card-body{padding-right:36px;}
 .reco-arrow{
   position:absolute;right:10px;bottom:10px;width:24px;height:24px;border-radius:50%;background:var(--bg-card-alt);
