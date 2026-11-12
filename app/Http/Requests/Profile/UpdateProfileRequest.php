@@ -24,6 +24,8 @@ class UpdateProfileRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
+            'notify_newsletter' => ['sometimes', 'boolean'],
+            'notify_lesson_reminders' => ['sometimes', 'boolean'],
         ];
     }
 }

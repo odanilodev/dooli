@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\BelongsToCompany;
 use App\Concerns\HasImageUrl;
+use App\Enums\NotificationSlug;
 use App\Enums\UserTypeCode;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,6 +22,7 @@ use Laravel\Sanctum\HasApiTokens;
     'name', 'username', 'email', 'email_verified_at', 'password', 'status', 'registration_source',
     'user_type_id', 'company_id', 'referred_seller_id', 'referral_expires_at',
     'image', 'phone', 'address', 'city',
+    'notify_newsletter', 'notify_lesson_reminders',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -37,7 +39,20 @@ class User extends Authenticatable
             'referral_expires_at' => 'datetime',
             'password' => 'hashed',
             'is_super_admin' => 'boolean',
+            'notify_newsletter' => 'boolean',
+            'notify_lesson_reminders' => 'boolean',
         ];
+    }
+
+    /**
+     * Whether the user accepts e-mails of the given notification. Transactional
+     * notifications (no preference key) are always delivered.
+     */
+    public function acceptsEmailFor(NotificationSlug $slug): bool
+    {
+        $key = $slug->preferenceKey();
+
+        return $key === null || (bool) ($this->{$key} ?? true);
     }
 
     protected static function booted(): void
