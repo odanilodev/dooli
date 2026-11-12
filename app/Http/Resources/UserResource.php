@@ -22,6 +22,8 @@ class UserResource extends JsonResource
             'phone' => $this->phone,
             'address' => $this->address,
             'city' => $this->city,
+            'notify_newsletter' => (bool) $this->notify_newsletter,
+            'notify_lesson_reminders' => (bool) $this->notify_lesson_reminders,
             'company_id' => $this->company_id,
             'user_type' => new UserTypeResource($this->whenLoaded('userType')),
             'teams' => TeamResource::collection($this->whenLoaded('teams')),

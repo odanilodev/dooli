@@ -365,7 +365,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             Aula anterior
           </button>
-          <button class="btn btn-primary" :disabled="!store.nextLesson || isNextLocked" @click="goLesson(store.nextLesson?.id)">
+          <button class="btn btn-primary" :disabled="!store.nextLesson || isNextLocked || isCurrentAwaitingWatch" @click="goLesson(store.nextLesson?.id)">
             Próxima aula
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
@@ -1006,6 +1006,16 @@ async function removeComment(comment) {
 function goLesson(lessonId, force = false) {
   if (!lessonId) {
     return;
+  }
+
+  if (isCurrentAwaitingWatch.value && currentLesson.value && Number(lessonId) !== currentLesson.value.id) {
+    const targetIndex = store.lessons.findIndex((lesson) => lesson.id === Number(lessonId));
+
+    if (targetIndex > store.currentIndex) {
+      toast.warning('Assista a aula até o fim para avançar.');
+
+      return;
+    }
   }
 
   if (!force && store.isLocked(lessonId)) {

@@ -24,7 +24,7 @@
           <input class="form-control" type="tel" id="c-phone" v-model="account.phone">
         </div>
         <div>
-          <button type="submit" class="btn btn-primary">Salvar conta</button>
+          <button type="submit" class="btn btn-primary" :disabled="store.saving">Salvar conta</button>
         </div>
       </form>
 
@@ -35,7 +35,7 @@
         </div>
         <div class="form-group">
           <label for="c-current-pass">Senha atual</label>
-          <input class="form-control" type="password" id="c-current-pass" v-model="password.current" placeholder="••••••••" required>
+          <input class="form-control" type="password" id="c-current-pass" v-model="password.current" placeholder="••••••••" autocomplete="current-password" required>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -49,7 +49,7 @@
         </div>
         <span class="form-error" :class="{ show: passwordMismatch }">As senhas não coincidem.</span>
         <div>
-          <button type="submit" class="btn btn-primary">Alterar senha</button>
+          <button type="submit" class="btn btn-primary" :disabled="savingPassword">Alterar senha</button>
         </div>
       </form>
 
@@ -63,21 +63,14 @@
             <span class="settings-row-title">Novidades por e-mail</span>
             <span class="settings-row-desc">Lançamentos de cursos e promoções.</span>
           </div>
-          <button class="switch" :class="{ on: notifications.newsletter }" @click="notifications.newsletter = !notifications.newsletter"><span class="knob"></span></button>
+          <button class="switch" type="button" role="switch" :aria-checked="notifications.newsletter" :class="{ on: notifications.newsletter }" :disabled="!store.loaded" @click="toggleNotification('notify_newsletter', 'newsletter')"><span class="knob"></span></button>
         </div>
         <div class="settings-row">
           <div class="settings-row-text">
             <span class="settings-row-title">Lembretes de aula</span>
             <span class="settings-row-desc">Avisos para continuar de onde parou.</span>
           </div>
-          <button class="switch" :class="{ on: notifications.reminders }" @click="notifications.reminders = !notifications.reminders"><span class="knob"></span></button>
-        </div>
-        <div class="settings-row">
-          <div class="settings-row-text">
-            <span class="settings-row-title">Notificações push</span>
-            <span class="settings-row-desc">Alertas em tempo real no navegador.</span>
-          </div>
-          <button class="switch" :class="{ on: notifications.push }" @click="notifications.push = !notifications.push"><span class="knob"></span></button>
+          <button class="switch" type="button" role="switch" :aria-checked="notifications.reminders" :class="{ on: notifications.reminders }" :disabled="!store.loaded" @click="toggleNotification('notify_lesson_reminders', 'reminders')"><span class="knob"></span></button>
         </div>
       </div>
 
@@ -118,36 +111,101 @@
 </template>
 
 <script setup>
-import { reactive, computed } from 'vue';
+import { reactive, computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTenant } from '../composables/useTenant';
 import { useTheme } from '../composables/useTheme';
 import { useToast } from '../composables/useToast';
+import { useProfileStore } from '../stores/profile';
 
 const router = useRouter();
 const { loginRoute } = useTenant();
 const { theme, setTheme } = useTheme();
 const toast = useToast();
 
-const account = reactive({
-  email: 'victorhugomarquezin@gmail.com',
-  phone: '(11) 99999-0000',
+const store = useProfileStore();
+
+const account = reactive({ email: '', phone: '' });
+const notifications = reactive({ newsletter: true, reminders: true });
+const savingPassword = ref(false);
+
+function firstError(error) {
+  const errors = error?.errors;
+
+  if (!errors) {
+    return '';
+  }
+
+  const first = Object.values(errors)[0];
+
+  return Array.isArray(first) ? first[0] : String(first);
+}
+
+function fillFromProfile(profile) {
+  account.email = profile?.email ?? '';
+  account.phone = profile?.phone ?? '';
+  notifications.newsletter = profile?.notify_newsletter ?? true;
+  notifications.reminders = profile?.notify_lesson_reminders ?? true;
+}
+
+onMounted(async () => {
+  const profile = await store.fetch();
+
+  if (profile) {
+    fillFromProfile(profile);
+  } else {
+    toast.error(store.error || 'Não foi possível carregar suas configurações.');
+  }
 });
-function saveAccount() {
-  toast.success('Conta atualizada.');
+
+async function saveAccount() {
+  const payload = { email: account.email.trim(), phone: account.phone.trim() || null };
+
+  try {
+    const updated = await store.update(payload);
+    fillFromProfile(updated);
+    toast.success('Conta atualizada.');
+  } catch (e) {
+    toast.error(firstError(e) || e?.message || 'Não foi possível atualizar a conta.');
+  }
 }
 
 const password = reactive({ current: '', next: '', confirm: '' });
 const passwordMismatch = computed(() => password.next && password.confirm && password.next !== password.confirm);
-function changePassword() {
+async function changePassword() {
   if (passwordMismatch.value) return;
-  password.current = '';
-  password.next = '';
-  password.confirm = '';
-  toast.success('Senha alterada.');
+
+  savingPassword.value = true;
+
+  try {
+    await store.updatePassword({
+      current_password: password.current,
+      password: password.next,
+      password_confirmation: password.confirm,
+    });
+    password.current = '';
+    password.next = '';
+    password.confirm = '';
+    toast.success('Senha alterada.');
+  } catch (e) {
+    toast.error(firstError(e) || e?.message || 'Não foi possível alterar a senha.');
+  } finally {
+    savingPassword.value = false;
+  }
 }
 
-const notifications = reactive({ newsletter: true, reminders: true, push: false });
+// Atualização otimista: aplica na hora e reverte se a API falhar.
+async function toggleNotification(field, key) {
+  const previous = notifications[key];
+  notifications[key] = !previous;
+
+  try {
+    await store.update({ [field]: notifications[key] });
+  } catch (e) {
+    notifications[key] = previous;
+    toast.error(firstError(e) || e?.message || 'Não foi possível salvar a preferência.');
+  }
+}
 
 function deleteAccount() {
   if (window.confirm('Tem certeza que deseja excluir sua conta? Essa ação não pode ser desfeita.')) {

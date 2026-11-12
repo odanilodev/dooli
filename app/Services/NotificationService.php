@@ -140,7 +140,7 @@ class NotificationService
             return $notification;
         });
 
-        if ($sendEmail && filled($user->email)) {
+        if ($sendEmail && filled($user->email) && $user->acceptsEmailFor($slug)) {
             SendNotificationJob::dispatch($notification->id, $user->id)->afterCommit();
         }
 

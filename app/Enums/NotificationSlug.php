@@ -25,6 +25,22 @@ enum NotificationSlug: string
     case CertificateUpdated = 'certificate_updated';
     case CertificateRevoked = 'certificate_revoked';
 
+    case Newsletter = 'newsletter';
+    case LessonReminder = 'lesson_reminder';
+
+    /**
+     * Column on users that lets the user opt out of this e-mail.
+     * Null means transactional: always delivered.
+     */
+    public function preferenceKey(): ?string
+    {
+        return match ($this) {
+            self::Newsletter => 'notify_newsletter',
+            self::LessonReminder => 'notify_lesson_reminders',
+            default => null,
+        };
+    }
+
     public static function values(): array
     {
         return array_column(self::cases(), 'value');
@@ -49,6 +65,8 @@ enum NotificationSlug: string
             self::SubscriptionCanceled => 'Assinatura cancelada',
             self::CertificateUpdated => 'Certificado atualizado',
             self::CertificateRevoked => 'Certificado revogado',
+            self::Newsletter => 'Novidades',
+            self::LessonReminder => 'Lembrete de aula',
         };
     }
 
@@ -59,6 +77,7 @@ enum NotificationSlug: string
             self::PaymentApproved, self::PaymentFailed, self::PaymentRefunded, self::OrderCanceled => 'payment',
             self::SubscriptionActivated, self::SubscriptionRenewed,
             self::SubscriptionPastDue, self::SubscriptionCanceled => 'subscription',
+            self::Newsletter, self::LessonReminder => 'engagement',
             default => 'certificate',
         };
     }
