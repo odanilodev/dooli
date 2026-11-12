@@ -537,6 +537,7 @@ async function loadVideoPlayback(lessonId) {
 
   videoLessonId = lessonId;
   videoLoading.value = true;
+  watchedToEnd.value = false;
   videoEmbedUrl.value = null;
   videoPlatform.value = null;
   videoDuration.value = 0;
