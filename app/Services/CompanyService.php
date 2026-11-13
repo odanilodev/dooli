@@ -8,6 +8,7 @@ use App\Enums\UserRegistrationSource;
 use App\Enums\UserTypeCode;
 use App\Models\Action;
 use App\Models\Company;
+use App\Models\Robot;
 use App\Models\User;
 use App\Models\UserType;
 use App\Support\CompanyContext;
@@ -47,6 +48,7 @@ class CompanyService
                 $this->createUserType($company->id, UserTypeCode::Instructor->value, 'Instrutor');
                 $this->createUserType($company->id, UserTypeCode::Student->value, 'Aluno');
                 $this->createDefaultActions($company->id);
+                $this->createDefaultRobots($company->id);
 
                 $admin = User::query()->create([
                     'company_id' => $company->id,
@@ -100,6 +102,25 @@ class CompanyService
                 'status' => GeneralStatus::Active->value,
             ]);
         }
+    }
+
+    /**
+     * Ferramentas (robôs) do catálogo: a empresa já nasce com elas, para o admin poder liberá-las
+     * por turma sem depender de migration, seeder ou SQL.
+     */
+    private function createDefaultRobots(int $companyId): void
+    {
+        Robot::withoutGlobalScopes()->firstOrCreate(
+            ['company_id' => $companyId, 'slug' => 'delta-screener'],
+            [
+                'name' => 'DeltaStats',
+                'description' => 'Triagem estatística de setups de entrada por limiar fixo na B3, mercado americano e cripto.',
+                'market' => 'b3,us,crypto',
+                'icon' => 'chart',
+                'status' => GeneralStatus::Active->value,
+                'sort_order' => 1,
+            ],
+        );
     }
 
     private function createUserType(int $companyId, string $code, string $name): UserType
