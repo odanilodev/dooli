@@ -100,8 +100,14 @@ class CourseService
 
     public function delete(Course $course): void
     {
-        if ($course->storeProducts()->exists()) {
-            throw new BusinessRuleException('Não é possível excluir: existem produtos de loja vinculados. Desative o curso.');
+        $products = $course->storeProducts()->orderBy('title')->limit(6)->pluck('title');
+
+        if ($products->isNotEmpty()) {
+            $total = $course->storeProducts()->count();
+            $names = $products->take(5)->map(fn ($t) => "\"{$t}\"")->implode(', ');
+            $more = $total > 5 ? ' e mais ' . ($total - 5) : '';
+
+            throw new BusinessRuleException("Não é possível excluir: vinculado ao(s) produto(s) de loja {$names}{$more}. Desative o curso.");
         }
 
         if ($course->certificates()->exists()) {
