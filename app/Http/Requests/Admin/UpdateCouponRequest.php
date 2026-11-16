@@ -29,7 +29,16 @@ class UpdateCouponRequest extends FormRequest
                     ->where('company_id', (int) $this->user()?->company_id),
             ],
             'type' => ['sometimes', Rule::in(CouponType::values())],
-            'value' => ['sometimes', 'numeric', 'min:0'],
+            'value' => [
+                'sometimes', 'numeric', 'min:0',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    $type = $this->input('type', $this->route('coupon')?->type);
+
+                    if ($type === CouponType::Percent->value && (float) $value > 100) {
+                        $fail('O desconto percentual não pode passar de 100%.');
+                    }
+                },
+            ],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
             'starts_at' => ['nullable', 'date'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],

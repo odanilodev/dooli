@@ -147,6 +147,7 @@ const FALLBACK_MENU = [
           { id: 'fb-products', name: 'Produtos', type: 'link', depth: 2, link: '/admin/produtos', icon: 'store' },
           { id: 'fb-storefront', name: 'Vitrine', type: 'link', depth: 2, link: '/admin/loja', icon: 'storefront' },
           { id: 'fb-banners', name: 'Banners', type: 'link', depth: 2, link: '/admin/banners', icon: 'banners' },
+          { id: 'fb-coupons', name: 'Cupons', type: 'link', depth: 2, link: '/admin/cupons', icon: 'coupons' },
         ],
       },
       {

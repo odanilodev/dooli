@@ -25,7 +25,14 @@ class StoreCouponRequest extends FormRequest
                 Rule::unique('coupons', 'code')->where('company_id', (int) $this->user()?->company_id),
             ],
             'type' => ['required', Rule::in(CouponType::values())],
-            'value' => ['required', 'numeric', 'min:0'],
+            'value' => [
+                'required', 'numeric', 'min:0',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if ($this->input('type') === CouponType::Percent->value && (float) $value > 100) {
+                        $fail('O desconto percentual não pode passar de 100%.');
+                    }
+                },
+            ],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
             'starts_at' => ['nullable', 'date'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
