@@ -11,7 +11,7 @@ class MenuService
     /**
      * Menus visible to the given user.
      *
-     * An empty permission_menu means "all menus". Otherwise only the permitted
+     * Admins and an empty permission_menu mean "all menus". Otherwise only the permitted
      * menus plus their ancestor chain are returned, so sections/dropdowns that
      * hold a permitted item do not disappear.
      *
@@ -26,7 +26,8 @@ class MenuService
 
         $allowed = array_filter((array) ($user->userType?->permission_menu ?? []));
 
-        if (empty($allowed)) {
+        // Administrators always get every menu, whatever is checked on their type.
+        if ($user->isAdmin() || $user->isSuperAdmin() || empty($allowed)) {
             return $menus;
         }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Enums\GeneralStatus;
 use App\Enums\UserRegistrationSource;
+use App\Enums\UserTypeCode;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Requests\Admin\BulkUserRequest;
 use App\Http\Requests\Admin\StoreUserRequest;
@@ -36,6 +37,9 @@ class UserController extends ApiController
 
         // Super admins are platform-level and must stay invisible to everyone else.
         $filters['exclude_super_admins'] = ! $request->user()->isSuperAdmin();
+
+        // Non-admin operators only see students.
+        $filters['only_students'] = $this->studentsOnly($request->user());
 
         $paginator = $this->users->paginate(
             perPage: $this->perPage($request),
@@ -81,6 +85,10 @@ class UserController extends ApiController
             $validated['user_ids'] = $this->withoutSuperAdmins($validated['user_ids']);
         }
 
+        if ($this->studentsOnly($request->user())) {
+            $validated['user_ids'] = $this->onlyStudents($validated['user_ids']);
+        }
+
         $summary = match ($validated['action']) {
             'add-to-teams' => $this->teamService->bulkEnroll($validated['team_ids'], $validated['user_ids'], $validated['expired_at'] ?? null),
             'activate' => $this->userService->bulkSetStatus($validated['user_ids'], GeneralStatus::Active->value),
@@ -113,6 +121,26 @@ class UserController extends ApiController
         $this->users->delete($user);
 
         return ApiResponse::noContent();
+    }
+
+    private function studentsOnly(User $user): bool
+    {
+        return ! $user->isAdmin() && ! $user->isSuperAdmin();
+    }
+
+    /**
+     * Keeps only student ids so operators can never act on staff accounts in bulk.
+     *
+     * @param  array<int, int>  $ids
+     * @return array<int, int>
+     */
+    private function onlyStudents(array $ids): array
+    {
+        return User::query()
+            ->whereIn('id', $ids)
+            ->whereHas('userType', fn ($q) => $q->where('code', UserTypeCode::Student->value))
+            ->pluck('id')
+            ->all();
     }
 
     /**

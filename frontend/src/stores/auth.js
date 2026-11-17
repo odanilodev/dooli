@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { api, getToken, setCompanyId, setToken } from '../api/http';
 import { useBrandingStore } from './branding';
+import { useMenusStore } from './menus';
 import { useTenantStore } from './tenant';
 
 export const useAuthStore = defineStore('auth', () => {
@@ -40,12 +41,14 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null;
     token.value = null;
     setToken(null);
+    useMenusStore().reset();
   }
 
   function applySession(payload) {
     token.value = payload.token;
     setToken(token.value);
     user.value = payload.user;
+    useMenusStore().reset();
     setCompanyId(user.value.company_id);
     useBrandingStore().fetch();
 
