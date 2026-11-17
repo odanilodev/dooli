@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useTenantStore } from '../stores/tenant';
 import { useBrandingStore } from '../stores/branding';
+import { useMenusStore } from '../stores/menus';
 
 import AppLayout from '../layouts/AppLayout.vue';
 import AuthLayout from '../layouts/AuthLayout.vue';
@@ -232,7 +233,7 @@ const routes = [
       { path: 'admin/comissoes', name: 'admin-comissoes', component: AdminCommissionsView, meta: { title: 'Comissões (admin)', requiresAdmin: true } },
       { path: 'admin/pagamentos', name: 'admin-pagamentos', component: AdminPaymentsView, meta: { title: 'Pagamentos (admin)', requiresAdminMenu: true } },
       { path: 'admin/assinaturas', name: 'admin-assinaturas', component: AdminSubscriptionsView, meta: { title: 'Assinaturas (admin)', requiresAdminMenu: true } },
-      { path: 'admin/usuarios', name: 'admin-usuarios', component: AdminUsersView, meta: { title: 'Usuários (admin)', requiresAdmin: true } },
+      { path: 'admin/usuarios', name: 'admin-usuarios', component: AdminUsersView, meta: { title: 'Usuários (admin)', requiresAdminMenu: true } },
       { path: 'admin/tipos-de-usuario', name: 'admin-tipos-de-usuario', component: AdminUserTypesView, meta: { title: 'Tipos de usuário (admin)', requiresAdmin: true } },
       { path: 'admin/menus', name: 'admin-menus', component: AdminMenusView, meta: { title: 'Menus (admin)', requiresSuperAdmin: true } },
       { path: 'admin/empresas', name: 'admin-empresas', component: AdminCompaniesView, meta: { title: 'Empresas (admin)', requiresSuperAdmin: true } },
@@ -457,6 +458,23 @@ router.beforeEach(async (to) => {
 
   if (to.meta?.requiresAdminMenu && !auth.canAccessAdmin) {
     return { name: 'dashboard' };
+  }
+
+  // Non-admin staff only reach the admin pages whose menu is in their permission list.
+  if (to.meta?.requiresAdminMenu && !auth.isAdmin && !auth.isSuperAdmin) {
+    const menus = useMenusStore();
+
+    if (!menus.loaded) {
+      await menus.fetchMyMenus();
+    }
+
+    const allowed = menus.items.some(
+      (menu) => menu.link && (to.path === menu.link || to.path.startsWith(`${menu.link}/`)),
+    );
+
+    if (!allowed) {
+      return { name: 'dashboard' };
+    }
   }
 
   if (to.meta?.requiresSuperAdmin && !auth.isSuperAdmin) {

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureCompanyContext;
+use App\Http\Middleware\EnsureMenuAccess;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\EnsureUserIsActive;
@@ -56,6 +57,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureUserHasRole::class,
             'admin.access' => EnsureAdminAccess::class,
             'super.admin' => EnsureSuperAdmin::class,
+            'menu.access' => EnsureMenuAccess::class,
             'active' => EnsureUserIsActive::class,
         ]);
 

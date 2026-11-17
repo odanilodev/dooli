@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\User;
+use App\Enums\UserTypeCode;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -50,6 +51,13 @@ class UserRepository extends BaseRepository
 
         $excludeSuperAdmins = $filters['exclude_super_admins'] ?? null;
         unset($filters['exclude_super_admins']);
+
+        $onlyStudents = $filters['only_students'] ?? null;
+        unset($filters['only_students']);
+
+        if ($onlyStudents) {
+            $query->whereHas('userType', fn (Builder $q) => $q->where('code', UserTypeCode::Student->value));
+        }
 
         if ($excludeSuperAdmins) {
             $query->where('is_super_admin', false);
