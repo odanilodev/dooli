@@ -81,6 +81,7 @@ class DeltaScreenerRobot implements RobotContract
             ->selectRaw("ROUND(AVG({$result}), 4) as avg_result", $b(2))
             ->selectRaw("ROUND(MAX({$result}), 4) as best_trade", $b(2))
             ->selectRaw("ROUND(MIN({$result}), 4) as worst_trade", $b(2))
+            ->selectRaw('ROUND(AVG(c.volume), 0) as avg_volume')
             ->selectRaw("ROUND(SUM(CASE WHEN ({$result}) > 0 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as win_rate", $b(2))
             ->groupBy('a.id', 'a.symbol', 'a.name')
             ->orderByDesc('net_result')
@@ -106,7 +107,7 @@ class DeltaScreenerRobot implements RobotContract
 
         $trades = $this->triggeredCandles($params, $triggered, $b(1))
             ->where('a.symbol', $symbol)
-            ->selectRaw('c.date, c.open, c.low, c.high, c.close')
+            ->selectRaw('c.date, c.open, c.low, c.high, c.close, c.volume')
             ->selectRaw("ROUND({$entry}, 6) as entry_price", $b(1))
             ->selectRaw("ROUND({$result}, 4) as result", $b(2))
             ->orderBy('c.date')

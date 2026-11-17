@@ -111,6 +111,7 @@ class StudentRobotTest extends TestCase
             ->assertJsonPath('data.rows.0.total_trades', 2)
             ->assertJsonPath('data.rows.0.gains', 1)
             ->assertJsonPath('data.rows.0.losses', 1)
+            ->assertJsonPath('data.rows.0.avg_volume', 1000)
             ->assertJsonPath('data.summary.total_trades', 2);
     }
 

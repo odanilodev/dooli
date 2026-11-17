@@ -149,6 +149,29 @@ class User extends Authenticatable
         return (bool) $this->is_super_admin;
     }
 
+    /**
+     * Whether the user may use the admin module behind the menu with this link.
+     * Admins and super admins have every module; other user types need the menu
+     * listed in their permission_menu.
+     */
+    public function canAccessMenu(string $link): bool
+    {
+        if ($this->isAdmin() || $this->isSuperAdmin()) {
+            return true;
+        }
+
+        $allowed = array_map('intval', array_filter((array) ($this->userType?->permission_menu ?? [])));
+
+        if ($allowed === []) {
+            return false;
+        }
+
+        return Menu::query()
+            ->where('link', $link)
+            ->whereIn('id', $allowed)
+            ->exists();
+    }
+
     public function hasRole(string ...$roles): bool
     {
         return in_array($this->userType?->code, $roles, true);

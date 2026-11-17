@@ -50,8 +50,18 @@ return [
         'us' => [
             'label' => 'EUA',
             'symbols' => [
-                'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA',
-                'META', 'TSLA', 'JPM', 'V', 'WMT',
+                // Big techs
+                'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'NFLX', 'AMD', 'INTC',
+                'ORCL', 'CRM', 'ADBE', 'CSCO', 'IBM', 'QCOM', 'AVGO', 'TXN', 'PYPL', 'UBER',
+                'PLTR', 'COIN', 'SHOP', 'BABA', 'TSM',
+                // Financeiro
+                'JPM', 'V', 'MA', 'BAC', 'GS', 'MS', 'WFC', 'C', 'AXP',
+                // Consumo, saúde, energia e indústria
+                'WMT', 'COST', 'HD', 'PG', 'KO', 'PEP', 'MCD', 'NKE', 'SBUX', 'DIS',
+                'JNJ', 'UNH', 'LLY', 'MRK', 'ABBV', 'PFE', 'XOM', 'CVX', 'BA', 'CAT',
+                'GE', 'F', 'GM', 'T', 'VZ',
+                // ETFs de referência
+                'SPY', 'QQQ',
             ],
         ],
         'crypto' => [
@@ -59,6 +69,11 @@ return [
             'symbols' => [
                 'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
                 'ADAUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LINKUSDT', 'LTCUSDT',
+                'TRXUSDT', 'DOTUSDT', 'POLUSDT', 'SHIBUSDT', 'BCHUSDT',
+                'XLMUSDT', 'ATOMUSDT', 'UNIUSDT', 'NEARUSDT', 'APTUSDT',
+                'ARBUSDT', 'OPUSDT', 'INJUSDT', 'SUIUSDT', 'FILUSDT',
+                'ETCUSDT', 'HBARUSDT', 'PEPEUSDT', 'AAVEUSDT', 'ICPUSDT',
+                'ALGOUSDT', 'VETUSDT', 'RUNEUSDT',
             ],
         ],
     ],
