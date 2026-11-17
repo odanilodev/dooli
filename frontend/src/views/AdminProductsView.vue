@@ -94,9 +94,18 @@
       </div>
 
       <div v-if="form.billing_type === 'one_time' && form.access_type === 'limited'" class="form-group">
-        <label for="p-access-days">Dias de acesso após o pagamento</label>
-        <input id="p-access-days" type="number" min="1" max="3650" class="form-control" v-model="form.access_duration_days">
-        <span class="form-hint">Ex.: 7 para uma semana, contando da confirmação do pagamento.</span>
+        <label for="p-access-preset">Duração do acesso após o pagamento</label>
+        <select id="p-access-preset" class="form-control" v-model="accessPreset" @change="onAccessPresetChange">
+          <option v-for="opt in accessPresets" :key="opt.days" :value="String(opt.days)">
+            {{ opt.label }} ({{ opt.days }} dias)
+          </option>
+          <option value="custom">Personalizado</option>
+        </select>
+        <template v-if="accessPreset === 'custom'">
+          <input id="p-access-days" type="number" min="1" max="3650" class="form-control" style="margin-top: 8px"
+                 placeholder="Quantidade de dias" v-model="form.access_duration_days">
+          <span class="form-hint">Ex.: 7 para uma semana, contando da confirmação do pagamento.</span>
+        </template>
       </div>
 
       <div v-if="form.billing_type === 'one_time'" class="form-group">
@@ -243,7 +252,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
 import { formatCurrency, formatDateTime, toDateTimeInput } from '../utils/format';
@@ -292,6 +301,24 @@ const form = reactive({
   access_duration_days: '',
   grace_days: 3,
   drip_enabled: false,
+});
+
+const accessPresets = [
+  { label: 'Bimestral', days: 60 },
+  { label: 'Trimestral', days: 90 },
+  { label: 'Semestral', days: 180 },
+  { label: 'Anual', days: 365 },
+];
+const accessPreset = ref('60');
+
+function onAccessPresetChange() {
+  form.access_duration_days = accessPreset.value === 'custom' ? '' : Number(accessPreset.value);
+}
+
+watch(() => form.access_type, (type) => {
+  if (type === 'limited' && accessPreset.value !== 'custom' && !form.access_duration_days) {
+    onAccessPresetChange();
+  }
 });
 
 const dripModules = ref([]);
@@ -384,6 +411,7 @@ function resetForm() {
   form.billing_interval = 'month';
   form.access_type = 'permanent';
   form.access_duration_days = '';
+  accessPreset.value = '60';
   form.grace_days = 3;
   form.drip_enabled = false;
   dripModules.value = [];
@@ -434,6 +462,9 @@ async function openEdit(product) {
     form.billing_interval = item.billing_interval || 'month';
     form.access_type = item.access_duration_days ? 'limited' : 'permanent';
     form.access_duration_days = item.access_duration_days ?? '';
+    accessPreset.value = accessPresets.some((p) => p.days === Number(item.access_duration_days))
+      ? String(item.access_duration_days)
+      : (item.access_duration_days ? 'custom' : '60');
     form.grace_days = item.grace_days ?? 3;
     form.drip_enabled = Boolean(item.drip_enabled);
     dripModules.value = (item.drip_modules ?? []).map((module) => ({ ...module }));
