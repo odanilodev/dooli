@@ -110,6 +110,11 @@ class CourseService
             throw new BusinessRuleException("Não é possível excluir: vinculado ao(s) produto(s) de loja {$names}{$more}. Desative o curso.");
         }
 
+        // Produtos excluídos (exclusão lógica) continuam no banco apontando para o curso.
+        if ($course->storeProducts()->onlyTrashed()->exists()) {
+            throw new BusinessRuleException('Não é possível excluir: o curso tem histórico de produtos de loja já excluídos. Desative o curso.');
+        }
+
         if ($course->certificates()->exists()) {
             throw new BusinessRuleException('Não é possível excluir: existem certificados vinculados. Desative o curso.');
         }

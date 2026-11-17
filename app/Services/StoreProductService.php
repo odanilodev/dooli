@@ -84,12 +84,14 @@ class StoreProductService
 
     public function delete(StoreProduct $storeProduct): void
     {
+        // Exclusão lógica: o registro fica no banco (pedidos e assinaturas antigos
+        // continuam apontando para ele), mas some do sistema. O slug é liberado.
         DB::transaction(function () use ($storeProduct) {
             $storeProduct->teams()->detach();
+            $storeProduct->slug = "{$storeProduct->slug}-excluido-{$storeProduct->id}";
+            $storeProduct->save();
             $storeProduct->delete();
         });
-
-        $this->images->delete($storeProduct->image);
 
         $this->audit->log('store_product', 'delete', 'store_product', "Produto de loja excluído: {$storeProduct->title}");
     }

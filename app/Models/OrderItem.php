@@ -30,7 +30,7 @@ class OrderItem extends Model
 
     public function storeProduct(): BelongsTo
     {
-        return $this->belongsTo(StoreProduct::class);
+        return $this->belongsTo(StoreProduct::class)->withTrashed();
     }
 
     public function sellerCommission(): HasOne
