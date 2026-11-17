@@ -56,8 +56,58 @@ class TeamService
         return $this->teams->update($team, $data);
     }
 
+    /**
+     * Registros que impedem a exclusão (chaves estrangeiras sem cascade).
+     * Cursos e alunos não entram: são desvinculados na própria exclusão.
+     */
+    private const DELETE_BLOCKERS = [
+        'access_grants' => 'acesso(s) concedido(s) (histórico)',
+        'team_live_classes' => 'aula(s) ao vivo',
+        'comments' => 'comentário(s)',
+        'ratings' => 'avaliação(ões)',
+        'timelines' => 'registro(s) de timeline',
+        'video_progresses' => 'progresso(s) de vídeo',
+        'student_lesson_progress' => 'progresso(s) de aula de alunos',
+        'certificate_users' => 'certificado(s) emitido(s)',
+        'notifications' => 'notificação(ões)',
+    ];
+
+    private function assertCanDelete(Team $team): void
+    {
+        $found = [];
+
+        $products = DB::table('store_product_teams')
+            ->join('store_products', 'store_products.id', '=', 'store_product_teams.store_product_id')
+            ->where('store_product_teams.team_id', $team->id)
+            ->whereNull('store_products.deleted_at')
+            ->orderBy('store_products.title')
+            ->pluck('store_products.title');
+
+        if ($products->isNotEmpty()) {
+            $names = $products->take(5)->map(fn ($t) => "\"{$t}\"")->implode(', ');
+            $more = $products->count() > 5 ? ' e mais '.($products->count() - 5) : '';
+            $found[] = "produto(s) de loja {$names}{$more}";
+        }
+
+        foreach (self::DELETE_BLOCKERS as $table => $label) {
+            $count = DB::table($table)->where('team_id', $team->id)->count();
+
+            if ($count > 0) {
+                $found[] = "{$count} {$label}";
+            }
+        }
+
+        if ($found !== []) {
+            throw new BusinessRuleException(
+                'Não é possível excluir a turma: vinculada a '.implode('; ', $found).'. Inative a turma.'
+            );
+        }
+    }
+
     public function delete(Team $team): void
     {
+        $this->assertCanDelete($team);
+
         DB::transaction(function () use ($team) {
             $team->courses()->detach();
             $team->users()->detach();
