@@ -241,11 +241,13 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     Route::middleware(['admin.access', 'throttle:admin'])->prefix('admin')->group(function () {
         Route::get('dashboard', [AdminDashboardController::class, 'index']);
 
-        Route::get('reports/progress', [AdminReportController::class, 'progress']);
-        Route::get('reports/students/{user}', [AdminReportController::class, 'student'])->whereNumber('user');
-        Route::get('reports/lessons/{lesson}', [AdminReportController::class, 'lesson'])->whereNumber('lesson');
-        Route::get('reports/activity', [AdminReportController::class, 'activity']);
-        Route::get('reports/export', [AdminReportController::class, 'export']);
+        Route::middleware('menu.access:/admin/relatorios')->group(function () {
+            Route::get('reports/progress', [AdminReportController::class, 'progress']);
+            Route::get('reports/students/{user}', [AdminReportController::class, 'student'])->whereNumber('user');
+            Route::get('reports/lessons/{lesson}', [AdminReportController::class, 'lesson'])->whereNumber('lesson');
+            Route::get('reports/activity', [AdminReportController::class, 'activity']);
+            Route::get('reports/export', [AdminReportController::class, 'export']);
+        });
 
         Route::middleware('super.admin')->group(function () {
             Route::get('companies/{company}/settings', [AdminCompanySettingController::class, 'show']);
@@ -262,94 +264,146 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
             Route::apiResource('companies', AdminCompanyController::class)->only(['index', 'store', 'show', 'update']);
         });
 
-        Route::apiResource('courses', AdminCourseController::class);
-        Route::post('courses/{course}/publish', [AdminCourseController::class, 'publish']);
-        Route::post('courses/{course}/unpublish', [AdminCourseController::class, 'unpublish']);
-        Route::post('courses/{course}/modules', [AdminCourseController::class, 'attachModule']);
-        Route::delete('courses/{course}/modules/{module}', [AdminCourseController::class, 'detachModule'])->whereNumber('module');
-        Route::put('courses/{course}/modules/reorder', [AdminCourseController::class, 'reorderModules']);
+        Route::middleware('menu.access:/admin/cursos')->group(function () {
+            Route::apiResource('courses', AdminCourseController::class);
+            Route::post('courses/{course}/publish', [AdminCourseController::class, 'publish']);
+            Route::post('courses/{course}/unpublish', [AdminCourseController::class, 'unpublish']);
+            Route::post('courses/{course}/modules', [AdminCourseController::class, 'attachModule']);
+            Route::delete('courses/{course}/modules/{module}', [AdminCourseController::class, 'detachModule'])->whereNumber('module');
+            Route::put('courses/{course}/modules/reorder', [AdminCourseController::class, 'reorderModules']);
+        });
 
-        Route::get('modules/tree', [AdminModuleController::class, 'tree']);
-        Route::post('modules/bulk', [AdminModuleController::class, 'bulk']);
-        Route::apiResource('modules', AdminModuleController::class);
-        Route::put('modules/{module}/topics/reorder', [AdminTopicController::class, 'reorder']);
-        Route::put('modules/{module}/lessons/reorder', [AdminLessonController::class, 'reorderModule']);
+        Route::middleware('menu.access:/admin/modulos')->group(function () {
+            Route::get('modules/tree', [AdminModuleController::class, 'tree']);
+            Route::post('modules/bulk', [AdminModuleController::class, 'bulk']);
+            Route::apiResource('modules', AdminModuleController::class);
+            Route::put('modules/{module}/topics/reorder', [AdminTopicController::class, 'reorder']);
+            Route::put('modules/{module}/lessons/reorder', [AdminLessonController::class, 'reorderModule']);
+        });
 
-        Route::apiResource('topics', AdminTopicController::class);
-        Route::put('topics/{topic}/lessons/reorder', [AdminLessonController::class, 'reorder']);
+        Route::middleware('menu.access:/admin/modulos')->group(function () {
+            Route::apiResource('topics', AdminTopicController::class);
+            Route::put('topics/{topic}/lessons/reorder', [AdminLessonController::class, 'reorder']);
+        });
 
-        Route::apiResource('lessons', AdminLessonController::class);
-        Route::post('lessons/{lesson}/publish', [AdminLessonController::class, 'publish']);
-        Route::post('lessons/{lesson}/unpublish', [AdminLessonController::class, 'unpublish']);
+        Route::middleware('menu.access:/admin/modulos')->group(function () {
+            Route::apiResource('lessons', AdminLessonController::class);
+            Route::post('lessons/{lesson}/publish', [AdminLessonController::class, 'publish']);
+            Route::post('lessons/{lesson}/unpublish', [AdminLessonController::class, 'unpublish']);
+        });
 
-        Route::apiResource('live-classes', AdminLiveClassController::class)->parameters(['live-classes' => 'liveClass']);
+        Route::middleware('menu.access:/admin/aulas-ao-vivo')->group(function () {
+            Route::apiResource('live-classes', AdminLiveClassController::class)->parameters(['live-classes' => 'liveClass']);
+        });
 
-        Route::apiResource('teams', AdminTeamController::class);
-        Route::post('teams/bulk', [AdminTeamController::class, 'bulk']);
-        Route::get('teams/{team}/students', [AdminTeamController::class, 'students']);
-        Route::post('teams/{team}/students', [AdminTeamController::class, 'addStudent']);
-        Route::put('teams/{team}/students/{user}', [AdminTeamController::class, 'updateStudent'])->whereNumber('user');
-        Route::delete('teams/{team}/students/{user}', [AdminTeamController::class, 'removeStudent'])->whereNumber('user');
-        Route::get('teams/{team}/courses', [AdminTeamController::class, 'courses']);
-        Route::post('teams/{team}/courses', [AdminTeamController::class, 'attachCourse']);
-        Route::delete('teams/{team}/courses/{course}', [AdminTeamController::class, 'detachCourse'])->whereNumber('course');
-        Route::get('robots', [AdminTeamRobotController::class, 'index']);
-        Route::get('teams/{team}/robots', [AdminTeamRobotController::class, 'robots']);
-        Route::post('teams/{team}/robots', [AdminTeamRobotController::class, 'attach']);
-        Route::delete('teams/{team}/robots/{robot}', [AdminTeamRobotController::class, 'detach'])->whereNumber('robot');
-        Route::get('teams/{team}/schedules', [AdminScheduleController::class, 'index']);
-        Route::put('teams/{team}/schedules', [AdminScheduleController::class, 'upsert']);
+        Route::middleware('menu.access:/admin/turmas')->group(function () {
+            Route::apiResource('teams', AdminTeamController::class);
+            Route::post('teams/bulk', [AdminTeamController::class, 'bulk']);
+            Route::get('teams/{team}/students', [AdminTeamController::class, 'students']);
+            Route::post('teams/{team}/students', [AdminTeamController::class, 'addStudent']);
+            Route::put('teams/{team}/students/{user}', [AdminTeamController::class, 'updateStudent'])->whereNumber('user');
+            Route::delete('teams/{team}/students/{user}', [AdminTeamController::class, 'removeStudent'])->whereNumber('user');
+        });
+        Route::middleware('menu.access:/admin/cursos')->group(function () {
+            Route::get('teams/{team}/courses', [AdminTeamController::class, 'courses']);
+        });
+        Route::middleware('menu.access:/admin/turmas')->group(function () {
+            Route::post('teams/{team}/courses', [AdminTeamController::class, 'attachCourse']);
+            Route::delete('teams/{team}/courses/{course}', [AdminTeamController::class, 'detachCourse'])->whereNumber('course');
+            Route::get('robots', [AdminTeamRobotController::class, 'index']);
+            Route::get('teams/{team}/robots', [AdminTeamRobotController::class, 'robots']);
+            Route::post('teams/{team}/robots', [AdminTeamRobotController::class, 'attach']);
+            Route::delete('teams/{team}/robots/{robot}', [AdminTeamRobotController::class, 'detach'])->whereNumber('robot');
+            Route::get('teams/{team}/schedules', [AdminScheduleController::class, 'index']);
+            Route::put('teams/{team}/schedules', [AdminScheduleController::class, 'upsert']);
+        });
 
-        Route::apiResource('users', AdminUserController::class);
-        Route::post('users/bulk', [AdminUserController::class, 'bulk']);
+        Route::middleware('menu.access:/admin/usuarios')->group(function () {
+            Route::apiResource('users', AdminUserController::class);
+            Route::post('users/bulk', [AdminUserController::class, 'bulk']);
+        });
         Route::apiResource('user-types', AdminUserTypeController::class);
         Route::apiResource('menus', AdminMenuController::class)->middleware('super.admin');
 
-        Route::apiResource('coupons', AdminCouponController::class);
-        Route::apiResource('store-products', AdminStoreProductController::class);
+        Route::middleware('menu.access:/admin/cupons')->group(function () {
+            Route::apiResource('coupons', AdminCouponController::class);
+        });
+        Route::middleware('menu.access:/admin/produtos')->group(function () {
+            Route::apiResource('store-products', AdminStoreProductController::class);
+        });
 
-        Route::get('payments/summary', [AdminPaymentController::class, 'summary']);
-        Route::apiResource('payments', AdminPaymentController::class)->only(['index', 'store', 'show']);
-        Route::post('payments/{payment}/refund', [AdminPaymentController::class, 'refund']);
+        Route::middleware('menu.access:/admin/pagamentos')->group(function () {
+            Route::get('payments/summary', [AdminPaymentController::class, 'summary']);
+            Route::apiResource('payments', AdminPaymentController::class)->only(['index', 'store', 'show']);
+            Route::post('payments/{payment}/refund', [AdminPaymentController::class, 'refund']);
+        });
 
-        Route::get('orders/summary', [AdminOrderController::class, 'summary']);
-        Route::get('orders/export', [AdminOrderController::class, 'export']);
-        Route::apiResource('orders', AdminOrderController::class)->only(['index', 'show']);
+        Route::middleware('menu.access:/admin/vendas')->group(function () {
+            Route::get('orders/summary', [AdminOrderController::class, 'summary']);
+            Route::get('orders/export', [AdminOrderController::class, 'export']);
+            Route::apiResource('orders', AdminOrderController::class)->only(['index', 'show']);
+        });
 
-        Route::apiResource('sellers', AdminSellerController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
-        Route::post('sellers/{seller}/rotate-kit', [AdminSellerController::class, 'rotateKit']);
+        Route::middleware('menu.access:/admin/vendedores')->group(function () {
+            Route::apiResource('sellers', AdminSellerController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
+            Route::post('sellers/{seller}/rotate-kit', [AdminSellerController::class, 'rotateKit']);
+        });
 
-        Route::get('commissions/summary', [AdminSellerCommissionController::class, 'summary']);
-        Route::get('commissions/export', [AdminSellerCommissionController::class, 'export']);
-        Route::get('commissions', [AdminSellerCommissionController::class, 'index']);
-        Route::post('commissions/bulk-pay', [AdminSellerCommissionController::class, 'bulkMarkPaid']);
-        Route::post('commissions/{commission}/pay', [AdminSellerCommissionController::class, 'markPaid']);
+        Route::middleware('menu.access:/admin/comissoes')->group(function () {
+            Route::get('commissions/summary', [AdminSellerCommissionController::class, 'summary']);
+            Route::get('commissions/export', [AdminSellerCommissionController::class, 'export']);
+            Route::get('commissions', [AdminSellerCommissionController::class, 'index']);
+            Route::post('commissions/bulk-pay', [AdminSellerCommissionController::class, 'bulkMarkPaid']);
+            Route::post('commissions/{commission}/pay', [AdminSellerCommissionController::class, 'markPaid']);
+        });
 
         Route::get('company/public-link', [AdminCompanyLinkController::class, 'show']);
-        Route::apiResource('subscriptions', AdminSubscriptionController::class)->only(['index', 'show']);
-        Route::post('subscriptions/{subscription}/cancel', [AdminSubscriptionController::class, 'cancel']);
+        Route::middleware('menu.access:/admin/assinaturas')->group(function () {
+            Route::apiResource('subscriptions', AdminSubscriptionController::class)->only(['index', 'show']);
+            Route::post('subscriptions/{subscription}/cancel', [AdminSubscriptionController::class, 'cancel']);
+        });
 
-        Route::apiResource('gateways', AdminGatewayController::class);
-        Route::apiResource('video-platforms', AdminVideoPlatformController::class)->parameters(['video-platforms' => 'videoPlatform']);
-        Route::apiResource('videos', AdminVideoController::class);
-        Route::get('videos/{video}/playback', [AdminVideoController::class, 'playback']);
-        Route::post('videos/import-url', [AdminVideoController::class, 'importUrl']);
-        Route::post('videos/upload-credentials', [AdminVideoController::class, 'uploadCredentials']);
-        Route::post('videos/sync', [AdminVideoController::class, 'syncAll']);
-        Route::post('videos/{video}/sync', [AdminVideoController::class, 'sync'])->whereNumber('video');
-        Route::apiResource('documents', AdminDocumentController::class);
-        Route::apiResource('attachments', AdminAttachmentController::class);
-        Route::get('storefront', [AdminStorefrontSettingController::class, 'show']);
-        Route::put('storefront', [AdminStorefrontSettingController::class, 'update']);
-        Route::apiResource('banners', AdminBannerController::class);
-        Route::apiResource('certificates', AdminCertificateController::class);
-        Route::post('certificates/{certificate}/transfer-issued', [AdminCertificateController::class, 'transferIssued']);
-        Route::get('certificate-users', [AdminCertificateController::class, 'issued']);
-        Route::post('certificate-users/{certificateUser}/revoke', [AdminCertificateController::class, 'revoke']);
+        Route::middleware('menu.access:/admin/gateways')->group(function () {
+            Route::apiResource('gateways', AdminGatewayController::class);
+        });
+        Route::middleware('menu.access:/admin/video-platforms')->group(function () {
+            Route::apiResource('video-platforms', AdminVideoPlatformController::class)->parameters(['video-platforms' => 'videoPlatform']);
+        });
+        Route::middleware('menu.access:/admin/videos')->group(function () {
+            Route::apiResource('videos', AdminVideoController::class);
+            Route::get('videos/{video}/playback', [AdminVideoController::class, 'playback']);
+            Route::post('videos/import-url', [AdminVideoController::class, 'importUrl']);
+            Route::post('videos/upload-credentials', [AdminVideoController::class, 'uploadCredentials']);
+            Route::post('videos/sync', [AdminVideoController::class, 'syncAll']);
+            Route::post('videos/{video}/sync', [AdminVideoController::class, 'sync'])->whereNumber('video');
+        });
+        Route::middleware('menu.access:/admin/documentos')->group(function () {
+            Route::apiResource('documents', AdminDocumentController::class);
+        });
+        Route::middleware('menu.access:/admin/anexos')->group(function () {
+            Route::apiResource('attachments', AdminAttachmentController::class);
+        });
+        Route::middleware('menu.access:/admin/loja')->group(function () {
+            Route::get('storefront', [AdminStorefrontSettingController::class, 'show']);
+            Route::put('storefront', [AdminStorefrontSettingController::class, 'update']);
+        });
+        Route::middleware('menu.access:/admin/banners')->group(function () {
+            Route::apiResource('banners', AdminBannerController::class);
+        });
+        Route::middleware('menu.access:/admin/certificados')->group(function () {
+            Route::apiResource('certificates', AdminCertificateController::class);
+            Route::post('certificates/{certificate}/transfer-issued', [AdminCertificateController::class, 'transferIssued']);
+            Route::get('certificate-users', [AdminCertificateController::class, 'issued']);
+            Route::post('certificate-users/{certificateUser}/revoke', [AdminCertificateController::class, 'revoke']);
+        });
 
-        Route::delete('comments/bulk', [AdminCommentController::class, 'destroyMany']);
-        Route::apiResource('comments', AdminCommentController::class)->only(['index', 'store', 'destroy']);
-        Route::apiResource('ratings', AdminRatingController::class)->only(['index', 'destroy']);
+        Route::middleware('menu.access:/admin/comentarios')->group(function () {
+            Route::delete('comments/bulk', [AdminCommentController::class, 'destroyMany']);
+            Route::apiResource('comments', AdminCommentController::class)->only(['index', 'store', 'destroy']);
+        });
+        Route::middleware('menu.access:/admin/comentarios')->group(function () {
+            Route::apiResource('ratings', AdminRatingController::class)->only(['index', 'destroy']);
+        });
         Route::get('datalogs', [AdminDatalogController::class, 'index']);
         Route::apiResource('notifications', AdminNotificationController::class)->only(['index', 'show']);
     });

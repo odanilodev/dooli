@@ -59,6 +59,19 @@ class MyMenuTest extends TestCase
             ->assertJsonPath('data.1.name', 'Turmas');
     }
 
+    public function test_admin_sees_all_menus_regardless_of_permission(): void
+    {
+        $first = $this->menu(['name' => 'Cursos', 'link' => '/admin/cursos']);
+        $this->menu(['name' => 'Vídeos', 'link' => '/admin/videos', 'sort_order' => 2]);
+
+        $this->admin->userType->update(['permission_menu' => [$first->id]]);
+
+        $this->withToken($this->apiLogin($this->admin->fresh()))
+            ->getJson('/api/v1/me/menus')
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+    }
+
     public function test_user_sees_only_permitted_menus_with_ancestors(): void
     {
         $section = $this->menu(['name' => 'Administração', 'type' => 'section', 'link' => null]);
