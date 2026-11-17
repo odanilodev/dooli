@@ -44,7 +44,7 @@ class Subscription extends Model
 
     public function storeProduct(): BelongsTo
     {
-        return $this->belongsTo(StoreProduct::class);
+        return $this->belongsTo(StoreProduct::class)->withTrashed();
     }
 
     public function gateway(): BelongsTo

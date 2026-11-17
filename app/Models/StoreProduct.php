@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 #[Fillable([
@@ -22,7 +23,7 @@ use Illuminate\Support\Carbon;
 ])]
 class StoreProduct extends Model
 {
-    use BelongsToCompany, HasFactory, HasImageUrl;
+    use BelongsToCompany, HasFactory, HasImageUrl, SoftDeletes;
 
     protected $attributes = [
         'status' => 'active',
