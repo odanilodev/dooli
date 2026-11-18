@@ -47,6 +47,7 @@
                 title="Enviar imagem"
                 hint="JPG, PNG ou WEBP até 4MB"
                 :file-name="imageFile?.name || ''"
+                :size="'1280 × 720 px (16:9)'"
                 @change="onImagePicked"
               />
               <input :id="`dw-image`" class="form-control" v-model="form.image" placeholder="ou cole uma URL https://...">

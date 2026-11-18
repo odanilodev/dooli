@@ -16,6 +16,7 @@
     <span class="file-picker__body">
       <span class="file-picker__title">{{ fileName || title }}</span>
       <span class="file-picker__hint">{{ hint }}</span>
+      <span v-if="size" class="file-picker__size">Medida recomendada: <strong>{{ size }}</strong></span>
     </span>
   </label>
 </template>
@@ -27,6 +28,7 @@ const props = defineProps({
   accept: { type: String, default: '' },
   title: { type: String, default: 'Escolher arquivo' },
   hint: { type: String, default: '' },
+  size: { type: String, default: '' },
   fileName: { type: String, default: '' },
   disabled: { type: Boolean, default: false },
 });
@@ -69,5 +71,7 @@ function onDrop(event) {
 }
 .file-picker__body{display:flex;flex-direction:column;gap:1px;min-width:0;}
 .file-picker__title{font-size:13px;font-weight:700;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.file-picker__size{font-size:11.5px;color:var(--text-secondary);margin-top:3px;}
+.file-picker__size strong{color:var(--accent);font-weight:800;}
 .file-picker__hint{font-size:11.5px;color:var(--text-muted);}
 </style>

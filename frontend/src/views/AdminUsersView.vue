@@ -77,6 +77,7 @@
             title="Enviar imagem"
             hint="JPG, PNG ou WEBP até 4MB"
             :file-name="form.imageFile?.name || ''"
+            :size="'400 × 400 px (1:1)'"
             @change="onImagePicked"
           />
           <input id="u-image" class="form-control" v-model="form.image" placeholder="ou cole uma URL https://...">

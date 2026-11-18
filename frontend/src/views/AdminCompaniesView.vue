@@ -85,6 +85,7 @@
             accept="image/png,image/jpeg,image/webp"
             title="Escolher logo claro"
             hint="PNG, JPG ou WEBP — até 4MB"
+            :size="'600 × 200 px (PNG, fundo transparente)'"
             @change="onLogoLightPicked"
           />
           <div v-if="logoLightPreview" class="brand-logo-preview is-light">
@@ -98,6 +99,7 @@
             accept="image/png,image/jpeg,image/webp"
             title="Escolher logo escuro"
             hint="PNG, JPG ou WEBP — até 4MB"
+            :size="'600 × 200 px (PNG, fundo transparente)'"
             @change="onLogoDarkPicked"
           />
           <div v-if="logoDarkPreview" class="brand-logo-preview is-dark">
