@@ -84,11 +84,9 @@
             title="Escolher imagem"
             hint="ou arraste e solte · PNG/JPG/WebP · até 4 MB"
             :file-name="form.imageFile?.name"
+            :size="'2560 × 800 px (16:5)'"
             @change="onImagePicked"
           />
-          <span class="banner-size-hint">
-            Medida recomendada: <strong>2560 × 800 px</strong> (16:5)
-          </span>
         </div>
       </div>
 

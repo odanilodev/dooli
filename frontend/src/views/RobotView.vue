@@ -454,10 +454,10 @@ thead th.sorted { color: var(--text-primary); }
 .row-main { cursor: pointer; }
 .row-main:hover td, .row-main.open td { background: rgba(255, 255, 255, .03); }
 tbody tr + tr td { border-top: 1px solid var(--border); }
-.row-detail td { text-align: left; background: rgba(0, 0, 0, .12); }
+.row-detail > td { text-align: left; background: rgba(0, 0, 0, .12); }
 .detail-scroll { max-height: 280px; overflow-y: auto; }
-.mini { font-size: 12px; }
-.mini th { cursor: default; }
+.mini { font-size: 12px; table-layout: fixed; }
+.mini th { cursor: default; position: sticky; top: 0; z-index: 1; background: var(--bg-card); }
 .pos { color: #22c55e; font-weight: 700; }
 .neg { color: #ef4444; font-weight: 700; }
 </style>

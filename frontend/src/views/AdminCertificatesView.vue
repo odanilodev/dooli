@@ -144,6 +144,7 @@
               title="Escolher fundo da grade"
               hint="Sem fundo próprio, a página fica branca · PNG/JPG/WebP · até 4 MB"
               :file-name="form.modulesBackgroundFile?.name"
+              :size="'2400 × 1697 px (A4 paisagem)'"
               @change="onModulesBackgroundPicked"
             />
             <div v-if="form.modulesBackgroundPreview" class="certificate-inline-actions">
@@ -161,6 +162,7 @@
                 title="Escolher fundo"
                 hint="PNG/JPG/WebP · até 4 MB · você poderá recortar"
                 :file-name="form.backgroundFile?.name"
+                :size="'2400 × 1697 px (A4 paisagem)'"
                 @change="onBackgroundPicked"
               />
               <div v-if="form.backgroundPreview" class="certificate-inline-actions">
@@ -176,6 +178,7 @@
                 title="Escolher assinatura"
                 hint="PNG/JPG/WebP · até 4 MB · você poderá recortar"
                 :file-name="form.signatureFile?.name"
+                :size="'1200 × 600 px (PNG, fundo transparente)'"
                 @change="onSignaturePicked"
               />
               <div v-if="form.signaturePreview" class="certificate-inline-actions">

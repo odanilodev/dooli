@@ -56,6 +56,7 @@
             title="Escolher imagem"
             hint="PNG/JPG/WebP · até 4 MB"
             :file-name="form.imageFile?.name"
+            :size="'1280 × 720 px (16:9)'"
             @change="onImagePicked"
           />
         </div>
