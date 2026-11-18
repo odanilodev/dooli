@@ -311,17 +311,32 @@ class TeamService
         $status = $data['status'] ?? GeneralStatus::Active->value;
         $expiresAt = $data['expired_at'] ?? null;
 
-        AccessGrant::query()->withoutGlobalScope('company')->updateOrCreate([
-            'company_id' => $team->company_id,
-            'user_id' => $userId,
-            'team_id' => $team->id,
-            'source_type' => AccessGrantSource::Manual->value,
-            'source_id' => 0,
-        ], [
-            'starts_at' => now(),
-            'expires_at' => $expiresAt ? Carbon::parse($expiresAt) : null,
-            'status' => $status,
-        ]);
+        $expires = $expiresAt ? Carbon::parse($expiresAt) : null;
+
+        // O vínculo da turma é a combinação de todos os acessos (manual, compra, assinatura);
+        // atualizar só o acesso manual deixava outro acesso prevalecer e a data "não salvava".
+        $updated = AccessGrant::query()
+            ->withoutGlobalScope('company')
+            ->where('company_id', $team->company_id)
+            ->where('user_id', $userId)
+            ->where('team_id', $team->id)
+            ->update([
+                'expires_at' => $expires,
+                'status' => $status,
+            ]);
+
+        if ($updated === 0) {
+            AccessGrant::query()->withoutGlobalScope('company')->create([
+                'company_id' => $team->company_id,
+                'user_id' => $userId,
+                'team_id' => $team->id,
+                'source_type' => AccessGrantSource::Manual->value,
+                'source_id' => 0,
+                'starts_at' => now(),
+                'expires_at' => $expires,
+                'status' => $status,
+            ]);
+        }
 
         $this->accessGrants->syncTeamMembership((int) $team->company_id, (int) $team->id, $userId);
 
