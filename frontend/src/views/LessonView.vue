@@ -93,7 +93,12 @@
             <p v-if="currentLesson.content" class="desc-text" v-html="currentLesson.content"></p>
             <p v-else-if="currentLesson.description" class="desc-text" style="white-space:pre-line;">{{ currentLesson.description }}</p>
             <p v-else class="desc-text">Sem descrição para esta aula.</p>
-            <button class="btn btn-primary" :disabled="isCurrentCompleted || completing || isCurrentLocked || isCurrentAwaitingWatch" @click="markCompleted">
+            <button
+              class="btn btn-primary"
+              :disabled="isCurrentCompleted || completing || isCurrentLocked"
+              :aria-disabled="isCurrentAwaitingWatch ? 'true' : null"
+              @click="markCompleted"
+            >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
               <span>{{ isCurrentCompleted ? 'Aula concluída' : (isCurrentLocked ? 'Aula bloqueada' : (isCurrentAwaitingWatch ? 'Assista até o final' : (completing ? 'Salvando...' : 'Marcar como concluída'))) }}</span>
             </button>
@@ -365,7 +370,13 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             Aula anterior
           </button>
-          <button class="btn btn-primary" :disabled="!store.nextLesson || isNextLocked || isCurrentAwaitingWatch" @click="goLesson(store.nextLesson?.id)">
+          <!-- Sem "disabled" nativo quando só falta assistir/liberar: botão desativado não dispara clique e o aviso não apareceria. -->
+          <button
+            class="btn btn-primary"
+            :disabled="!store.nextLesson"
+            :aria-disabled="isNextLocked || isCurrentAwaitingWatch ? 'true' : null"
+            @click="goLesson(store.nextLesson?.id)"
+          >
             Próxima aula
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
@@ -1068,7 +1079,7 @@ async function markCompleted() {
   }
 
   if (isCurrentAwaitingWatch.value) {
-    toast.error('Assista a aula até o final para concluí-la.');
+    toast.warning('Assista a aula até o final para concluí-la.');
 
     return;
   }
