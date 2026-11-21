@@ -130,13 +130,14 @@
                 <td class="pos">{{ signed(row.best_trade) }}</td>
                 <td class="neg">{{ signed(row.worst_trade) }}</td>
                 <td>{{ qty(row.avg_volume) }}</td>
+                <td>{{ money(row.avg_financial_volume) }}</td>
               </tr>
               <tr class="row-detail" v-if="expanded === row.symbol">
                 <td :colspan="columns.length">
                   <p class="muted" v-if="detailLoading">Carregando operações...</p>
                   <div class="detail-scroll" v-else>
                     <table class="mini">
-                      <thead><tr><th>Data</th><th>Abertura</th><th>Entrada</th><th>Fechamento</th><th>Volume</th><th>Resultado</th></tr></thead>
+                      <thead><tr><th>Data</th><th>Abertura</th><th>Entrada</th><th>Fechamento</th><th>Volume</th><th>Vol. financeiro</th><th>Resultado</th></tr></thead>
                       <tbody>
                         <tr v-for="t in detail" :key="t.date">
                           <td>{{ fmtDate(t.date) }}</td>
@@ -144,6 +145,7 @@
                           <td>{{ price(t.entry_price) }}</td>
                           <td>{{ price(t.close) }}</td>
                           <td>{{ qty(t.volume) }}</td>
+                          <td>{{ money(t.financial_volume) }}</td>
                           <td :class="tone(t.result)">{{ signed(t.result) }}%</td>
                         </tr>
                       </tbody>
@@ -200,6 +202,7 @@ const columns = [
   { key: 'best_trade', label: 'Melhor' },
   { key: 'worst_trade', label: 'Pior' },
   { key: 'avg_volume', label: 'Volume médio' },
+  { key: 'avg_financial_volume', label: 'Vol. financeiro médio' },
 ];
 
 const form = reactive({ market: 'crypto', side: 'buy', threshold: 2, start_date: '', end_date: '' });
@@ -282,6 +285,10 @@ const fmtDate = (iso) => (iso ? iso.slice(0, 10).split('-').reverse().join('/') 
 const signed = (v) => `${Number(v) > 0 ? '+' : ''}${Number(v).toFixed(2)}`;
 const tone = (v) => (Number(v) > 0 ? 'pos' : Number(v) < 0 ? 'neg' : '');
 const qty = (v) => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 }));
+const currencySymbols = { b3: 'R$', us: 'US$', crypto: '$' };
+const money = (v) => (v == null
+  ? '—'
+  : `${currencySymbols[lastParams.value?.market ?? form.market] ?? ''} ${Number(v).toLocaleString('pt-BR', { notation: 'compact', maximumFractionDigits: 2 })}`);
 const price = (v) => Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 4 });
 
 function selectMarket(code) {

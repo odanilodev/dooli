@@ -17,6 +17,9 @@ use Illuminate\Support\Facades\DB;
  */
 class DeltaScreenerRobot implements RobotContract
 {
+    /** Volume financeiro nativo da fonte (cripto) ou, sem ele, estimado por volume * fechamento. */
+    private const FINANCIAL_VOLUME = 'COALESCE(c.quote_volume, c.volume * c.close)';
+
     public function rules(): array
     {
         return [
@@ -82,6 +85,7 @@ class DeltaScreenerRobot implements RobotContract
             ->selectRaw("ROUND(MAX({$result}), 4) as best_trade", $b(2))
             ->selectRaw("ROUND(MIN({$result}), 4) as worst_trade", $b(2))
             ->selectRaw('ROUND(AVG(c.volume), 0) as avg_volume')
+            ->selectRaw('ROUND(AVG('.self::FINANCIAL_VOLUME.'), 2) as avg_financial_volume')
             ->selectRaw("ROUND(SUM(CASE WHEN ({$result}) > 0 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as win_rate", $b(2))
             ->groupBy('a.id', 'a.symbol', 'a.name')
             ->orderByDesc('net_result')
@@ -108,6 +112,7 @@ class DeltaScreenerRobot implements RobotContract
         $trades = $this->triggeredCandles($params, $triggered, $b(1))
             ->where('a.symbol', $symbol)
             ->selectRaw('c.date, c.open, c.low, c.high, c.close, c.volume')
+            ->selectRaw('ROUND('.self::FINANCIAL_VOLUME.', 2) as financial_volume')
             ->selectRaw("ROUND({$entry}, 6) as entry_price", $b(1))
             ->selectRaw("ROUND({$result}, 4) as result", $b(2))
             ->orderBy('c.date')

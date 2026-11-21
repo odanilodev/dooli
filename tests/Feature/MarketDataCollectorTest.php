@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\MarketAsset;
 use App\Services\MarketData\MarketDataCollector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -41,10 +42,10 @@ class MarketDataCollectorTest extends TestCase
 
     private function klines(): array
     {
-        // [openTime, open, high, low, close, volume]
+        // [openTime, open, high, low, close, volume, closeTime, quoteVolume]
         return [
-            [strtotime('2026-10-01 00:00:00 UTC') * 1000, '100', '110', '95', '105', '10'],
-            [strtotime('2026-10-02 00:00:00 UTC') * 1000, '105', '112', '100', '108', '12'],
+            [strtotime('2026-10-01 00:00:00 UTC') * 1000, '100', '110', '95', '105', '10', 0, '1030.50'],
+            [strtotime('2026-10-02 00:00:00 UTC') * 1000, '105', '112', '100', '108', '12', 0, '1290.00'],
         ];
     }
 
@@ -59,6 +60,25 @@ class MarketDataCollectorTest extends TestCase
 
         $asset = MarketAsset::query()->where('symbol', 'BTCUSDT')->firstOrFail();
         $this->assertSame(2, $asset->candles()->count());
+    }
+
+    public function test_crypto_stores_the_native_quote_volume_and_backfills_old_candles(): void
+    {
+        Http::fake(['api.binance.com/*' => Http::response($this->klines())]);
+
+        $asset = MarketAsset::query()->create(['market' => 'crypto', 'symbol' => 'BTCUSDT']);
+        // Gravado como o coletor grava (data pura): o Eloquent adicionaria hora no SQLite.
+        DB::table('market_candles')->insert([
+            'market_asset_id' => $asset->id, 'date' => '2026-10-01',
+            'open' => 100, 'high' => 110, 'low' => 95, 'close' => 105, 'volume' => 10,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        app(MarketDataCollector::class)->collect('crypto');
+
+        $this->assertSame(2, $asset->candles()->count());
+        $this->assertEquals(1030.50, $asset->candles()->whereDate('date', '2026-10-01')->value('quote_volume'));
+        $this->assertEquals(1290.00, $asset->candles()->whereDate('date', '2026-10-02')->value('quote_volume'));
     }
 
     public function test_collection_is_idempotent(): void
