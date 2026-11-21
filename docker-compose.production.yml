@@ -10,6 +10,9 @@ x-app-base: &app-base
   build:
     context: .
     dockerfile: docker/app/Dockerfile.production
+    # Build usa a rede do host: no servidor de prod o DNS direto da rede
+    # padrao do Docker (docker0) nao responde, e o apt-get falha.
+    network: host
   image: dooli-app:production
   restart: unless-stopped
   init: true
@@ -55,6 +58,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      network: host
       args:
         VITE_API_URL: ${VITE_API_URL:-/api/v1}
         VITE_COMPANY_ID: ${VITE_COMPANY_ID:-}
