@@ -69,6 +69,16 @@ class MarketDataCollector
         $asset = MarketAsset::query()->firstOrCreate(['market' => $market, 'symbol' => $symbol]);
         $last = $asset->candles()->max('date');
 
+        // Candles de cripto gravados antes do volume financeiro existir: recoleta a partir
+        // do primeiro sem ele (o upsert por ativo+data só preenche o que faltava).
+        if ($market === 'crypto') {
+            $firstWithoutQuote = $asset->candles()->whereNull('quote_volume')->min('date');
+
+            if ($firstWithoutQuote) {
+                $last = Carbon::parse($firstWithoutQuote)->subDay();
+            }
+        }
+
         try {
             $candles = $provider->candles($symbol, $last ? Carbon::parse($last) : null);
         } catch (MarketDataException $e) {
@@ -88,7 +98,10 @@ class MarketDataCollector
                 'updated_at' => $now,
             ], $candles),
             uniqueBy: ['market_asset_id', 'date'],
-            update: ['open', 'high', 'low', 'close', 'volume', 'updated_at'],
+            update: array_values(array_filter(
+                ['open', 'high', 'low', 'close', 'volume', 'quote_volume', 'updated_at'],
+                fn (string $column) => $column !== 'quote_volume' || array_key_exists('quote_volume', $candles[0]),
+            )),
         );
 
         return ['symbol' => $symbol, 'status' => 'ok', 'count' => count($candles), 'message' => null];

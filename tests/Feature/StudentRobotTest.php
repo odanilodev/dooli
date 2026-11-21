@@ -112,7 +112,34 @@ class StudentRobotTest extends TestCase
             ->assertJsonPath('data.rows.0.gains', 1)
             ->assertJsonPath('data.rows.0.losses', 1)
             ->assertJsonPath('data.rows.0.avg_volume', 1000)
+            // Volume financeiro = volume * fechamento: (1000*30.5 + 1000*30.0) / 2.
+            ->assertJsonPath('data.rows.0.avg_financial_volume', 30250)
             ->assertJsonPath('data.summary.total_trades', 2);
+    }
+
+    public function test_native_quote_volume_takes_priority_over_the_estimate(): void
+    {
+        $asset = MarketAsset::query()->create(['market' => 'crypto', 'symbol' => 'BTCUSDT']);
+
+        // Compra a 2% dispara (entrada 98, mínima 95). Estimativa seria 2 * 100 = 200;
+        // o volume financeiro nativo da fonte (180) é o que vale.
+        MarketCandle::query()->create([
+            'market_asset_id' => $asset->id, 'date' => '2026-10-01',
+            'open' => 100, 'high' => 101, 'low' => 95, 'close' => 100,
+            'volume' => 2, 'quote_volume' => 180,
+        ]);
+
+        $token = $this->apiLogin($this->student);
+
+        $this->withToken($token)
+            ->postJson('/api/v1/me/robots/delta-screener/run', $this->params(['market' => 'crypto']))
+            ->assertOk()
+            ->assertJsonPath('data.rows.0.avg_financial_volume', 180);
+
+        $this->withToken($token)
+            ->postJson('/api/v1/me/robots/delta-screener/detail', $this->params(['market' => 'crypto', 'symbol' => 'BTCUSDT']))
+            ->assertOk()
+            ->assertJsonPath('data.trades.0.financial_volume', 180);
     }
 
     public function test_detail_lists_individual_trades(): void
@@ -124,6 +151,7 @@ class StudentRobotTest extends TestCase
 
         $this->assertSame('2026-10-01', substr($response->json('data.trades.0.date'), 0, 10));
         $this->assertEqualsWithDelta(3.7415, (float) $response->json('data.trades.0.result'), 0.0001);
+        $this->assertEqualsWithDelta(30500, (float) $response->json('data.trades.0.financial_volume'), 0.01);
     }
 
     public function test_run_validates_parameters(): void

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['market_asset_id', 'date', 'open', 'high', 'low', 'close', 'volume'])]
+#[Fillable(['market_asset_id', 'date', 'open', 'high', 'low', 'close', 'volume', 'quote_volume'])]
 class MarketCandle extends Model
 {
     protected function casts(): array

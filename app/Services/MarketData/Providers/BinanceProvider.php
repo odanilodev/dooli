@@ -46,6 +46,7 @@ class BinanceProvider implements IntradayProvider, MarketDataProvider
                 'low' => $k[3],
                 'close' => $k[4],
                 'volume' => $k[5],
+                'quote_volume' => $k[7],
             ])
             ->all();
     }
