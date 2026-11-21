@@ -17,6 +17,15 @@ class UpdateCouponRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        // A coluna é NOT NULL (default 0): "sem mínimo" chega como null/vazio.
+        if ($this->has('min_order_amount')
+            && ($this->input('min_order_amount') === null || $this->input('min_order_amount') === '')) {
+            $this->merge(['min_order_amount' => 0]);
+        }
+    }
+
     public function rules(): array
     {
         $couponId = $this->route('coupon')?->id;

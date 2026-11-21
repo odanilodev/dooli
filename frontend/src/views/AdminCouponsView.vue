@@ -336,7 +336,15 @@ function toIso(local) {
 
   const date = new Date(local);
 
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  // Horário "de parede" sem "Z": o Laravel interpreta no timezone da aplicação.
+  // toISOString() enviava UTC e o servidor gravava o valor cru (+3h).
+  const pad = (n) => String(n).padStart(2, '0');
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
 }
 
 function blankToNull(value) {

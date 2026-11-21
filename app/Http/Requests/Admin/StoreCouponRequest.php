@@ -17,6 +17,14 @@ class StoreCouponRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        // A coluna é NOT NULL (default 0): "sem mínimo" chega como null/vazio.
+        if ($this->input('min_order_amount') === null || $this->input('min_order_amount') === '') {
+            $this->merge(['min_order_amount' => 0]);
+        }
+    }
+
     public function rules(): array
     {
         return [

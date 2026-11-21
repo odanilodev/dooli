@@ -77,12 +77,10 @@
               <strong>{{ product.title }}</strong>
               <span>{{ product.access_label }}</span>
             </div>
-            <span class="checkout-product-price">{{ formatCurrency(currentPrice) }}<small v-if="product.is_subscription">/mês</small></span>
-          </div>
-
-          <div v-if="!product.is_subscription" class="form-group">
-            <label for="coupon">Cupom de desconto</label>
-            <input id="coupon" class="form-control" v-model="coupon" placeholder="Opcional">
+            <span class="checkout-product-price">
+              <s v-if="appliedCoupon" class="price-old">{{ formatCurrency(currentPrice) }}</s>
+              {{ formatCurrency(finalPrice) }}<small v-if="product.is_subscription">/mês</small>
+            </span>
           </div>
 
           <div class="form-group">
@@ -164,14 +162,52 @@
           </li>
         </ul>
 
+        <div v-if="!product.is_subscription" class="summary-coupon">
+          <div v-if="appliedCoupon" class="coupon-tag">
+            <span>
+              <svg class="icon" width="14" height="14" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+              <b>{{ appliedCoupon.code }}</b> aplicado
+            </span>
+            <button type="button" class="coupon-link" @click="removeCoupon">Remover</button>
+          </div>
+
+          <template v-else>
+            <button v-if="!showCoupon" type="button" class="coupon-link" @click="openCoupon">Tem um cupom de desconto?</button>
+
+            <div v-else>
+              <div class="coupon-row">
+                <input
+                  id="coupon"
+                  ref="couponInput"
+                  class="form-control"
+                  v-model="coupon"
+                  placeholder="Código do cupom"
+                  aria-label="Código do cupom"
+                  :disabled="applyingCoupon"
+                  @keydown.enter.prevent="applyCoupon"
+                >
+                <button class="btn btn-outline" type="button" :disabled="applyingCoupon || !coupon.trim()" @click="applyCoupon">
+                  {{ applyingCoupon ? 'Validando...' : 'Aplicar' }}
+                </button>
+              </div>
+              <span v-if="couponError" class="form-hint coupon-error">{{ couponError }}</span>
+            </div>
+          </template>
+        </div>
+
         <div class="summary-line">
           <span>Subtotal</span>
           <strong>{{ formatCurrency(currentPrice) }}</strong>
         </div>
 
+        <div v-if="appliedCoupon" class="summary-line summary-discount">
+          <span>Desconto ({{ appliedCoupon.code }})</span>
+          <strong>-{{ formatCurrency(appliedCoupon.discount) }}</strong>
+        </div>
+
         <div class="summary-total">
           <span>Total</span>
-          <strong>{{ formatCurrency(currentPrice) }}<small v-if="product.is_subscription">/mês</small></strong>
+          <strong>{{ formatCurrency(finalPrice) }}<small v-if="product.is_subscription">/mês</small></strong>
         </div>
 
         <p v-if="product.is_subscription" class="summary-note">A primeira cobrança ocorre na autorização. Sem período de teste.</p>
@@ -271,6 +307,11 @@ const error = ref(null);
 const submitting = ref(false);
 const method = ref('pix');
 const coupon = ref('');
+const appliedCoupon = ref(null);
+const applyingCoupon = ref(false);
+const showCoupon = ref(false);
+const couponInput = ref(null);
+const couponError = ref('');
 const cpf = ref('');
 const pix = ref(null);
 const orderId = ref(null);
@@ -302,6 +343,9 @@ const useCardBrick = computed(() => Boolean(
   && gateway.value?.public_key,
 ));
 const currentPrice = computed(() => Number(product.value?.sale) > 0 ? product.value.sale : product.value?.price);
+const finalPrice = computed(() => appliedCoupon.value
+  ? Number(appliedCoupon.value.total)
+  : Number(currentPrice.value) || 0);
 const productPalette = computed(() => paletteAt(Number(product.value?.id) || 0));
 const productIcon = computed(() => productPalette.value.icon);
 const productGrad = computed(() => productPalette.value.grad);
@@ -343,6 +387,55 @@ watch(useCardBrick, async (active) => {
     unmountCardBrick();
   }
 });
+
+// O valor do Brick é fixado na criação: remonta quando o total muda (cupom aplicado/removido).
+watch(finalPrice, async () => {
+  if (useCardBrick.value) {
+    await nextTick();
+    await mountCardBrick();
+  }
+});
+
+async function openCoupon() {
+  showCoupon.value = true;
+  await nextTick();
+  couponInput.value?.focus();
+}
+
+async function applyCoupon() {
+  const code = coupon.value.trim();
+
+  if (!code || applyingCoupon.value) {
+    return;
+  }
+
+  applyingCoupon.value = true;
+  couponError.value = '';
+
+  try {
+    const { data } = await api.post('/me/coupons/validate', {
+      code,
+      items: [{ store_product_id: product.value.id, quantity: 1 }],
+    });
+
+    appliedCoupon.value = data.data;
+    orderId.value = null; // pedido pendente antigo (sem o desconto) não deve ser reaproveitado
+    toast.success('Cupom aplicado!');
+  } catch (e) {
+    appliedCoupon.value = null;
+    couponError.value = e?.message || 'Cupom inválido.';
+  } finally {
+    applyingCoupon.value = false;
+  }
+}
+
+function removeCoupon() {
+  appliedCoupon.value = null;
+  couponError.value = '';
+  coupon.value = '';
+  showCoupon.value = false;
+  orderId.value = null;
+}
 
 function unmountCardBrick() {
   if (brickController) {
@@ -398,7 +491,7 @@ async function mountCardBrick() {
 
     brickController = await mp.bricks().create('cardPayment', 'cardPaymentBrick_container', {
       initialization: {
-        amount: Number(currentPrice.value) || 0,
+        amount: finalPrice.value,
         payer: { email: auth.user?.email || '' },
       },
       customization: {
@@ -434,7 +527,7 @@ async function ensureOrder() {
 
   const order = await api.post('/me/orders', {
     items: [{ store_product_id: product.value.id, quantity: 1 }],
-    coupon_code: coupon.value.trim() || null,
+    coupon_code: appliedCoupon.value?.code || null,
     referral_code: referral.current(companySlug.value) || null,
   });
 
@@ -615,6 +708,23 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.coupon-row{display:flex;gap:10px;}
+.coupon-row .form-control{flex:1;min-width:0;}
+.summary-coupon{padding-bottom:14px;border-bottom:1px solid var(--border);}
+.coupon-link{
+  padding:0;border:0;background:none;color:var(--accent);
+  font-size:12.5px;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px;
+}
+.coupon-tag{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 12px;border-radius:10px;background:var(--accent-soft);color:var(--text-primary);font-size:12.5px;
+}
+.coupon-tag span{display:flex;align-items:center;gap:7px;}
+.coupon-tag svg{color:var(--accent);}
+.coupon-ok{color:#22c55e;}
+.coupon-error{color:#ff6b6b;}
+.price-old{margin-right:6px;color:var(--text-muted);font-size:13px;font-weight:600;}
+.summary-discount strong{color:#22c55e;}
 .card-brick-wrap{display:flex;flex-direction:column;gap:12px;min-width:0;}
 .checkout-page-head{display:flex;flex-direction:column;gap:5px;}
 .checkout-page-head h1{
