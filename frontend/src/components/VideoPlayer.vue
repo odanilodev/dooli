@@ -9,6 +9,11 @@
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
       allowfullscreen
     ></iframe>
+    <div v-if="errorInfo" class="video-error" role="alert">
+      <strong>{{ errorInfo.title }}</strong>
+      <p>{{ errorInfo.text }}</p>
+      <small v-if="errorInfo.code">Código do erro: {{ errorInfo.code }}</small>
+    </div>
   </div>
 </template>
 
@@ -28,6 +33,30 @@ const emit = defineEmits(['progress', 'ready', 'error']);
 const holder = ref(null);
 const iframeEl = ref(null);
 const isYouTube = ref(false);
+const errorInfo = ref(null);
+
+// Códigos do VdoCipher que indicam navegador/sistema sem suporte ao DRM.
+const INCOMPATIBLE_CODES = [2021, 2022, 2023, 2024, 2025];
+
+function reportPlayerError(rawCode) {
+  const code = Number(rawCode) || null;
+
+  if (code && INCOMPATIBLE_CODES.includes(code)) {
+    errorInfo.value = {
+      code,
+      title: 'Seu navegador ou sistema não é compatível com este vídeo',
+      text: 'Atualize o navegador (Chrome, Edge ou Firefox) para a versão mais recente, tente outro navegador ou use o celular. Em computadores com Windows 7/8 pode ser necessário usar outro dispositivo.',
+    };
+  } else {
+    errorInfo.value = {
+      code,
+      title: 'Não foi possível reproduzir o vídeo',
+      text: 'Recarregue a página ou tente em outro navegador. Se o problema continuar, fale com o suporte informando o código abaixo.',
+    };
+  }
+
+  emit('error', errorInfo.value.title);
+}
 
 let teardown = () => {};
 let ytPlayer = null;
@@ -107,13 +136,17 @@ async function bindVdoCipher() {
     emit('ready');
   };
 
+  const onError = () => reportPlayerError(video.error?.code ?? video.error);
+
   video.addEventListener('timeupdate', onTime);
   video.addEventListener('pause', onTime);
   video.addEventListener('ended', onTime);
   video.addEventListener('loadedmetadata', onLoaded);
+  video.addEventListener('error', onError);
 
   teardown = () => {
     try {
+      video.removeEventListener('error', onError);
       video.removeEventListener('timeupdate', onTime);
       video.removeEventListener('pause', onTime);
       video.removeEventListener('ended', onTime);
@@ -234,7 +267,7 @@ onMounted(async () => {
 
     emit('ready');
   } catch (e) {
-    emit('error', 'Não foi possível iniciar o player de vídeo.');
+    reportPlayerError(null);
   }
 });
 
@@ -247,6 +280,27 @@ onBeforeUnmount(() => {
 .video-holder {
   position: absolute;
   inset: 0;
+}
+
+.video-error {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px 18px;
+  background: rgba(15, 15, 20, 0.92);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.4;
+  z-index: 5;
+}
+
+.video-error p {
+  margin: 4px 0;
+}
+
+.video-error small {
+  opacity: 0.7;
 }
 
 .video-holder :deep(iframe) {
