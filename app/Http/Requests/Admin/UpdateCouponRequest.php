@@ -17,6 +17,15 @@ class UpdateCouponRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        // A coluna é NOT NULL (default 0): "sem mínimo" chega como null/vazio.
+        if ($this->has('min_order_amount')
+            && ($this->input('min_order_amount') === null || $this->input('min_order_amount') === '')) {
+            $this->merge(['min_order_amount' => 0]);
+        }
+    }
+
     public function rules(): array
     {
         $couponId = $this->route('coupon')?->id;
@@ -29,7 +38,16 @@ class UpdateCouponRequest extends FormRequest
                     ->where('company_id', (int) $this->user()?->company_id),
             ],
             'type' => ['sometimes', Rule::in(CouponType::values())],
-            'value' => ['sometimes', 'numeric', 'min:0'],
+            'value' => [
+                'sometimes', 'numeric', 'min:0',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    $type = $this->input('type', $this->route('coupon')?->type);
+
+                    if ($type === CouponType::Percent->value && (float) $value > 100) {
+                        $fail('O desconto percentual não pode passar de 100%.');
+                    }
+                },
+            ],
             'status' => ['sometimes', Rule::in(GeneralStatus::values())],
             'starts_at' => ['nullable', 'date'],
             'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],

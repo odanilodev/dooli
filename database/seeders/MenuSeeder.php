@@ -37,6 +37,7 @@ class MenuSeeder extends Seeder
                 ['Produtos', '/admin/produtos', 'store'],
                 ['Vitrine', '/admin/loja', 'storefront'],
                 ['Banners', '/admin/banners', 'banners'],
+                ['Cupons', '/admin/cupons', 'coupons'],
             ],
         ],
         'Comercial' => [

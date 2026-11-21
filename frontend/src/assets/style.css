@@ -264,6 +264,7 @@ html[data-theme="light"] .theme-toggle .knob{left:3px;}
 .btn-primary{background:var(--accent-grad);color:var(--accent-ink);box-shadow:0 10px 22px color-mix(in srgb,var(--accent) 28%,transparent);}
 .btn-primary:hover{filter:brightness(1.06);}
 .btn-primary:disabled{opacity:.6;cursor:default;filter:none;}
+.btn-primary[aria-disabled="true"]{opacity:.6;cursor:not-allowed;filter:none;}
 .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-secondary);}
 .btn-outline:hover{border-color:var(--accent);color:var(--text-primary);}
 .btn-ghost-light{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.35);color:#fff;}

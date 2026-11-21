@@ -223,6 +223,7 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     Route::post('me/subscriptions/{subscription}/cancel', [StudentSubscriptionController::class, 'cancel']);
 
     Route::get('me/orders', [StudentOrderController::class, 'index']);
+    Route::post('me/coupons/validate', [StudentOrderController::class, 'validateCoupon'])->middleware('throttle:30,1');
     Route::post('me/orders', [StudentOrderController::class, 'store']);
     Route::get('me/orders/{order}', [StudentOrderController::class, 'show']);
     Route::post('me/orders/{order}/pay', [StudentOrderController::class, 'pay']);

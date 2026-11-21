@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Student;
 
+use App\DTO\ApplyCouponDTO;
 use App\DTO\CreateOrderDTO;
 use App\DTO\CreatePaymentDTO;
 use App\Enums\OrderStatus;
@@ -16,6 +17,7 @@ use App\Http\Resources\StudentOrderDetailResource;
 use App\Http\Resources\StudentOrderResource;
 use App\Models\Gateway;
 use App\Models\Order;
+use App\Services\CouponService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Support\ApiResponse;
@@ -27,7 +29,34 @@ class OrderController extends ApiController
     public function __construct(
         private readonly OrderService $orders,
         private readonly PaymentService $payments,
+        private readonly CouponService $coupons,
     ) {}
+
+    /**
+     * Pré-visualiza o desconto de um cupom no checkout (não consome o cupom nem cria pedido).
+     * Reaproveita a mesma validação usada na criação do pedido.
+     */
+    public function validateCoupon(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:255'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.store_product_id' => ['required', 'integer'],
+            'items.*.quantity' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $result = $this->coupons->validate(
+            new ApplyCouponDTO(trim($data['code']), $data['items']),
+            $request->user(),
+        );
+
+        return ApiResponse::success([
+            'code' => $result['coupon']->code,
+            'subtotal' => $result['subtotal'],
+            'discount' => $result['discount'],
+            'total' => $result['total'],
+        ]);
+    }
 
     public function index(Request $request): JsonResponse
     {
