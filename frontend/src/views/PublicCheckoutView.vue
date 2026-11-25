@@ -635,7 +635,13 @@ function removeCoupon() {
   orderId.value = null;
 }
 
+// Cada montagem recebe um número; se outra começar (ou o formulário for desmontado) enquanto
+// a anterior ainda está sendo criada, a antiga é descartada em vez de ficar empilhada no container.
+let brickSeq = 0;
+
 function unmountCardBrick() {
+  brickSeq += 1;
+
   if (brickController) {
     try {
       brickController.unmount();
@@ -679,15 +685,35 @@ function brickCustomVariables() {
   };
 }
 
-async function mountCardBrick() {
+// As criações rodam uma de cada vez: duas ao mesmo tempo renderizariam no mesmo container.
+let brickChain = Promise.resolve();
+
+function mountCardBrick() {
   unmountCardBrick();
+  const seq = brickSeq;
+
+  brickChain = brickChain.then(() => createBrick(seq));
+
+  return brickChain;
+}
+
+async function createBrick(seq) {
+  if (seq !== brickSeq) {
+    return;
+  }
+
   brickLoading.value = true;
 
   try {
     const MercadoPago = await loadMercadoPago();
+
+    if (seq !== brickSeq) {
+      return;
+    }
+
     const mp = new MercadoPago(gateway.value.public_key, { locale: 'pt-BR' });
 
-    brickController = await mp.bricks().create('cardPayment', 'cardPaymentBrick_container', {
+    const controller = await mp.bricks().create('cardPayment', 'cardPaymentBrick_container', {
       initialization: {
         amount: payAmount.value,
         payer: { email: auth.user?.email || '' },
@@ -712,7 +738,24 @@ async function mountCardBrick() {
         },
       },
     });
+
+    if (seq !== brickSeq) {
+      // Outra montagem começou enquanto esta era criada: descarta esta para não duplicar o formulário.
+      try {
+        controller.unmount();
+      } catch (e) {
+        /* já desmontado */
+      }
+
+      return;
+    }
+
+    brickController = controller;
   } catch (e) {
+    if (seq !== brickSeq) {
+      return;
+    }
+
     brickLoading.value = false;
     toast.error(e?.message || 'Não foi possível carregar o pagamento por cartão.');
   }
