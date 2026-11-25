@@ -80,6 +80,16 @@ class PaymentService
             throw new PaymentException('Pedido cancelado.', 'order_canceled');
         }
 
+        // Pagamento combinado: cada parte não pode passar do que ainda falta pagar no pedido.
+        $remaining = $this->remainingAmount($order);
+
+        if ($dto->amount <= 0 || round($dto->amount, 2) > $remaining) {
+            throw new PaymentException(
+                'O valor informado excede o saldo restante do pedido (R$ '.number_format($remaining, 2, ',', '.').').',
+                'payment_amount_exceeded',
+            );
+        }
+
         $gateway = $this->gateways->findOrFail($dto->gatewayId);
 
         return DB::transaction(function () use ($order, $gateway, $dto) {
@@ -143,6 +153,20 @@ class PaymentService
         });
     }
 
+    /** Soma dos pagamentos já confirmados do pedido (pagamento combinado: PIX + cartão etc.). */
+    public function paidAmount(Order $order): float
+    {
+        return round((float) $order->payments()
+            ->where('status', PaymentStatus::Paid->value)
+            ->sum('amount'), 2);
+    }
+
+    /** Quanto ainda falta pagar no pedido. */
+    public function remainingAmount(Order $order): float
+    {
+        return max(0.0, round((float) $order->total - $this->paidAmount($order), 2));
+    }
+
     /**
      * Mensagem amigável para um pagamento de cartão recusado (status_detail do Mercado Pago).
      */
@@ -177,6 +201,13 @@ class PaymentService
 
         if ($order->status === OrderStatus::Canceled->value) {
             throw new PaymentException('Pedido cancelado.', 'order_canceled');
+        }
+
+        if ($this->paidAmount($order) > 0) {
+            throw new PaymentException(
+                'Este pedido já tem uma parte paga. Complete o restante com o formulário de cartão ou PIX.',
+                'split_card_unsupported',
+            );
         }
 
         $adapter = $this->gatewayManager->for($gateway);
@@ -275,6 +306,16 @@ class PaymentService
                 'paid_at' => $paidAt,
             ]);
 
+            // Pagamento combinado: enquanto a soma dos pagamentos não cobrir o total, o pedido
+            // continua pendente e o acesso não é liberado.
+            $remaining = $this->remainingAmount($order);
+
+            if ($remaining > 0) {
+                $this->recordPartialPayment($order, $payment, $paidAt, $remaining, $context);
+
+                return $payment->refresh();
+            }
+
             $order->update(['status' => OrderStatus::Paid->value]);
 
             if ($order->subscription_id) {
@@ -352,6 +393,49 @@ class PaymentService
     }
 
     /**
+     * Registra a confirmação de uma parte do pagamento combinado (o pedido segue pendente).
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function recordPartialPayment(Order $order, Payment $payment, Carbon $paidAt, float $remaining, array $context): void
+    {
+        $missing = 'R$ '.number_format($remaining, 2, ',', '.');
+
+        PaymentEvent::query()->create([
+            'payment_id' => $payment->id,
+            'status' => PaymentEventStatus::Processed->value,
+            'event' => 'payment.partial_paid',
+            'description' => "Parte do pagamento confirmada. Ainda falta {$missing}.",
+            'metadata' => [...$context, 'paid_at' => $paidAt->toIso8601String(), 'remaining' => $remaining],
+        ]);
+
+        $this->orderEvents->record($order, OrderEventType::PaymentApproved, [
+            'payment_id' => $payment->id,
+            'status' => PaymentStatus::Paid->value,
+            'description' => "Parte do pagamento confirmada. Ainda falta {$missing} para liberar o acesso.",
+            'actor_type' => OrderEventActorType::Gateway->value,
+            'actor_name' => $payment->gateway?->name,
+            'source_type' => 'payment',
+            'source_id' => (int) $payment->id,
+            'occurred_at' => $paidAt,
+            'metadata' => [
+                'payment_id' => $payment->id,
+                'method' => $payment->method,
+                'amount' => (float) $payment->amount,
+                'remaining' => $remaining,
+                'partial' => true,
+            ],
+        ]);
+
+        $this->audit->log('payment', 'confirm', 'payment', "Pagamento parcial confirmado: {$payment->id}");
+
+        $this->notifyPayment($order, $payment, NotificationSlug::PaymentApproved, [
+            'message' => 'Recebemos R$ '.number_format((float) $payment->amount, 2, ',', '.')
+                ." do seu pagamento. Ainda falta {$missing} para liberar o acesso.",
+        ]);
+    }
+
+    /**
      * Regra do direito de arrependimento: pedido pago, de compra única, dentro de 7 dias do pagamento.
      *
      * @return array{eligible: bool, deadline: ?Carbon, payment: ?Payment, message: ?string}
@@ -408,7 +492,15 @@ class PaymentService
             $description .= ' Motivo: '.trim($reason);
         }
 
-        return $this->refund($eligibility['payment'], null, $description);
+        // Pagamento combinado: estorna todas as partes pagas do pedido.
+        $paidPayments = $order->payments->where('status', PaymentStatus::Paid->value);
+        $last = $eligibility['payment'];
+
+        foreach ($paidPayments as $paidPayment) {
+            $last = $this->refund($paidPayment, null, $description);
+        }
+
+        return $last;
     }
 
     /**
@@ -469,10 +561,19 @@ class PaymentService
 
             $fullyRefunded = $amount >= $refundable;
 
+            // Pagamento combinado: o pedido só é estornado (e o acesso encerrado) quando
+            // não resta nenhum pagamento confirmado nele.
+            $orderRefunded = false;
+
             if ($fullyRefunded) {
                 $payment = $this->payments->update($payment, ['status' => PaymentStatus::Refunded->value]);
-                $order->update(['status' => OrderStatus::Refunded->value]);
-                $this->revokeOrderAccess($order);
+
+                $orderRefunded = ! $order->payments()->where('status', PaymentStatus::Paid->value)->exists();
+
+                if ($orderRefunded) {
+                    $order->update(['status' => OrderStatus::Refunded->value]);
+                    $this->revokeOrderAccess($order);
+                }
             }
 
             $this->sellerCommissions->applyOrderRefunds($order->refresh());
@@ -499,7 +600,7 @@ class PaymentService
                 ],
             ]);
 
-            if ($fullyRefunded) {
+            if ($orderRefunded) {
                 $this->orderEvents->record($order, OrderEventType::OrderRefunded, [
                     'status' => OrderStatus::Refunded->value,
                     'description' => 'O valor da compra foi devolvido integralmente.',
@@ -551,8 +652,14 @@ class PaymentService
         $payment = $this->payments->update($payment, [
             'status' => PaymentStatus::Refunded->value,
         ]);
-        $order->update(['status' => OrderStatus::Refunded->value]);
-        $this->revokeOrderAccess($order);
+
+        // Pagamento combinado: só encerra o pedido quando não resta pagamento confirmado.
+        $orderRefunded = ! $order->payments()->where('status', PaymentStatus::Paid->value)->exists();
+
+        if ($orderRefunded) {
+            $order->update(['status' => OrderStatus::Refunded->value]);
+            $this->revokeOrderAccess($order);
+        }
 
         $this->sellerCommissions->applyOrderRefunds($order->refresh());
 
@@ -571,15 +678,17 @@ class PaymentService
             ],
         ]);
 
-        $this->orderEvents->record($order, OrderEventType::OrderRefunded, [
-            'status' => OrderStatus::Refunded->value,
-            'description' => 'O valor da compra foi devolvido.',
-            'actor_type' => OrderEventActorType::Gateway->value,
-            'actor_name' => $gatewayName,
-            'source_type' => 'order',
-            'source_id' => (int) $order->id,
-            'occurred_at' => $refundedAt,
-        ]);
+        if ($orderRefunded) {
+            $this->orderEvents->record($order, OrderEventType::OrderRefunded, [
+                'status' => OrderStatus::Refunded->value,
+                'description' => 'O valor da compra foi devolvido.',
+                'actor_type' => OrderEventActorType::Gateway->value,
+                'actor_name' => $gatewayName,
+                'source_type' => 'order',
+                'source_id' => (int) $order->id,
+                'occurred_at' => $refundedAt,
+            ]);
+        }
 
         $this->notifyPayment($order, $payment, NotificationSlug::PaymentRefunded, [
             'dedupe' => "payment_refunded_webhook:{$payment->id}",

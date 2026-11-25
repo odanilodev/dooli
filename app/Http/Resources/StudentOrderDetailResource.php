@@ -22,6 +22,8 @@ class StudentOrderDetailResource extends JsonResource
             'subtotal' => $this->subtotal,
             'discount' => $this->discount,
             'total' => $this->total,
+            'paid_amount' => app(PaymentService::class)->paidAmount($this->resource),
+            'remaining_amount' => app(PaymentService::class)->remainingAmount($this->resource),
             'period_start' => $this->period_start?->toIso8601String(),
             'period_end' => $this->period_end?->toIso8601String(),
             'refund' => [

@@ -24,6 +24,9 @@ class PayOrderRequest extends FormRequest
             ],
             'method' => ['required', Rule::in(['pix', 'credit_card'])],
 
+            // Pagamento combinado: valor desta parte. Sem ele, paga o saldo restante do pedido.
+            'amount' => ['nullable', 'numeric', 'min:1', 'decimal:0,2'],
+
             // Checkout transparente (cartão): dados gerados pelo Card Payment Brick do Mercado Pago.
             'card_token' => ['nullable', 'string', 'max:255', 'required_with:card_payment_method_id'],
             'card_payment_method_id' => ['nullable', 'string', 'max:60'],
