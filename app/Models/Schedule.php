@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * released only when every applicable date (course, module and lesson) has
  * passed — the most restrictive one wins.
  */
-#[Fillable(['company_id', 'team_id', 'schedulable_type', 'schedulable_id', 'available_at'])]
+#[Fillable(['company_id', 'team_id', 'schedulable_type', 'schedulable_id', 'available_at', 'duration_days', 'expires_at'])]
 class Schedule extends Model
 {
     use BelongsToCompany, HasFactory;
@@ -23,6 +23,7 @@ class Schedule extends Model
     {
         return [
             'available_at' => 'datetime',
+            'expires_at' => 'datetime',
         ];
     }
 

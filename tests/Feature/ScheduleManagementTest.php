@@ -193,4 +193,93 @@ class ScheduleManagementTest extends TestCase
             ->assertJsonPath('data.modules.0.topics.0.lessons.0.is_locked', true)
             ->assertJsonPath('data.modules.0.topics.0.lessons.0.available_at', $when->toIso8601String());
     }
+
+    public function test_admin_can_set_a_duration_and_expiration_is_computed(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $this->team = $this->enroll($this->student, $data['course'], $this->company->id);
+        $start = now()->addDay()->startOfMinute();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/teams/{$this->team->id}/schedules", [
+                'schedulable_type' => 'course',
+                'schedulable_id' => $data['course']->id,
+                'available_at' => $start->toDateTimeString(),
+                'duration_days' => 30,
+            ])
+            ->assertOk();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson("/api/v1/admin/teams/{$this->team->id}/schedules")
+            ->assertOk()
+            ->assertJsonPath('data.0.duration_days', 30)
+            ->assertJsonPath('data.0.expires_at', $start->copy()->addDays(30)->toIso8601String());
+    }
+
+    public function test_duration_must_be_a_positive_integer(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $this->team = $this->enroll($this->student, $data['course'], $this->company->id);
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->putJson("/api/v1/admin/teams/{$this->team->id}/schedules", [
+                'schedulable_type' => 'course',
+                'schedulable_id' => $data['course']->id,
+                'available_at' => now()->toDateTimeString(),
+                'duration_days' => 0,
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_student_cannot_start_a_lesson_after_the_course_expired(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $this->team = $this->enroll($this->student, $data['course'], $this->company->id);
+        Schedule::query()->create([
+            'company_id' => $this->company->id,
+            'team_id' => $this->team->id,
+            'schedulable_type' => 'course',
+            'schedulable_id' => $data['course']->id,
+            'available_at' => now()->subDays(10),
+            'duration_days' => 5,
+            'expires_at' => now()->subDays(5),
+        ]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->postJson('/api/v1/me/progress/start', [
+                'lesson_id' => $data['lesson']->id,
+                'course_id' => $data['course']->id,
+                'team_id' => $this->team->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'business_rule');
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson("/api/v1/me/courses/{$data['course']->id}")
+            ->assertOk()
+            ->assertJsonPath('data.is_locked', true);
+    }
+
+    public function test_student_can_start_a_lesson_before_the_course_expires(): void
+    {
+        $data = $this->buildCourse($this->company->id);
+        $this->team = $this->enroll($this->student, $data['course'], $this->company->id);
+        Schedule::query()->create([
+            'company_id' => $this->company->id,
+            'team_id' => $this->team->id,
+            'schedulable_type' => 'course',
+            'schedulable_id' => $data['course']->id,
+            'available_at' => now()->subDay(),
+            'duration_days' => 30,
+            'expires_at' => now()->addDays(29),
+        ]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->postJson('/api/v1/me/progress/start', [
+                'lesson_id' => $data['lesson']->id,
+                'course_id' => $data['course']->id,
+                'team_id' => $this->team->id,
+            ])
+            ->assertOk();
+    }
 }

@@ -779,11 +779,11 @@ class ReportService
         $locked = [];
 
         foreach ($teamIds as $teamId) {
-            $map = $maps[$teamId] ?? ['course' => [], 'module' => [], 'lesson' => []];
+            $map = $maps[$teamId] ?? $this->schedules->emptyMap();
 
             foreach ($courseLessons as $courseId => $lessons) {
                 foreach ($lessons as $lessonId => $moduleId) {
-                    if ($this->schedules->locked($this->schedules->effectiveAt($map, $courseId, $moduleId, $lessonId))) {
+                    if ($this->schedules->isLocked($map, $courseId, $moduleId, $lessonId)) {
                         $locked[$teamId][$courseId][$lessonId] = true;
                     }
                 }
@@ -805,10 +805,10 @@ class ReportService
         $locked = [];
 
         foreach ($teamIds as $teamId) {
-            $map = $maps[$teamId] ?? ['course' => [], 'module' => [], 'lesson' => []];
+            $map = $maps[$teamId] ?? $this->schedules->emptyMap();
 
             foreach ($courseIds as $courseId) {
-                if ($this->schedules->locked($this->schedules->effectiveAt($map, $courseId, $moduleId, $lessonId))) {
+                if ($this->schedules->isLocked($map, $courseId, $moduleId, $lessonId)) {
                     $locked[$teamId] = true;
                     break;
                 }
@@ -836,11 +836,9 @@ class ReportService
             ->whereIn('team_id', $teamIds)
             ->get()
             ->each(function ($schedule) use (&$maps) {
-                $level = $schedule->schedulable_type;
-
-                if ($schedule->available_at !== null && in_array($level, ['course', 'module', 'lesson'], true)) {
-                    $maps[(int) $schedule->team_id][$level][(int) $schedule->schedulable_id] = $schedule->available_at;
-                }
+                $teamId = (int) $schedule->team_id;
+                $maps[$teamId] ??= $this->schedules->emptyMap();
+                $this->schedules->addToMap($maps[$teamId], $schedule);
             });
 
         return $maps;

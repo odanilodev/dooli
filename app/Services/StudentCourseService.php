@@ -207,6 +207,9 @@ class StudentCourseService
         );
 
         $this->schedules->assertLessonAvailable($availableAt);
+        $this->schedules->assertLessonNotExpired(
+            $this->schedules->expiresForLesson($teamId, $courseId, $lesson->module_id, $lesson->id),
+        );
     }
 
     public function courseContent(User $user, int $courseId, ?int $teamId = null): Course
