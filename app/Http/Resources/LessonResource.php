@@ -28,6 +28,10 @@ class LessonResource extends JsonResource
                 ($this->schedule_available_at ?? null) !== null,
                 fn () => $this->schedule_available_at?->toIso8601String(),
             ),
+            'expires_at' => $this->when(
+                ($this->schedule_expires_at ?? null) !== null,
+                fn () => $this->schedule_expires_at?->toIso8601String(),
+            ),
             'is_locked' => $this->when(
                 ($this->schedule_available_at ?? null) !== null,
                 fn () => (bool) $this->schedule_locked,

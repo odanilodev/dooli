@@ -211,6 +211,26 @@
                 <input id="td-sched-at" class="form-control" type="datetime-local" v-model="builder.availableAt">
               </div>
 
+              <div class="form-group">
+                <label for="td-sched-duration">Duração do acesso</label>
+                <select id="td-sched-duration" class="form-control" v-model="builder.duration">
+                  <option value="none">Sem expiração</option>
+                  <option v-for="d in DURATION_PRESETS" :key="d" :value="String(d)">{{ d }} dias</option>
+                  <option value="custom">Personalizado...</option>
+                </select>
+                <input
+                  v-if="builder.duration === 'custom'"
+                  class="form-control td-duration-custom"
+                  type="number"
+                  min="1"
+                  max="3650"
+                  step="1"
+                  placeholder="Quantidade de dias"
+                  v-model="builder.customDays"
+                >
+                <p v-if="expiresPreview" class="form-hint">Acesso encerra em {{ expiresPreview }}.</p>
+              </div>
+
               <p v-if="builder.editingId" class="form-hint">Este item já tem agendamento. Os campos foram carregados para edição.</p>
 
               <div class="td-builder-actions">
@@ -234,6 +254,9 @@
                   </span>
                   <span class="td-sched-when">
                     {{ formatDateTime(s.effectiveAt) }}
+                    <span v-if="s.expiresAt" class="td-sched-expires" :class="{ done: new Date(s.expiresAt) < new Date() }">
+                      {{ new Date(s.expiresAt) < new Date() ? 'expirou' : 'expira' }} em {{ formatDateTime(s.expiresAt) }}
+                    </span>
                     <span v-if="s.coveredBy" class="td-sched-cover" :title="`Data própria: ${formatDateTime(s.availableAt)}`">coberto por {{ levelLabel(s.coveredBy.type).toLowerCase() }}</span>
                   </span>
                   <button type="button" class="btn btn-outline btn-sm" @click="editSchedule(s)">Editar</button>
@@ -399,8 +422,38 @@ const searchingCourses = ref(false);
 const schedules = ref([]);
 const schedulesLoading = ref(false);
 const scheduleBusy = ref(false);
-const builder = reactive({ level: 'course', courseId: '', moduleId: '', lessonId: '', availableAt: '', editingId: null });
+const builder = reactive({ level: 'course', courseId: '', moduleId: '', lessonId: '', availableAt: '', duration: 'none', customDays: '', editingId: null });
 let schedulesLoaded = false;
+
+const DURATION_PRESETS = [7, 15, 30, 60, 90, 180, 365];
+
+const durationDays = computed(() => {
+  if (builder.duration === 'none') return null;
+  const value = builder.duration === 'custom' ? Number(builder.customDays) : Number(builder.duration);
+
+  return Number.isInteger(value) && value >= 1 && value <= 3650 ? value : null;
+});
+
+const expiresPreview = computed(() => {
+  if (!builder.availableAt || !durationDays.value) return '';
+  const date = new Date(builder.availableAt);
+  date.setDate(date.getDate() + durationDays.value);
+
+  return formatDateTime(date.toISOString());
+});
+
+function setDuration(days) {
+  if (!days) {
+    builder.duration = 'none';
+    builder.customDays = '';
+  } else if (DURATION_PRESETS.includes(days)) {
+    builder.duration = String(days);
+    builder.customDays = '';
+  } else {
+    builder.duration = 'custom';
+    builder.customDays = String(days);
+  }
+}
 
 const SCHEDULE_LEVELS = { course: 'Curso', module: 'Módulo', lesson: 'Aula' };
 
@@ -412,13 +465,13 @@ const flatItems = computed(() => {
   const items = [];
 
   for (const course of schedules.value) {
-    items.push({ type: 'course', id: course.id, name: course.name, path: 'Todo o curso', availableAt: course.available_at, courseId: course.id, moduleId: null });
+    items.push({ type: 'course', id: course.id, name: course.name, path: 'Todo o curso', availableAt: course.available_at, expiresAt: course.expires_at, durationDays: course.duration_days, courseId: course.id, moduleId: null });
 
     for (const module of course.modules ?? []) {
-      items.push({ type: 'module', id: module.id, name: module.name, path: course.name, availableAt: module.available_at, courseId: course.id, moduleId: module.id });
+      items.push({ type: 'module', id: module.id, name: module.name, path: course.name, availableAt: module.available_at, expiresAt: module.expires_at, durationDays: module.duration_days, courseId: course.id, moduleId: module.id });
 
       for (const lesson of module.lessons ?? []) {
-        items.push({ type: 'lesson', id: lesson.id, name: lesson.name, path: `${course.name} › ${module.name}`, availableAt: lesson.available_at, courseId: course.id, moduleId: module.id });
+        items.push({ type: 'lesson', id: lesson.id, name: lesson.name, path: `${course.name} › ${module.name}`, availableAt: lesson.available_at, expiresAt: lesson.expires_at, durationDays: lesson.duration_days, courseId: course.id, moduleId: module.id });
       }
     }
   }
@@ -489,7 +542,11 @@ const currentTarget = computed(() => {
 });
 
 const currentTargetKey = computed(() => (currentTarget.value ? `${currentTarget.value.type}${currentTarget.value.id}` : null));
-const canSubmitSchedule = computed(() => Boolean(currentTarget.value && builder.availableAt));
+const canSubmitSchedule = computed(() => Boolean(
+  currentTarget.value
+  && builder.availableAt
+  && (builder.duration !== 'custom' || durationDays.value),
+));
 
 let studentTimer = null;
 let courseTimer = null;
@@ -700,6 +757,7 @@ function setBuilderLevel(level) {
 
   builder.editingId = null;
   builder.availableAt = '';
+  setDuration(null);
 }
 
 function editSchedule(entry) {
@@ -708,12 +766,14 @@ function editSchedule(entry) {
   builder.moduleId = entry.type === 'course' ? '' : entry.moduleId;
   builder.lessonId = entry.type === 'lesson' ? entry.id : '';
   builder.availableAt = toDateTimeInput(entry.availableAt);
+  setDuration(entry.durationDays);
   builder.editingId = `${entry.type}${entry.id}`;
 }
 
 function cancelScheduleEdit() {
   builder.editingId = null;
   builder.availableAt = '';
+  setDuration(null);
 }
 
 async function submitSchedule() {
@@ -730,6 +790,7 @@ async function submitSchedule() {
       schedulable_type: target.type,
       schedulable_id: target.id,
       available_at: builder.availableAt,
+      duration_days: durationDays.value,
     });
     await loadSchedules();
     builder.editingId = currentTargetKey.value;
@@ -770,12 +831,14 @@ watch(() => builder.courseId, () => {
   builder.moduleId = '';
   builder.lessonId = '';
   builder.availableAt = '';
+  setDuration(null);
   builder.editingId = null;
 }, { flush: 'sync' });
 
 watch(() => builder.moduleId, () => {
   builder.lessonId = '';
   builder.availableAt = '';
+  setDuration(null);
   builder.editingId = null;
 }, { flush: 'sync' });
 
@@ -788,9 +851,11 @@ watch(currentTargetKey, (key) => {
 
   if (existing?.availableAt) {
     builder.availableAt = toDateTimeInput(existing.availableAt);
+    setDuration(existing.durationDays);
     builder.editingId = key;
   } else {
     builder.availableAt = '';
+    setDuration(null);
     builder.editingId = null;
   }
 });
@@ -1075,6 +1140,9 @@ onBeforeUnmount(() => {
 .td-sched-badge.module{background:rgba(59,130,246,.15);color:#3b82f6;}
 .td-sched-badge.lesson{background:rgba(148,163,184,.18);color:var(--text-secondary);}
 .td-sched-when{font-size:11.5px;color:var(--text-secondary);white-space:nowrap;text-align:right;}
+.td-duration-custom{margin-top:8px;}
+.td-sched-expires{display:block;margin-top:2px;font-size:10px;font-weight:700;color:#0e7490;}
+.td-sched-expires.done{color:#dc2626;}
 .td-sched-cover{display:block;margin-top:2px;font-size:10px;font-weight:700;letter-spacing:.2px;color:#b45309;text-transform:none;}
 .td-sched-clear{
   display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex-shrink:0;padding:0;

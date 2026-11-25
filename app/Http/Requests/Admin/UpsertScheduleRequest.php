@@ -19,6 +19,7 @@ class UpsertScheduleRequest extends FormRequest
             'schedulable_type' => ['required', Rule::in(ScheduleLevel::values())],
             'schedulable_id' => ['required', 'integer'],
             'available_at' => ['nullable', 'date'],
+            'duration_days' => ['nullable', 'integer', 'min:1', 'max:3650'],
         ];
     }
 }

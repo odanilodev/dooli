@@ -30,6 +30,7 @@ class ScheduleController extends ApiController
             level: ScheduleLevel::from($request->validated('schedulable_type')),
             id: (int) $request->validated('schedulable_id'),
             availableAt: $request->validated('available_at'),
+            durationDays: $request->validated('duration_days'),
         );
 
         return ApiResponse::success(['message' => 'Agendamento salvo.']);

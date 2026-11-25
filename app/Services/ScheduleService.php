@@ -23,20 +23,77 @@ class ScheduleService
      */
     public function forTeam(Team $team): array
     {
-        $map = ['course' => [], 'module' => [], 'lesson' => []];
+        $map = $this->emptyMap();
 
         Schedule::query()
             ->where('team_id', $team->id)
             ->get()
             ->each(function (Schedule $schedule) use (&$map) {
-                $level = $schedule->schedulable_type;
-
-                if (isset($map[$level]) && $schedule->available_at !== null) {
-                    $map[$level][(int) $schedule->schedulable_id] = $schedule->available_at;
-                }
+                $this->addToMap($map, $schedule);
             });
 
         return $map;
+    }
+
+    /**
+     * @return array{course: array, module: array, lesson: array, expires: array{course: array, module: array, lesson: array}}
+     */
+    public function emptyMap(): array
+    {
+        return [
+            'course' => [], 'module' => [], 'lesson' => [],
+            'expires' => ['course' => [], 'module' => [], 'lesson' => []],
+        ];
+    }
+
+    public function addToMap(array &$map, Schedule $schedule): void
+    {
+        $level = $schedule->schedulable_type;
+
+        if (! in_array($level, ['course', 'module', 'lesson'], true) || $schedule->available_at === null) {
+            return;
+        }
+
+        $map[$level][(int) $schedule->schedulable_id] = $schedule->available_at;
+
+        if ($schedule->expires_at !== null) {
+            $map['expires'][$level][(int) $schedule->schedulable_id] = $schedule->expires_at;
+        }
+    }
+
+    /**
+     * Earliest expiration among the course, module and lesson schedules: once
+     * any of them expires, the content is closed.
+     */
+    public function expiresAt(array $map, int $courseId, ?int $moduleId, ?int $lessonId): ?Carbon
+    {
+        $dates = array_filter([
+            $map['expires']['course'][$courseId] ?? null,
+            $moduleId ? ($map['expires']['module'][$moduleId] ?? null) : null,
+            $lessonId ? ($map['expires']['lesson'][$lessonId] ?? null) : null,
+        ]);
+
+        if ($dates === []) {
+            return null;
+        }
+
+        return collect($dates)->reduce(
+            fn (?Carbon $carry, Carbon $date) => $carry === null || $date->lessThan($carry) ? $date : $carry,
+        );
+    }
+
+    public function expired(?Carbon $expiresAt): bool
+    {
+        return $expiresAt !== null && $expiresAt->isPast();
+    }
+
+    /**
+     * Not yet released or already expired.
+     */
+    public function isLocked(array $map, int $courseId, ?int $moduleId, ?int $lessonId): bool
+    {
+        return $this->locked($this->effectiveAt($map, $courseId, $moduleId, $lessonId))
+            || $this->expired($this->expiresAt($map, $courseId, $moduleId, $lessonId));
     }
 
     /**
@@ -74,6 +131,18 @@ class ScheduleService
         ?int $lessonId,
         array $dripDates = [],
     ): ?Carbon {
+        $map = $this->lessonMap($teamId, $courseId, $moduleId, $lessonId);
+
+        return $this->effectiveAt($this->withDrip($map, $dripDates), $courseId, $moduleId, $lessonId);
+    }
+
+    public function expiresForLesson(int $teamId, int $courseId, ?int $moduleId, ?int $lessonId): ?Carbon
+    {
+        return $this->expiresAt($this->lessonMap($teamId, $courseId, $moduleId, $lessonId), $courseId, $moduleId, $lessonId);
+    }
+
+    private function lessonMap(int $teamId, int $courseId, ?int $moduleId, ?int $lessonId): array
+    {
         $targets = [
             ScheduleLevel::Course->value => $courseId,
             ScheduleLevel::Module->value => $moduleId,
@@ -91,15 +160,13 @@ class ScheduleService
             })
             ->get();
 
-        $map = ['course' => [], 'module' => [], 'lesson' => []];
+        $map = $this->emptyMap();
 
         foreach ($rows as $row) {
-            if ($row->available_at !== null) {
-                $map[$row->schedulable_type][(int) $row->schedulable_id] = $row->available_at;
-            }
+            $this->addToMap($map, $row);
         }
 
-        return $this->effectiveAt($this->withDrip($map, $dripDates), $courseId, $moduleId, $lessonId);
+        return $map;
     }
 
     /**
@@ -136,7 +203,16 @@ class ScheduleService
         }
     }
 
-    public function set(Team $team, ScheduleLevel $level, int $id, ?string $availableAt): void
+    public function assertLessonNotExpired(?Carbon $expiresAt): void
+    {
+        if ($this->expired($expiresAt)) {
+            throw new BusinessRuleException(
+                'O acesso a esta aula expirou em '.$expiresAt->format('d/m/Y H:i').'.',
+            );
+        }
+    }
+
+    public function set(Team $team, ScheduleLevel $level, int $id, ?string $availableAt, ?int $durationDays = null): void
     {
         $this->assertTargetBelongsToTeam($team, $level, $id);
 
@@ -153,8 +229,14 @@ class ScheduleService
 
         $schedule = $query->first();
 
+        $expiresAt = $durationDays ? Carbon::parse($availableAt)->addDays($durationDays) : null;
+
         if ($schedule) {
-            $schedule->update(['available_at' => $availableAt]);
+            $schedule->update([
+                'available_at' => $availableAt,
+                'duration_days' => $durationDays,
+                'expires_at' => $expiresAt,
+            ]);
 
             return;
         }
@@ -164,6 +246,8 @@ class ScheduleService
             'schedulable_type' => $level->value,
             'schedulable_id' => $id,
             'available_at' => $availableAt,
+            'duration_days' => $durationDays,
+            'expires_at' => $expiresAt,
         ]);
     }
 
@@ -231,6 +315,9 @@ class ScheduleService
     public function tree(Team $team): array
     {
         $map = $this->forTeam($team);
+        $durations = Schedule::query()->where('team_id', $team->id)->whereNotNull('duration_days')
+            ->get()
+            ->mapWithKeys(fn (Schedule $s) => [$s->schedulable_type.':'.$s->schedulable_id => $s->duration_days]);
 
         return $team->courses()
             ->where('team_courses.status', GeneralStatus::Active->value)
@@ -239,24 +326,30 @@ class ScheduleService
                 'modules.lessons',
             ])
             ->get()
-            ->map(function (Course $course) use ($map) {
+            ->map(function (Course $course) use ($map, $durations) {
                 return [
                     'type' => ScheduleLevel::Course->value,
                     'id' => $course->id,
                     'name' => $course->name,
                     'available_at' => ($map['course'][$course->id] ?? null)?->toIso8601String(),
-                    'modules' => $course->modules->map(function (Module $module) use ($map) {
+                    'duration_days' => $durations->get('course:'.$course->id),
+                    'expires_at' => ($map['expires']['course'][$course->id] ?? null)?->toIso8601String(),
+                    'modules' => $course->modules->map(function (Module $module) use ($map, $durations) {
                         return [
                             'type' => ScheduleLevel::Module->value,
                             'id' => $module->id,
                             'name' => $module->name,
                             'available_at' => ($map['module'][$module->id] ?? null)?->toIso8601String(),
+                            'duration_days' => $durations->get('module:'.$module->id),
+                            'expires_at' => ($map['expires']['module'][$module->id] ?? null)?->toIso8601String(),
                             'lessons' => $module->lessons
                                 ->map(fn (Lesson $lesson) => [
                                     'type' => ScheduleLevel::Lesson->value,
                                     'id' => $lesson->id,
                                     'name' => $lesson->name,
                                     'available_at' => ($map['lesson'][$lesson->id] ?? null)?->toIso8601String(),
+                                    'duration_days' => $durations->get('lesson:'.$lesson->id),
+                                    'expires_at' => ($map['expires']['lesson'][$lesson->id] ?? null)?->toIso8601String(),
                                 ])
                                 ->all(),
                         ];
@@ -275,18 +368,24 @@ class ScheduleService
         $map = $this->withDrip($this->forTeam($team), $dripDates);
 
         $courseAt = $map['course'][$course->id] ?? null;
+        $courseExpires = $this->expiresAt($map, $course->id, null, null);
         $course->setAttribute('schedule_available_at', $courseAt);
-        $course->setAttribute('schedule_locked', $this->locked($courseAt));
+        $course->setAttribute('schedule_expires_at', $courseExpires);
+        $course->setAttribute('schedule_locked', $this->locked($courseAt) || $this->expired($courseExpires));
 
         foreach ($course->modules as $module) {
             $moduleAt = $this->effectiveAt($map, $course->id, $module->id, null);
+            $moduleExpires = $this->expiresAt($map, $course->id, $module->id, null);
             $module->setAttribute('schedule_available_at', $moduleAt);
-            $module->setAttribute('schedule_locked', $this->locked($moduleAt));
+            $module->setAttribute('schedule_expires_at', $moduleExpires);
+            $module->setAttribute('schedule_locked', $this->locked($moduleAt) || $this->expired($moduleExpires));
 
             foreach ($this->moduleLessons($module) as $lesson) {
                 $lessonAt = $this->effectiveAt($map, $course->id, $module->id, $lesson->id);
+                $lessonExpires = $this->expiresAt($map, $course->id, $module->id, $lesson->id);
                 $lesson->setAttribute('schedule_available_at', $lessonAt);
-                $lesson->setAttribute('schedule_locked', $this->locked($lessonAt));
+                $lesson->setAttribute('schedule_expires_at', $lessonExpires);
+                $lesson->setAttribute('schedule_locked', $this->locked($lessonAt) || $this->expired($lessonExpires));
             }
         }
     }
