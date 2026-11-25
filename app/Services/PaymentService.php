@@ -449,7 +449,12 @@ class PaymentService
                 'message' => 'O reembolso de assinaturas deve ser solicitado diretamente à empresa.'];
         }
 
-        if ($order->status !== OrderStatus::Paid->value) {
+        // Pagamento combinado incompleto (ex.: o PIX foi aprovado e o cartão falhou): o aluno pode
+        // estornar o que já pagou, mesmo com o pedido ainda pendente.
+        $hasPartialPayment = $order->status === OrderStatus::Pending->value
+            && $order->payments->contains('status', PaymentStatus::Paid->value);
+
+        if ($order->status !== OrderStatus::Paid->value && ! $hasPartialPayment) {
             return ['eligible' => false, 'deadline' => null, 'payment' => null,
                 'message' => 'Somente pedidos pagos podem ser reembolsados.'];
         }
@@ -568,7 +573,10 @@ class PaymentService
             if ($fullyRefunded) {
                 $payment = $this->payments->update($payment, ['status' => PaymentStatus::Refunded->value]);
 
-                $orderRefunded = ! $order->payments()->where('status', PaymentStatus::Paid->value)->exists();
+                // Pedido ainda pendente (pagamento combinado incompleto): só devolve o dinheiro; o pedido
+                // continua pendente para o aluno poder tentar pagar de novo.
+                $orderRefunded = $order->status === OrderStatus::Paid->value
+                    && ! $order->payments()->where('status', PaymentStatus::Paid->value)->exists();
 
                 if ($orderRefunded) {
                     $order->update(['status' => OrderStatus::Refunded->value]);
@@ -654,7 +662,8 @@ class PaymentService
         ]);
 
         // Pagamento combinado: só encerra o pedido quando não resta pagamento confirmado.
-        $orderRefunded = ! $order->payments()->where('status', PaymentStatus::Paid->value)->exists();
+        $orderRefunded = $order->status === OrderStatus::Paid->value
+            && ! $order->payments()->where('status', PaymentStatus::Paid->value)->exists();
 
         if ($orderRefunded) {
             $order->update(['status' => OrderStatus::Refunded->value]);

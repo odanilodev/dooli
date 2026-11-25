@@ -97,13 +97,22 @@
         </p>
 
         <div v-if="order.refund?.eligible" class="order-note refund-note">
-          <strong>Garantia de {{ order.refund.window_days }} dias</strong>
-          <span>
-            Você pode pedir o reembolso integral até {{ formatDateTime(order.refund.deadline) }}.
-            Ao solicitar, o valor é devolvido e o acesso ao curso é encerrado.
-          </span>
+          <template v-if="order.refund.partial">
+            <strong>Pagamento incompleto</strong>
+            <span>
+              Parte do valor já foi paga, mas o pedido ainda não foi quitado.
+              Você pode estornar o que já pagou até {{ formatDateTime(order.refund.deadline) }}.
+            </span>
+          </template>
+          <template v-else>
+            <strong>Garantia de {{ order.refund.window_days }} dias</strong>
+            <span>
+              Você pode pedir o reembolso integral até {{ formatDateTime(order.refund.deadline) }}.
+              Ao solicitar, o valor é devolvido e o acesso ao curso é encerrado.
+            </span>
+          </template>
           <button class="btn btn-outline btn-sm" type="button" :disabled="refunding" @click="requestRefund">
-            {{ refunding ? 'Processando...' : 'Solicitar reembolso' }}
+            {{ refunding ? 'Processando...' : order.refund.partial ? 'Estornar o que já paguei' : 'Solicitar reembolso' }}
           </button>
         </div>
 
@@ -182,7 +191,9 @@ async function load() {
 
 async function requestRefund() {
   const confirmed = window.confirm(
-    'Confirma o reembolso integral desta compra? O valor será devolvido e seu acesso ao curso será encerrado.',
+    order.value?.refund?.partial
+      ? 'Confirma o estorno do valor que você já pagou neste pedido?'
+      : 'Confirma o reembolso integral desta compra? O valor será devolvido e seu acesso ao curso será encerrado.',
   );
 
   if (!confirmed) {
