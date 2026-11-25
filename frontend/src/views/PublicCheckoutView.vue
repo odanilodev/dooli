@@ -83,7 +83,7 @@
             </span>
           </div>
 
-          <div class="form-group">
+          <div v-if="!isSplitFlow" class="form-group">
             <label>Forma de pagamento</label>
             <div class="payment-options">
               <label v-if="!product.is_subscription" class="payment-option" :class="{ active: method === 'pix' }">
@@ -106,6 +106,81 @@
                 </span>
               </label>
             </div>
+          </div>
+
+          <div v-if="canSplit && paidSoFar === 0" class="pay-mode" role="tablist" aria-label="Como pagar">
+            <button type="button" role="tab" :aria-selected="!splitMode" :class="{ active: !splitMode }" @click="splitMode = false">
+              Uma forma de pagamento
+            </button>
+            <button type="button" role="tab" :aria-selected="splitMode" :class="{ active: splitMode }" @click="enableSplit">
+              Dividir em duas formas
+            </button>
+          </div>
+
+          <div v-if="isSplitFlow" class="split-parts">
+            <div v-if="paidSoFar > 0" class="split-progress">
+              <div class="split-progress-text">
+                <span><b>{{ formatCurrency(paidSoFar) }}</b> pagos de {{ formatCurrency(finalPrice) }}</span>
+                <span>Falta <b>{{ formatCurrency(remaining) }}</b></span>
+              </div>
+              <div class="split-progress-bar"><i :style="{ width: `${Math.min(100, (paidSoFar / finalPrice) * 100)}%` }"></i></div>
+            </div>
+
+            <div
+              v-for="part in splitParts"
+              :key="part.n"
+              class="split-part"
+              :class="{ active: part.active, done: part.done }"
+            >
+              <div class="split-part-head">
+                <span class="split-part-n">
+                  <svg v-if="part.done" class="icon" width="13" height="13" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+                  <template v-else>{{ part.n }}</template>
+                </span>
+                <div class="split-part-title">
+                  <strong>{{ part.n === 1 ? 'Primeira parte' : 'Segunda parte' }}</strong>
+                  <small>{{ part.done ? 'Paga' : part.active ? 'Pague agora' : 'Depois da primeira' }}</small>
+                </div>
+                <b v-if="part.n === 2 || part.done" class="split-part-amount">
+                  {{ part.amount === null ? '—' : formatCurrency(part.amount) }}
+                </b>
+              </div>
+
+              <template v-if="!part.done">
+                <div v-if="part.n === 1" class="split-amount">
+                  <label for="split-amount">Quanto pagar nesta parte</label>
+                  <div class="money-input">
+                    <span>R$</span>
+                    <input
+                      id="split-amount"
+                      v-model="partAmountInput"
+                      inputmode="decimal"
+                      autocomplete="off"
+                      placeholder="0,00"
+                      @blur="tidyPartAmount"
+                    >
+                  </div>
+                  <div class="split-chips">
+                    <button v-for="pct in [25, 50, 75]" :key="pct" type="button" @click="setPartPercent(pct)">{{ pct }}%</button>
+                  </div>
+                  <span v-if="splitError" class="form-hint coupon-error">{{ splitError }}</span>
+                </div>
+
+                <div class="split-methods" role="group" :aria-label="`Forma de pagamento da parte ${part.n}`">
+                  <button type="button" :class="{ active: partMethod[part.n] === 'pix' }" @click="partMethod[part.n] = 'pix'">
+                    <span class="payment-mark payment-mark-pix">PIX</span> PIX
+                  </button>
+                  <button type="button" :class="{ active: partMethod[part.n] === 'credit_card' }" @click="partMethod[part.n] = 'credit_card'">
+                    <span class="payment-mark">
+                      <svg class="icon" width="15" height="15" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+                    </span>
+                    Cartão
+                  </button>
+                </div>
+              </template>
+            </div>
+
+            <p class="form-hint">O acesso é liberado quando as duas partes forem aprovadas.</p>
           </div>
 
           <div v-if="method === 'pix' && !product.is_subscription" class="form-group">
@@ -162,7 +237,7 @@
           </li>
         </ul>
 
-        <div v-if="!product.is_subscription" class="summary-coupon">
+        <div v-if="!product.is_subscription && paidSoFar === 0 && !pix" class="summary-coupon">
           <div v-if="appliedCoupon" class="coupon-tag">
             <span>
               <svg class="icon" width="14" height="14" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
@@ -210,13 +285,23 @@
           <strong>{{ formatCurrency(finalPrice) }}<small v-if="product.is_subscription">/mês</small></strong>
         </div>
 
+        <div v-if="paidSoFar > 0" class="summary-line summary-discount">
+          <span>Já pago</span>
+          <strong>-{{ formatCurrency(paidSoFar) }}</strong>
+        </div>
+
+        <div v-if="isSplitActive" class="summary-line">
+          <span>Valor desta parte</span>
+          <strong>{{ formatCurrency(payAmount) }}</strong>
+        </div>
+
         <p v-if="product.is_subscription" class="summary-note">A primeira cobrança ocorre na autorização. Sem período de teste.</p>
         <p v-else-if="product.access_duration_days" class="summary-note">Acesso por {{ product.access_duration_days }} dias após a confirmação do pagamento.</p>
         <p v-else class="summary-note">Acesso permanente após a confirmação do pagamento.</p>
 
         <p v-if="useCardBrick" class="summary-note">Preencha os dados do cartão no formulário ao lado e clique em pagar.</p>
-        <button v-else class="btn btn-primary btn-block checkout-submit" type="button" :disabled="submitting || !gateway" @click="submit">
-          {{ submitting ? 'Processando...' : product.is_subscription ? 'Assinar agora' : 'Finalizar compra' }}
+        <button v-else class="btn btn-primary btn-block checkout-submit" type="button" :disabled="submitting || !gateway || !splitReady" @click="submit">
+          {{ submitting ? 'Processando...' : product.is_subscription ? 'Assinar agora' : isSplitActive ? `Pagar ${formatCurrency(payAmount)}` : 'Finalizar compra' }}
           <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
 
@@ -244,6 +329,10 @@
           <p class="public-eyebrow">Pagamento via PIX</p>
           <h1>Escaneie o QR Code</h1>
           <p class="pix-desc">O pedido será liberado automaticamente após a confirmação.</p>
+          <p v-if="pixAmount !== null && pixAmount < remaining - 0.004" class="summary-note">
+            Este PIX é de <b>{{ formatCurrency(pixAmount) }}</b>. Depois de pagar, volte aqui para pagar o restante
+            ({{ formatCurrency(remaining - pixAmount) }}). Esta tela atualiza sozinha.
+          </p>
 
           <div class="pix-status" :class="orderStatus">
             <span>Status do pedido</span>
@@ -278,7 +367,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api/http';
 import { paletteAt } from '../data/palette';
@@ -318,6 +407,13 @@ const orderId = ref(null);
 const orderStatus = ref('pending');
 let pollTimer = null;
 
+// Pagamento combinado: o aluno paga o pedido em duas (ou mais) partes com formas diferentes.
+const splitMode = ref(false);
+const partAmountInput = ref('');
+const paidSoFar = ref(0);
+const pixAmount = ref(null);
+let brickTimer = null;
+
 // Checkout transparente de cartão (Card Payment Brick do Mercado Pago).
 // Só é usado quando a empresa cadastrou a Public Key; sem ela, mantém o Checkout Pro (redirecionamento).
 const brickLoading = ref(false);
@@ -336,16 +432,104 @@ const productRoute = computed(() => (
     : publicRoute('public-produto', { productSlug: productSlug.value })
 ));
 const gateway = computed(() => storefront.defaultGateway);
-const useCardBrick = computed(() => Boolean(
-  product.value
-  && !product.value.is_subscription
-  && method.value === 'credit_card'
-  && gateway.value?.public_key,
-));
 const currentPrice = computed(() => Number(product.value?.sale) > 0 ? product.value.sale : product.value?.price);
 const finalPrice = computed(() => appliedCoupon.value
   ? Number(appliedCoupon.value.total)
   : Number(currentPrice.value) || 0);
+
+const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+const remaining = computed(() => Math.max(0, round2(finalPrice.value - paidSoFar.value)));
+// Divisão ativa só enquanto nada foi pago; depois disso, a próxima parte é sempre o que falta.
+const splitting = computed(() => splitMode.value && paidSoFar.value === 0);
+const partAmount = computed(() => {
+  const raw = String(partAmountInput.value).trim();
+  const normalized = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw;
+  const n = Number(normalized);
+
+  return raw !== '' && Number.isFinite(n) ? round2(n) : NaN;
+});
+const splitError = computed(() => {
+  if (!splitting.value || String(partAmountInput.value).trim() === '') {
+    return '';
+  }
+
+  const n = partAmount.value;
+
+  if (!Number.isFinite(n) || n < 1) {
+    return 'Informe um valor de no mínimo R$ 1,00.';
+  }
+
+  if (n > finalPrice.value - 1) {
+    return 'A primeira parte deve ser menor que o total, deixando ao menos R$ 1,00 para a segunda.';
+  }
+
+  return '';
+});
+const splitReady = computed(() => !splitting.value
+  || (String(partAmountInput.value).trim() !== '' && splitError.value === ''));
+const isSplitActive = computed(() => paidSoFar.value > 0 || (splitting.value && splitReady.value));
+const payAmount = computed(() => (splitting.value && splitReady.value ? partAmount.value : remaining.value));
+const canSplit = computed(() => Boolean(product.value && !product.value.is_subscription && gateway.value));
+const isSplitFlow = computed(() => canSplit.value && (splitMode.value || paidSoFar.value > 0));
+const partMethod = reactive({ 1: 'pix', 2: 'credit_card' });
+const splitParts = computed(() => {
+  const paid = paidSoFar.value > 0;
+
+  return [
+    {
+      n: 1,
+      done: paid,
+      active: !paid,
+      amount: paid ? paidSoFar.value : (splitReady.value && partAmount.value > 0 ? partAmount.value : null),
+    },
+    {
+      n: 2,
+      done: false,
+      active: paid,
+      amount: paid
+        ? remaining.value
+        : (splitReady.value && partAmount.value > 0 ? round2(finalPrice.value - partAmount.value) : null),
+    },
+  ];
+});
+
+// Na divisão, a forma de pagamento da parte atual é a escolhida no cartão dessa parte.
+watch(
+  [isSplitFlow, paidSoFar, () => partMethod[1], () => partMethod[2]],
+  () => {
+    if (isSplitFlow.value) {
+      method.value = paidSoFar.value > 0 ? partMethod[2] : partMethod[1];
+    }
+  },
+  { immediate: true },
+);
+
+const formatInput = (n) => round2(n).toFixed(2).replace('.', ',');
+
+function enableSplit() {
+  splitMode.value = true;
+
+  if (String(partAmountInput.value).trim() === '') {
+    partAmountInput.value = formatInput(finalPrice.value / 2);
+  }
+}
+
+function setPartPercent(pct) {
+  partAmountInput.value = formatInput((finalPrice.value * pct) / 100);
+}
+
+function tidyPartAmount() {
+  if (Number.isFinite(partAmount.value) && partAmount.value > 0) {
+    partAmountInput.value = formatInput(partAmount.value);
+  }
+}
+const useCardBrick = computed(() => Boolean(
+  product.value
+  && !product.value.is_subscription
+  && method.value === 'credit_card'
+  && gateway.value?.public_key
+  && splitReady.value,
+));
 const productPalette = computed(() => paletteAt(Number(product.value?.id) || 0));
 const productIcon = computed(() => productPalette.value.icon);
 const productGrad = computed(() => productPalette.value.grad);
@@ -388,13 +572,27 @@ watch(useCardBrick, async (active) => {
   }
 });
 
-// O valor do Brick é fixado na criação: remonta quando o total muda (cupom aplicado/removido).
-watch(finalPrice, async () => {
-  if (useCardBrick.value) {
-    await nextTick();
-    await mountCardBrick();
-  }
-});
+// O valor do Brick é fixado na criação: remonta quando o valor a pagar muda (cupom, divisão, parte paga).
+watch(payAmount, scheduleBrickRemount);
+
+function scheduleBrickRemount() {
+  clearTimeout(brickTimer);
+  brickTimer = setTimeout(async () => {
+    if (useCardBrick.value) {
+      await nextTick();
+      await mountCardBrick();
+    }
+  }, 400);
+}
+
+async function refreshOrder() {
+  const { data } = await api.get(`/me/orders/${orderId.value}`);
+
+  orderStatus.value = data.data.status;
+  paidSoFar.value = Number(data.data.paid_amount) || 0;
+
+  return data.data;
+}
 
 async function openCoupon() {
   showCoupon.value = true;
@@ -491,7 +689,7 @@ async function mountCardBrick() {
 
     brickController = await mp.bricks().create('cardPayment', 'cardPaymentBrick_container', {
       initialization: {
-        amount: finalPrice.value,
+        amount: payAmount.value,
         payer: { email: auth.user?.email || '' },
       },
       customization: {
@@ -555,9 +753,20 @@ async function submitCard(formData) {
       installments: Number(formData.installments) || 1,
       device_id: window.MP_DEVICE_SESSION_ID || null,
       payer: formData.payer,
+      ...(splitting.value ? { amount: payAmount.value } : {}),
     });
 
     if (data.data?.status === 'paid') {
+      const order = await refreshOrder();
+
+      if (order.status !== 'paid') {
+        // Pagamento combinado: esta parte foi aprovada, falta o restante.
+        toast.success(`Parte aprovada! Falta ${formatCurrency(remaining.value)} para liberar o acesso.`);
+        scheduleBrickRemount();
+
+        return;
+      }
+
       toast.success('Pagamento aprovado! Seu acesso foi liberado.');
     } else {
       toast.success('Pagamento em análise. Avisaremos quando for aprovado.');
@@ -624,6 +833,7 @@ async function submit() {
     const payment = await api.post(`/me/orders/${orderId.value}/pay`, {
       gateway_id: gateway.value.id,
       method: method.value,
+      ...(splitting.value ? { amount: payAmount.value } : {}),
       ...(method.value === 'pix'
         ? {
           payer: {
@@ -641,6 +851,8 @@ async function submit() {
 
     const paymentData = payment.data.data;
     const pixData = paymentData?.pix ?? {};
+
+    pixAmount.value = Number(paymentData?.amount) || payAmount.value;
 
     pix.value = {
       code: pixData.qr_code ?? null,
@@ -666,13 +878,19 @@ function startPolling() {
     }
 
     try {
-      const { data } = await api.get(`/me/orders/${orderId.value}`);
-      orderStatus.value = data.data.status;
+      const previousPaid = paidSoFar.value;
+      const order = await refreshOrder();
 
-      if (data.data.status === 'paid') {
+      if (order.status === 'paid') {
         stopPolling();
         toast.success('Pagamento aprovado! Seu acesso foi liberado.');
         await router.push(publicRoute('public-pedido', { orderId: orderId.value }));
+      } else if (paidSoFar.value > previousPaid) {
+        // Pagamento combinado: o PIX desta parte foi aprovado; volta ao formulário para pagar o restante.
+        stopPolling();
+        pix.value = null;
+        pixAmount.value = null;
+        toast.success(`Parte aprovada! Falta ${formatCurrency(remaining.value)} para liberar o acesso.`);
       }
     } catch (e) {
       /* keep polling */
@@ -702,6 +920,7 @@ async function switchCompanyAccount() {
 }
 
 onBeforeUnmount(() => {
+  clearTimeout(brickTimer);
   stopPolling();
   unmountCardBrick();
 });
@@ -725,6 +944,61 @@ onBeforeUnmount(() => {
 .coupon-error{color:#ff6b6b;}
 .price-old{margin-right:6px;color:var(--text-muted);font-size:13px;font-weight:600;}
 .summary-discount strong{color:#22c55e;}
+.pay-mode{
+  display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;
+  border:1px solid var(--border);border-radius:12px;background:var(--bg-card-alt);
+}
+.pay-mode button{
+  padding:10px 12px;border:0;border-radius:9px;background:none;cursor:pointer;
+  color:var(--text-secondary);font-size:13px;font-weight:700;
+}
+.pay-mode button.active{background:var(--accent);color:var(--accent-ink);}
+.split-parts{display:flex;flex-direction:column;gap:12px;}
+.split-progress{display:flex;flex-direction:column;gap:8px;}
+.split-progress-text{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:var(--text-secondary);}
+.split-progress-text b{color:var(--text-primary);}
+.split-progress-bar{height:6px;border-radius:99px;background:var(--bg-card-alt);overflow:hidden;}
+.split-progress-bar i{display:block;height:100%;border-radius:99px;background:var(--accent);transition:width .3s;}
+.split-part{
+  display:flex;flex-direction:column;gap:14px;padding:16px;
+  border:1px solid var(--border);border-radius:12px;opacity:.7;
+}
+.split-part.active{border-color:var(--accent);opacity:1;}
+.split-part.done{opacity:1;background:var(--accent-soft);border-color:transparent;}
+.split-part-head{display:flex;align-items:center;gap:12px;}
+.split-part-n{
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;width:26px;height:26px;
+  border-radius:50%;background:var(--bg-card-alt);color:var(--text-muted);font-size:12px;font-weight:900;
+}
+.split-part.active .split-part-n,.split-part.done .split-part-n{background:var(--accent);color:var(--accent-ink);}
+.split-part-title{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;}
+.split-part-title strong{font-size:14px;font-weight:800;}
+.split-part-title small{font-size:11.5px;color:var(--text-muted);}
+.split-part-amount{font-size:15px;font-weight:800;}
+.split-amount{display:flex;flex-direction:column;gap:8px;}
+.split-amount label{font-size:12px;font-weight:700;color:var(--text-secondary);}
+.money-input{
+  display:flex;align-items:center;gap:8px;padding:0 14px;border:1px solid var(--border);
+  border-radius:10px;background:var(--bg-input);
+}
+.money-input:focus-within{border-color:var(--accent);}
+.money-input span{color:var(--text-muted);font-weight:800;}
+.money-input input{
+  flex:1;min-width:0;padding:12px 0;border:0;outline:0;background:none;
+  color:var(--text-primary);font-size:18px;font-weight:800;
+}
+.split-chips{display:flex;gap:8px;}
+.split-chips button{
+  padding:6px 14px;border:1px solid var(--border);border-radius:99px;background:none;cursor:pointer;
+  color:var(--text-secondary);font-size:12px;font-weight:700;
+}
+.split-chips button:hover{border-color:var(--accent);color:var(--text-primary);}
+.split-methods{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.split-methods button{
+  display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);
+  border-radius:10px;background:none;cursor:pointer;color:var(--text-primary);font-size:13px;font-weight:700;
+}
+.split-methods button.active{border-color:var(--accent);background:var(--accent-soft);}
 .card-brick-wrap{display:flex;flex-direction:column;gap:12px;min-width:0;}
 .checkout-page-head{display:flex;flex-direction:column;gap:5px;}
 .checkout-page-head h1{

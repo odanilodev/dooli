@@ -83,7 +83,9 @@ import { paletteAt } from '../data/palette';
 import { useTenant } from '../composables/useTenant';
 import { formatCurrency } from '../utils/format';
 import { useShopStore } from '../stores/store';
+import { useTenantStore } from '../stores/tenant';
 
+const tenant = useTenantStore();
 const route = useRoute();
 const router = useRouter();
 const store = useShopStore();
@@ -139,7 +141,19 @@ function buy() {
     return;
   }
 
-  router.push(publicRoute('public-checkout', { productSlug: product.value.slug }, { from: 'internal' }));
+  // Dentro do app (fora do domínio da empresa) a rota "public-checkout" é redirecionada ao início
+  // pelo roteador; o checkout é aberto pela rota com o slug da empresa.
+  if (tenant.isDomainMode) {
+    router.push(publicRoute('public-checkout', { productSlug: product.value.slug }, { from: 'internal' }));
+
+    return;
+  }
+
+  router.push({
+    name: 'legacy-checkout',
+    params: { companySlug: companySlug.value, productSlug: product.value.slug },
+    query: { from: 'internal' },
+  });
 }
 </script>
 

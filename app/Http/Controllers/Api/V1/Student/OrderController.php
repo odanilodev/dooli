@@ -92,12 +92,17 @@ class OrderController extends ApiController
 
         $gateway = Gateway::query()->findOrFail((int) $request->validated('gateway_id'));
 
+        // Pagamento combinado: cada chamada paga uma parte; sem "amount" paga o que falta do pedido.
+        $remaining = $this->payments->remainingAmount($order);
+        $amount = $request->filled('amount') ? round((float) $request->validated('amount'), 2) : $remaining;
+        $isPartial = $amount < $remaining;
+
         if ($request->validated('method') === 'credit_card' && $request->filled('card_token')) {
             $payment = $this->payments->create(new CreatePaymentDTO(
                 orderId: (int) $order->id,
                 gatewayId: (int) $gateway->id,
                 method: 'credit_card',
-                amount: (float) $order->total,
+                amount: $amount,
                 metadata: [
                     'payment_method_id' => $request->validated('card_payment_method_id'),
                     'token' => $request->validated('card_token'),
@@ -119,6 +124,13 @@ class OrderController extends ApiController
         }
 
         if ($request->validated('method') === 'credit_card') {
+            if ($isPartial) {
+                throw new BusinessRuleException(
+                    'O pagamento combinado com cartão exige o formulário de cartão do site.',
+                    'split_card_unsupported',
+                );
+            }
+
             $result = $this->payments->createCardPreference($order, $gateway);
 
             return ApiResponse::success([
@@ -131,7 +143,7 @@ class OrderController extends ApiController
             orderId: (int) $order->id,
             gatewayId: (int) $gateway->id,
             method: (string) $request->validated('method'),
-            amount: (float) $order->total,
+            amount: $amount,
             metadata: [
                 'payment_method_id' => $request->validated('method'),
                 'payer' => $request->validated('payer') ?? [],
