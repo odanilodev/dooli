@@ -30,6 +30,7 @@ class StudentOrderDetailResource extends JsonResource
                 'eligible' => $refund['eligible'],
                 'deadline' => $refund['deadline']?->toIso8601String(),
                 'window_days' => PaymentService::REFUND_WINDOW_DAYS,
+                'partial' => $this->status === 'pending',
                 'message' => $refund['message'],
             ],
             'coupon' => new CouponResource($this->whenLoaded('coupon')),

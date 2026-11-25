@@ -181,6 +181,10 @@
             </div>
 
             <p class="form-hint">O acesso é liberado quando as duas partes forem aprovadas.</p>
+
+            <button v-if="paidSoFar > 0" type="button" class="split-refund" :disabled="refundingPaid" @click="refundPaidParts">
+              {{ refundingPaid ? 'Estornando...' : `Desistir e estornar os ${formatCurrency(paidSoFar)} já pagos` }}
+            </button>
           </div>
 
           <div v-if="method === 'pix' && !product.is_subscription" class="form-group">
@@ -506,6 +510,29 @@ watch(
 
 const formatInput = (n) => round2(n).toFixed(2).replace('.', ',');
 
+const refundingPaid = ref(false);
+
+// Pagamento combinado incompleto (ex.: o PIX passou e o cartão falhou): devolve o que já foi pago.
+async function refundPaidParts() {
+  if (!orderId.value || !window.confirm(`Estornar os ${formatCurrency(paidSoFar.value)} já pagos neste pedido?`)) {
+    return;
+  }
+
+  refundingPaid.value = true;
+
+  try {
+    await api.post(`/me/orders/${orderId.value}/refund`, {});
+    await refreshOrder();
+    splitMode.value = false;
+    toast.success('Estorno solicitado. O valor será devolvido na forma de pagamento original.');
+  } catch (e) {
+    const firstError = e?.errors ? Object.values(e.errors).flat()[0] : null;
+    toast.error(firstError || e?.message || 'Não foi possível estornar agora.');
+  } finally {
+    refundingPaid.value = false;
+  }
+}
+
 function enableSplit() {
   splitMode.value = true;
 
@@ -733,8 +760,10 @@ async function createBrick(seq) {
           brickLoading.value = false;
         },
         onSubmit: (formData) => submitCard(formData),
-        onError: () => {
+        onError: (brickError) => {
           brickLoading.value = false;
+          // Erros do Mercado Pago (chave, token do cartão, valor) antes só sumiam em silêncio.
+          console.error('[Brick] erro do Mercado Pago', brickError);
         },
       },
     });
@@ -1030,6 +1059,11 @@ onBeforeUnmount(() => {
   flex:1;min-width:0;padding:12px 0;border:0;outline:0;background:none;
   color:var(--text-primary);font-size:18px;font-weight:800;
 }
+.split-refund{
+  align-self:flex-start;padding:0;border:0;background:none;cursor:pointer;
+  color:#ff6b6b;font-size:12.5px;font-weight:700;text-decoration:underline;text-underline-offset:3px;
+}
+.split-refund:disabled{opacity:.6;cursor:default;}
 .split-chips{display:flex;gap:8px;}
 .split-chips button{
   padding:6px 14px;border:1px solid var(--border);border-radius:99px;background:none;cursor:pointer;
