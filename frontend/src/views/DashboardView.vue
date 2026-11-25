@@ -137,9 +137,22 @@ function openTeam(teamId) {
 }
 
 const enrolledCourseIds = computed(() => store.homeCourseIds);
+
+// O produto libera cursos pelas turmas (course_id costuma ser vazio): já é do aluno quando todos os
+// cursos incluídos nele estão entre os cursos que o aluno acessa.
+function studentOwnsProduct(product) {
+  if (product.course_id) {
+    return enrolledCourseIds.value.has(product.course_id);
+  }
+
+  const included = product.included_courses ?? [];
+
+  return included.length > 0 && included.every((course) => enrolledCourseIds.value.has(course.id));
+}
+
 const recommendedProducts = computed(() =>
   shop.products
-    .filter((product) => !product.course_id || !enrolledCourseIds.value.has(product.course_id))
+    .filter((product) => !studentOwnsProduct(product))
     .slice(0, 5)
     .map((product, index) => {
       const palette = paletteAt(index);
