@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Resources\DatalogResource;
 use App\Models\Datalog;
 use App\Support\ApiResponse;
+use App\Support\SalesVisibility;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -17,6 +18,8 @@ class DatalogController extends ApiController
 
         $paginator = Datalog::query()
             ->with('user')
+            // A auditoria de vendas citaria pedidos e clientes de outros vendedores.
+            ->when(! SalesVisibility::seesAll($request->user()), fn ($q) => $q->whereNotIn('module', SalesVisibility::AUDIT_MODULES))
             ->when($request->filled('module'), fn ($q) => $q->where('module', $request->string('module')))
             ->when($request->filled('action'), fn ($q) => $q->where('action', $request->string('action')))
             ->when($request->filled('user_id'), fn ($q) => $q->where('user_id', $request->integer('user_id')))

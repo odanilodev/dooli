@@ -27,7 +27,7 @@ class OrderController extends ApiController
         $this->authorize('viewAny', Order::class);
 
         $paginator = $this->orders->paginate(
-            filters: $request->only([
+            filters: $this->salesFilters($request, [
                 'search', 'status', 'source', 'user_id', 'seller_id',
                 'date_from', 'date_to', 'sort', 'direction',
             ]),
@@ -42,7 +42,7 @@ class OrderController extends ApiController
         $this->authorize('viewAny', Order::class);
 
         return ApiResponse::success($this->orders->summary(
-            $request->only(['search', 'seller_id', 'source', 'date_from', 'date_to']),
+            $this->salesFilters($request, ['search', 'seller_id', 'source', 'date_from', 'date_to']),
         ));
     }
 
@@ -50,7 +50,7 @@ class OrderController extends ApiController
     {
         $this->authorize('viewAny', Order::class);
 
-        $rows = $this->orders->exportRows($request->only([
+        $rows = $this->orders->exportRows($this->salesFilters($request, [
             'search', 'status', 'source', 'seller_id', 'date_from', 'date_to',
             'sort', 'direction',
         ]));
@@ -127,9 +127,20 @@ class OrderController extends ApiController
 
     public function show(Order $order): JsonResponse
     {
-        $this->authorize('view', $order);
+        $this->authorize('viewSale', $order);
 
         return ApiResponse::success(new AdminOrderDetailResource($this->orders->find($order->id)));
+    }
+
+    /**
+     * Filtros aceitos da requisição mais o usuário logado, que limita as vendas visíveis.
+     *
+     * @param  array<int, string>  $keys
+     * @return array<string, mixed>
+     */
+    private function salesFilters(Request $request, array $keys): array
+    {
+        return [...$request->only($keys), 'viewer' => $request->user()];
     }
 
     private function statusLabel(?string $status): string

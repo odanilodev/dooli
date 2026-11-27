@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Order;
 use App\Models\User;
+use App\Support\SalesVisibility;
 
 class OrderPolicy extends BasePolicy
 {
@@ -13,8 +14,16 @@ class OrderPolicy extends BasePolicy
             return false;
         }
 
-        // Students may only see their own orders; staff sees the company's.
-        return ((int) $model->user_id === (int) $user->id) || parent::view($user, $model);
+        // Buyers see their own orders; staff access follows the sales visibility rule.
+        return ((int) $model->user_id === (int) $user->id) || $this->viewSale($user, $model);
+    }
+
+    /**
+     * Seeing the order as a sale (admin area): owning it as a buyer is not enough.
+     */
+    public function viewSale(User $user, Order $order): bool
+    {
+        return parent::view($user, $order) && SalesVisibility::allows($user, $order->seller_id);
     }
 
     public function create(User $user): bool

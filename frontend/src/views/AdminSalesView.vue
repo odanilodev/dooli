@@ -3,7 +3,9 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Vendas</h1>
-        <p class="page-subtitle">Vendas pagas e histórico de pedidos da empresa.</p>
+        <p class="page-subtitle">
+          {{ seesAllSales ? 'Vendas pagas e histórico de pedidos da empresa.' : 'Vendas pagas e histórico dos pedidos em que você é o vendedor.' }}
+        </p>
       </div>
       <div class="admin-head-actions">
         <router-link :to="{ name: 'admin-pagamentos' }" class="btn btn-outline btn-sm">Pagamentos</router-link>
@@ -30,6 +32,7 @@
         <option value="refunded">Estornado</option>
       </select>
       <SearchSelect
+        v-if="seesAllSales"
         v-model="filters.seller_id"
         :options="sellerOptions"
         :loading="sellersLoading"
@@ -52,7 +55,10 @@
     </form>
 
     <div v-if="loading" class="empty-state"><strong>Carregando...</strong></div>
-    <div v-else-if="!orders.length" class="empty-state"><strong>Nenhuma venda encontrada</strong></div>
+    <div v-else-if="!orders.length" class="empty-state">
+      <strong>Nenhuma venda encontrada</strong>
+      <span v-if="!seesAllSales">Aparecem aqui somente as vendas do vendedor vinculado ao seu usuário.</span>
+    </div>
     <div v-else class="admin-table-wrap">
       <table class="admin-table">
         <thead>
@@ -111,6 +117,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '../api/http';
 import { useToast } from '../composables/useToast';
+import { useAuthStore } from '../stores/auth';
 import { formatCurrency, formatDateTime } from '../utils/format';
 import { originClass, originLabel } from '../utils/origin';
 import {
@@ -125,6 +132,9 @@ import SearchSelect from '../components/admin/SearchSelect.vue';
 
 const route = useRoute();
 const toast = useToast();
+const auth = useAuthStore();
+// A restrição é aplicada pela API; aqui só se esconde o filtro que não se aplica.
+const seesAllSales = computed(() => auth.isAdmin || auth.isSuperAdmin);
 const orders = ref([]);
 const meta = ref({ current_page: 1, last_page: 1 });
 const summary = ref({ paid_orders: 0, revenue: 0, avg_ticket: 0, refunded: 0 });
@@ -153,7 +163,12 @@ const hasFilters = computed(() => Boolean(
 ));
 
 onMounted(() => {
-  loadSellers('');
+  if (seesAllSales.value) {
+    loadSellers('');
+  } else {
+    filters.seller_id = '';
+  }
+
   load();
 });
 

@@ -6,6 +6,9 @@ use App\Enums\PaymentStatus;
 use App\Enums\RefundStatus;
 use App\Models\Payment;
 use App\Models\Refund;
+use App\Models\User;
+use App\Support\SalesVisibility;
+use Illuminate\Database\Eloquent\Builder;
 
 class PaymentRepository extends BaseRepository
 {
@@ -69,6 +72,19 @@ class PaymentRepository extends BaseRepository
             'failed' => $amounts[PaymentStatus::Failed->value] ?? 0,
             'counts' => $counts,
         ];
+    }
+
+    protected function applyFilters(Builder $query, array $filters): void
+    {
+        $viewer = $filters['viewer'] ?? null;
+        unset($filters['viewer']);
+
+        parent::applyFilters($query, $filters);
+
+        // Escopo do vendedor: o pagamento só é visível se o pedido dele for.
+        if ($viewer instanceof User) {
+            SalesVisibility::applyThrough($query, $viewer, 'order');
+        }
     }
 
     public function findByTransactionId(string $transactionId): ?Payment

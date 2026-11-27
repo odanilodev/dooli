@@ -64,7 +64,7 @@
           placeholder="Buscar aluno ou funcionário..."
           @search="loadUsers"
         />
-        <span class="form-hint">O vínculo identifica a pessoa, mas não concede acesso ao painel.</span>
+        <span class="form-hint">O vínculo não concede acesso ao painel. Se o tipo do usuário liberar o menu Vendas e não for administrador, ele verá somente as vendas deste vendedor.</span>
       </div>
 
       <div class="form-group">

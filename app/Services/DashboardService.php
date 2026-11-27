@@ -17,6 +17,7 @@ use App\Models\Refund;
 use App\Models\Team;
 use App\Models\TeamCourse;
 use App\Models\User;
+use App\Support\SalesVisibility;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -25,11 +26,12 @@ use Illuminate\Support\Facades\DB;
 class DashboardService
 {
     /**
-     * Build the administrative dashboard payload.
+     * Build the administrative dashboard payload. Sales figures are limited to
+     * what the viewer may see (see SalesVisibility).
      *
      * @return array<string, mixed>
      */
-    public function overview(string $period = '30', ?string $from = null, ?string $to = null): array
+    public function overview(User $viewer, string $period = '30', ?string $from = null, ?string $to = null): array
     {
         $range = $this->resolveRange($period, $from, $to);
         $start = $range['from'];
@@ -39,20 +41,20 @@ class DashboardService
         $paidStatuses = [PaymentStatus::Paid->value, PaymentStatus::Refunded->value];
 
         $payments = $this->applyRange(
-            Payment::query()->whereIn('status', $paidStatuses),
+            $this->payments($viewer)->whereIn('status', $paidStatuses),
             'paid_at',
             $start,
             $end,
         )->get(['amount', 'paid_at']);
 
         $refunds = $this->applyRange(
-            Refund::query()->where('status', RefundStatus::Refunded->value),
+            $this->refunds($viewer)->where('status', RefundStatus::Refunded->value),
             'refunded_at',
             $start,
             $end,
         )->get(['amount', 'refunded_at']);
 
-        $ordersForSeries = $this->applyRange(Order::query(), 'created_at', $start, $end)->get(['created_at']);
+        $ordersForSeries = $this->applyRange($this->orders($viewer), 'created_at', $start, $end)->get(['created_at']);
 
         $revenue = round(
             $payments->sum(fn ($payment) => (float) $payment->amount)
@@ -61,13 +63,13 @@ class DashboardService
         );
 
         $ordersPaid = $this->applyRange(
-            Order::query()->where('status', OrderStatus::Paid->value),
+            $this->orders($viewer)->where('status', OrderStatus::Paid->value),
             'created_at',
             $start,
             $end,
         )->count();
 
-        $ordersTotal = $this->applyRange(Order::query(), 'created_at', $start, $end)->count();
+        $ordersTotal = $this->applyRange($this->orders($viewer), 'created_at', $start, $end)->count();
 
         return [
             'period' => $range['mode'] === 'custom' ? 'custom' : $period,
@@ -76,11 +78,11 @@ class DashboardService
                 'to' => $end?->toDateString(),
             ],
             'kpis' => $this->kpis($start, $end, $revenue, $ordersPaid, $ordersTotal),
-            'revenue_series' => $this->revenueSeries($granularity, $start, $end, $payments, $refunds, $ordersForSeries),
-            'order_status' => $this->orderStatus($start, $end),
-            'top_courses' => $this->topCourses($start, $end),
-            'top_buyers' => $this->topBuyers($start, $end),
-            'recent_orders' => $this->recentOrders($start, $end),
+            'revenue_series' => $this->revenueSeries($viewer, $granularity, $start, $end, $payments, $refunds, $ordersForSeries),
+            'order_status' => $this->orderStatus($viewer, $start, $end),
+            'top_courses' => $this->topCourses($viewer, $start, $end),
+            'top_buyers' => $this->topBuyers($viewer, $start, $end),
+            'recent_orders' => $this->recentOrders($viewer, $start, $end),
             'recent_students' => $this->recentStudents($start, $end),
             'students_per_course' => $this->studentsPerCourse(),
         ];
@@ -123,6 +125,7 @@ class DashboardService
      * @return array<int, array<string, mixed>>
      */
     private function revenueSeries(
+        User $viewer,
         string $granularity,
         ?Carbon $from,
         ?Carbon $to,
@@ -130,7 +133,7 @@ class DashboardService
         $refunds,
         $orders,
     ): array {
-        $buckets = $this->buildBuckets($granularity, $from, $to);
+        $buckets = $this->buildBuckets($viewer, $granularity, $from, $to);
 
         if (empty($buckets)) {
             return [];
@@ -183,9 +186,9 @@ class DashboardService
     /**
      * @return array<int, array{status: string, count: int}>
      */
-    private function orderStatus(?Carbon $from, ?Carbon $to): array
+    private function orderStatus(User $viewer, ?Carbon $from, ?Carbon $to): array
     {
-        $counts = $this->applyRange(Order::query(), 'created_at', $from, $to)
+        $counts = $this->applyRange($this->orders($viewer), 'created_at', $from, $to)
             ->groupBy('status')
             ->select('status', DB::raw('COUNT(*) as total'))
             ->pluck('total', 'status');
@@ -202,10 +205,10 @@ class DashboardService
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function topCourses(?Carbon $from, ?Carbon $to): array
+    private function topCourses(User $viewer, ?Carbon $from, ?Carbon $to): array
     {
         $rows = $this->applyRange(
-            OrderItem::query()
+            SalesVisibility::apply(OrderItem::query(), $viewer, 'orders.seller_id')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->join('store_products', 'store_products.id', '=', 'order_items.store_product_id')
                 ->where('orders.status', OrderStatus::Paid->value)
@@ -244,10 +247,10 @@ class DashboardService
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function topBuyers(?Carbon $from, ?Carbon $to): array
+    private function topBuyers(User $viewer, ?Carbon $from, ?Carbon $to): array
     {
         $rows = $this->applyRange(
-            Order::query()
+            $this->orders($viewer)
                 ->join('users', 'users.id', '=', 'orders.user_id')
                 ->join('user_types', 'user_types.id', '=', 'users.user_type_id')
                 ->where('orders.status', OrderStatus::Paid->value)
@@ -287,10 +290,10 @@ class DashboardService
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function recentOrders(?Carbon $from, ?Carbon $to): array
+    private function recentOrders(User $viewer, ?Carbon $from, ?Carbon $to): array
     {
         return $this->applyRange(
-            Order::query()->with('user:id,name,email,image'),
+            $this->orders($viewer)->with('user:id,name,email,image'),
             'created_at',
             $from,
             $to,
@@ -427,12 +430,12 @@ class DashboardService
     /**
      * @return array<int, array{key: string, label: string, revenue: float, orders: int}>
      */
-    private function buildBuckets(string $granularity, ?Carbon $from, ?Carbon $to): array
+    private function buildBuckets(User $viewer, string $granularity, ?Carbon $from, ?Carbon $to): array
     {
         $end = ($to ?? now())->copy()->endOfDay();
 
         if ($granularity === 'monthly') {
-            $start = ($from ?? $this->earliestActivity($end))->copy()->startOfMonth();
+            $start = ($from ?? $this->earliestActivity($viewer, $end))->copy()->startOfMonth();
 
             return $this->eachBucket($start, $end, 'month', fn (Carbon $cursor) => [
                 'key' => 'M'.$cursor->format('Y-m'),
@@ -477,12 +480,12 @@ class DashboardService
         return $buckets;
     }
 
-    private function earliestActivity(Carbon $fallback): Carbon
+    private function earliestActivity(User $viewer, Carbon $fallback): Carbon
     {
         $dates = array_filter([
-            Payment::query()->min('paid_at'),
-            Refund::query()->min('refunded_at'),
-            Order::query()->min('created_at'),
+            $this->payments($viewer)->min('paid_at'),
+            $this->refunds($viewer)->min('refunded_at'),
+            $this->orders($viewer)->min('created_at'),
         ]);
 
         if (empty($dates)) {
@@ -490,6 +493,21 @@ class DashboardService
         }
 
         return Carbon::parse(min($dates));
+    }
+
+    private function orders(User $viewer): Builder
+    {
+        return SalesVisibility::apply(Order::query(), $viewer);
+    }
+
+    private function payments(User $viewer): Builder
+    {
+        return SalesVisibility::applyThrough(Payment::query(), $viewer, 'order');
+    }
+
+    private function refunds(User $viewer): Builder
+    {
+        return SalesVisibility::applyThrough(Refund::query(), $viewer, 'payment.order');
     }
 
     private function bucketKey(Carbon $date, string $granularity): string
