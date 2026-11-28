@@ -200,6 +200,8 @@ Route::middleware(['auth:sanctum', 'active', 'company', 'throttle:api'])->group(
     Route::post('me/robots/{slug}/run', [RobotController::class, 'run'])->middleware('throttle:30,1');
     Route::post('me/robots/{slug}/detail', [RobotController::class, 'detail'])->middleware('throttle:60,1');
     Route::post('me/robots/{slug}/assets', [RobotController::class, 'addAsset'])->middleware('throttle:10,1');
+    Route::put('me/robots/{slug}/settings', [RobotController::class, 'updateSettings'])->middleware('throttle:30,1');
+    Route::delete('me/robots/{slug}/settings', [RobotController::class, 'resetSettings'])->middleware('throttle:30,1');
 
     Route::get('me/courses/{course}/documents/{document}', [MaterialController::class, 'document']);
     Route::get('me/courses/{course}/attachments/{attachment}', [MaterialController::class, 'attachment']);

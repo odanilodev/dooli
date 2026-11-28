@@ -7,6 +7,7 @@ use App\Exceptions\ResourceNotFoundException;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Resources\RobotResource;
 use App\Models\Robot;
+use App\Models\RobotUserSetting;
 use App\Services\MarketData\MarketAssetRegistrar;
 use App\Services\Robots\Contracts\RobotContract;
 use App\Services\Robots\RobotManager;
@@ -42,11 +43,85 @@ class RobotController extends ApiController
     {
         $robot = $this->find($request, $slug);
 
+        $implementation = $this->implementation($robot);
+
         return ApiResponse::success(
             (new RobotResource($robot))->resolve() + [
-                'options' => $this->implementation($robot)->options(),
+                'options' => $implementation->options(),
+                'settings' => $this->settingsFor($request, $robot, $implementation),
+                'default_settings' => $implementation->defaultSettings(),
             ],
         );
+    }
+
+    /** Salva as preferências do usuário nesta ferramenta (ex.: regras de ativos operáveis). */
+    public function updateSettings(Request $request, string $slug): JsonResponse
+    {
+        $robot = $this->find($request, $slug);
+        $implementation = $this->implementation($robot);
+
+        $settings = Validator::make($request->all(), $implementation->settingsRules())->validate();
+
+        // Regra desligada sem valor guarda o padrão, para reaparecer preenchida ao religar.
+        $settings = $this->fillEmptyValues($settings, $implementation->defaultSettings());
+
+        RobotUserSetting::query()->updateOrCreate(
+            ['robot_id' => $robot->id, 'user_id' => $request->user()->id],
+            ['company_id' => $robot->company_id, 'settings' => $settings],
+        );
+
+        return ApiResponse::success(['settings' => $this->settingsFor($request, $robot, $implementation)]);
+    }
+
+    /** Volta ao padrão da ferramenta apagando o que o usuário salvou. */
+    public function resetSettings(Request $request, string $slug): JsonResponse
+    {
+        $robot = $this->find($request, $slug);
+
+        RobotUserSetting::query()->where('robot_id', $robot->id)->where('user_id', $request->user()->id)->delete();
+
+        return ApiResponse::success(['settings' => $this->implementation($robot)->defaultSettings()]);
+    }
+
+    /** O que o usuário salvou por cima do padrão (regras novas no código entram com o valor padrão). */
+    private function settingsFor(Request $request, Robot $robot, RobotContract $implementation): array
+    {
+        $saved = RobotUserSetting::query()
+            ->where('robot_id', $robot->id)
+            ->where('user_id', $request->user()->id)
+            ->value('settings');
+
+        $saved = is_string($saved) ? json_decode($saved, true) : $saved;
+        $defaults = $implementation->defaultSettings();
+
+        return array_replace_recursive($defaults, $this->onlyKnownKeys(is_array($saved) ? $saved : [], $defaults));
+    }
+
+    /** Descarta chaves salvas que não existem mais no padrão (regra renomeada ou removida no código). */
+    private function onlyKnownKeys(array $saved, array $defaults): array
+    {
+        $known = array_intersect_key($saved, $defaults);
+
+        foreach ($known as $key => $value) {
+            if (is_array($value) && is_array($defaults[$key])) {
+                $known[$key] = $this->onlyKnownKeys($value, $defaults[$key]);
+            }
+        }
+
+        return $known;
+    }
+
+    private function fillEmptyValues(array $settings, array $defaults): array
+    {
+        foreach ($settings as $key => $value) {
+            if (is_array($value) && is_array($defaults[$key] ?? null)) {
+                $settings[$key] = $this->fillEmptyValues($value, $defaults[$key]);
+            } elseif ($value === null && array_key_exists($key, $defaults)) {
+                $settings[$key] = $defaults[$key];
+            }
+        }
+
+        return $settings;
     }
 
     public function run(Request $request, string $slug): JsonResponse

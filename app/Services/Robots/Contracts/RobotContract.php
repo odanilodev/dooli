@@ -27,4 +27,14 @@ interface RobotContract
      * @return array<string, mixed>
      */
     public function detail(array $params, string $symbol): array;
+
+    /**
+     * Preferências que o usuário pode ajustar e salvar na ferramenta, já preenchidas com o padrão.
+     *
+     * @return array<string, mixed>
+     */
+    public function defaultSettings(): array;
+
+    /** Validation rules for the preferences the user saves. */
+    public function settingsRules(): array;
 }

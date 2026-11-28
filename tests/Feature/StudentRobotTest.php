@@ -6,6 +6,7 @@ use App\Enums\GeneralStatus;
 use App\Models\MarketAsset;
 use App\Models\MarketCandle;
 use App\Models\Robot;
+use App\Models\RobotUserSetting;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -208,6 +209,162 @@ class StudentRobotTest extends TestCase
 
         $this->withToken($this->apiLogin($this->student))
             ->getJson('/api/v1/me/robots')->assertOk()->assertJsonCount(0, 'data');
+    }
+
+    public function test_asset_rules_come_with_the_default(): void
+    {
+        $response = $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/robots/delta-screener')
+            ->assertOk()
+            ->assertJsonPath('data.settings.asset_rules.min_trades', ['enabled' => true, 'value' => 10])
+            ->assertJsonPath('data.settings.asset_rules.min_win_rate', ['enabled' => true, 'value' => 70])
+            ->assertJsonPath('data.settings.asset_rules.max_worst_loss', ['enabled' => true, 'value' => 4]);
+
+        $this->assertEqualsWithDelta(0.2, $response->json('data.settings.asset_rules.min_avg_result.value'), 0.0001);
+        $this->assertSame($response->json('data.settings'), $response->json('data.default_settings'));
+    }
+
+    private function customRules(): array
+    {
+        return ['asset_rules' => [
+            'min_trades' => ['enabled' => true, 'value' => 20],
+            'min_win_rate' => ['enabled' => true, 'value' => 65],
+            'min_avg_result' => ['enabled' => false, 'value' => 0.5],
+            'max_worst_loss' => ['enabled' => true, 'value' => 3],
+        ]];
+    }
+
+    public function test_user_saves_own_asset_rules(): void
+    {
+        $token = $this->apiLogin($this->student);
+
+        $this->withToken($token)
+            ->putJson('/api/v1/me/robots/delta-screener/settings', $this->customRules())
+            ->assertOk()
+            ->assertJsonPath('data.settings.asset_rules.min_trades.value', 20);
+
+        $this->withToken($token)
+            ->getJson('/api/v1/me/robots/delta-screener')
+            ->assertOk()
+            ->assertJsonPath('data.settings.asset_rules.min_trades.value', 20)
+            ->assertJsonPath('data.settings.asset_rules.min_avg_result.enabled', false)
+            ->assertJsonPath('data.settings.asset_rules.max_worst_loss.value', 3)
+            // O padrão continua disponível para o botão "Restaurar padrão".
+            ->assertJsonPath('data.default_settings.asset_rules.min_trades.value', 10);
+
+        $this->assertDatabaseHas('robot_user_settings', [
+            'robot_id' => $this->robot->id,
+            'user_id' => $this->student->id,
+            'company_id' => $this->company->id,
+        ]);
+
+        // Salvar de novo atualiza a mesma linha, não cria outra.
+        $this->withToken($token)->putJson('/api/v1/me/robots/delta-screener/settings', $this->customRules())->assertOk();
+        $this->assertSame(1, DB::table('robot_user_settings')->count());
+    }
+
+    public function test_saved_rules_are_per_user(): void
+    {
+        $this->withToken($this->apiLogin($this->student))
+            ->putJson('/api/v1/me/robots/delta-screener/settings', $this->customRules())
+            ->assertOk();
+
+        $this->withToken($this->apiLogin($this->admin))
+            ->getJson('/api/v1/me/robots/delta-screener')
+            ->assertOk()
+            ->assertJsonPath('data.settings.asset_rules.min_trades.value', 10);
+    }
+
+    public function test_reset_restores_the_default_rules(): void
+    {
+        $token = $this->apiLogin($this->student);
+
+        $this->withToken($token)->putJson('/api/v1/me/robots/delta-screener/settings', $this->customRules())->assertOk();
+
+        $this->withToken($token)
+            ->deleteJson('/api/v1/me/robots/delta-screener/settings')
+            ->assertOk()
+            ->assertJsonPath('data.settings.asset_rules.min_trades.value', 10);
+
+        $this->assertSame(0, DB::table('robot_user_settings')->count());
+
+        $this->withToken($token)
+            ->getJson('/api/v1/me/robots/delta-screener')
+            ->assertJsonPath('data.settings.asset_rules.min_win_rate.value', 70);
+    }
+
+    public function test_asset_rules_are_validated(): void
+    {
+        $rules = $this->customRules();
+        $rules['asset_rules']['min_win_rate']['value'] = 150;
+        $rules['asset_rules']['max_worst_loss']['value'] = -2;
+        unset($rules['asset_rules']['min_trades']);
+        $rules['asset_rules']['hack'] = ['enabled' => true, 'value' => 1];
+
+        $this->withToken($this->apiLogin($this->student))
+            ->putJson('/api/v1/me/robots/delta-screener/settings', $rules)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'asset_rules',
+                'asset_rules.min_trades',
+                'asset_rules.min_win_rate.value',
+                'asset_rules.max_worst_loss.value',
+            ], 'errors');
+
+        $this->assertSame(0, DB::table('robot_user_settings')->count());
+    }
+
+    public function test_disabled_rule_can_be_saved_with_empty_value(): void
+    {
+        $rules = $this->customRules();
+        $rules['asset_rules']['min_avg_result'] = ['enabled' => false, 'value' => ''];
+
+        $response = $this->withToken($this->apiLogin($this->student))
+            ->putJson('/api/v1/me/robots/delta-screener/settings', $rules)
+            ->assertOk()
+            ->assertJsonPath('data.settings.asset_rules.min_avg_result.enabled', false);
+
+        // Sem valor, guarda o padrão para a regra voltar preenchida se for religada.
+        $this->assertEqualsWithDelta(0.2, $response->json('data.settings.asset_rules.min_avg_result.value'), 0.0001);
+    }
+
+    public function test_enabled_rule_requires_a_value(): void
+    {
+        $rules = $this->customRules();
+        $rules['asset_rules']['min_trades']['value'] = '';
+
+        $this->withToken($this->apiLogin($this->student))
+            ->putJson('/api/v1/me/robots/delta-screener/settings', $rules)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['asset_rules.min_trades.value'], 'errors');
+    }
+
+    public function test_saved_keys_that_no_longer_exist_are_ignored(): void
+    {
+        RobotUserSetting::query()->create([
+            'company_id' => $this->company->id,
+            'robot_id' => $this->robot->id,
+            'user_id' => $this->student->id,
+            'settings' => ['asset_rules' => ['regra_antiga' => ['enabled' => true, 'value' => 1], 'min_trades' => ['enabled' => true, 'value' => 15]]],
+        ]);
+
+        $this->withToken($this->apiLogin($this->student))
+            ->getJson('/api/v1/me/robots/delta-screener')
+            ->assertOk()
+            ->assertJsonPath('data.settings.asset_rules.min_trades.value', 15)
+            ->assertJsonMissingPath('data.settings.asset_rules.regra_antiga');
+    }
+
+    public function test_student_without_access_cannot_save_rules(): void
+    {
+        $other = User::factory()->create([
+            'company_id' => $this->company->id,
+            'user_type_id' => $this->student->user_type_id,
+        ]);
+
+        $this->withToken($this->apiLogin($other))
+            ->putJson('/api/v1/me/robots/delta-screener/settings', $this->customRules())
+            ->assertNotFound();
     }
 
     public function test_admin_sees_every_robot_without_a_team(): void
