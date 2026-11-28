@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Requests\Admin\RefundPaymentRequest;
 use App\Http\Requests\Admin\StorePaymentRequest;
 use App\Http\Resources\AdminPaymentResource;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Services\PaymentService;
 use App\Support\ApiResponse;
@@ -22,7 +23,7 @@ class PaymentController extends ApiController
         $this->authorize('viewAny', Payment::class);
 
         $paginator = $this->payments->paginate(
-            filters: $request->only([
+            filters: $this->salesFilters($request, [
                 'search', 'status', 'order_id', 'gateway_id', 'method',
                 'date_from', 'date_to', 'sort', 'direction',
             ]),
@@ -37,13 +38,14 @@ class PaymentController extends ApiController
         $this->authorize('viewAny', Payment::class);
 
         return ApiResponse::success($this->payments->summary(
-            $request->only(['gateway_id', 'method', 'date_from', 'date_to']),
+            $this->salesFilters($request, ['gateway_id', 'method', 'date_from', 'date_to']),
         ));
     }
 
     public function store(StorePaymentRequest $request): JsonResponse
     {
         $this->authorize('create', Payment::class);
+        $this->authorize('viewSale', Order::query()->findOrFail((int) $request->validated('order_id')));
 
         $payment = $this->payments->create(CreatePaymentDTO::fromArray($request->validated()));
 
@@ -68,5 +70,16 @@ class PaymentController extends ApiController
         );
 
         return ApiResponse::success(new AdminPaymentResource($refunded->load('refunds')));
+    }
+
+    /**
+     * Filtros aceitos da requisição mais o usuário logado, que limita as vendas visíveis.
+     *
+     * @param  array<int, string>  $keys
+     * @return array<string, mixed>
+     */
+    private function salesFilters(Request $request, array $keys): array
+    {
+        return [...$request->only($keys), 'viewer' => $request->user()];
     }
 }

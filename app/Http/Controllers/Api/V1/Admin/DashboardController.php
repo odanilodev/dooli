@@ -38,6 +38,7 @@ class DashboardController extends ApiController
         }
 
         return ApiResponse::success($this->dashboard->overview(
+            viewer: $request->user(),
             period: $validated['period'] ?? '30',
             from: $validated['from'] ?? null,
             to: $validated['to'] ?? null,

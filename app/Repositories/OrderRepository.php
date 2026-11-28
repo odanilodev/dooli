@@ -6,6 +6,8 @@ use App\Enums\OrderStatus;
 use App\Enums\RefundStatus;
 use App\Models\Order;
 use App\Models\Refund;
+use App\Models\User;
+use App\Support\SalesVisibility;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -41,9 +43,15 @@ class OrderRepository extends BaseRepository
     protected function applyFilters(Builder $query, array $filters): void
     {
         $search = trim((string) ($filters['search'] ?? ''));
-        unset($filters['search']);
+        $viewer = $filters['viewer'] ?? null;
+        unset($filters['search'], $filters['viewer']);
 
         parent::applyFilters($query, $filters);
+
+        // Escopo do vendedor: vale para listagem, totais e exportação, independente dos filtros.
+        if ($viewer instanceof User) {
+            SalesVisibility::apply($query, $viewer);
+        }
 
         if ($search === '') {
             return;

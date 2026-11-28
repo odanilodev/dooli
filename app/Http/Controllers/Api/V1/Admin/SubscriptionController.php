@@ -7,6 +7,7 @@ use App\Http\Resources\SubscriptionResource;
 use App\Models\Subscription;
 use App\Services\SubscriptionService;
 use App\Support\ApiResponse;
+use App\Support\SalesVisibility;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -18,16 +19,18 @@ class SubscriptionController extends ApiController
     {
         $this->authorize('viewAny', Subscription::class);
 
-        $paginator = Subscription::query()
+        $paginator = SalesVisibility::apply(Subscription::query(), $request->user())
             ->with(['storeProduct', 'gateway', 'user'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', (string) $request->string('status')))
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = '%'.(string) $request->string('search').'%';
 
-                $query->whereHas('user', fn ($user) => $user
-                    ->where('name', 'like', $search)
-                    ->orWhere('email', 'like', $search))
-                    ->orWhereHas('storeProduct', fn ($product) => $product->where('title', 'like', $search));
+                // Agrupado para o "ou" não escapar do escopo do vendedor nem do filtro de status.
+                $query->where(fn ($group) => $group
+                    ->whereHas('user', fn ($user) => $user
+                        ->where('name', 'like', $search)
+                        ->orWhere('email', 'like', $search))
+                    ->orWhereHas('storeProduct', fn ($product) => $product->where('title', 'like', $search)));
             })
             ->latest('id')
             ->paginate($this->perPage($request));
@@ -37,7 +40,7 @@ class SubscriptionController extends ApiController
 
     public function show(Subscription $subscription): JsonResponse
     {
-        $this->authorize('view', $subscription);
+        $this->authorize('viewSale', $subscription);
 
         return ApiResponse::success(
             new SubscriptionResource($subscription->load(['storeProduct', 'gateway', 'user'])),
@@ -46,7 +49,7 @@ class SubscriptionController extends ApiController
 
     public function cancel(Subscription $subscription): JsonResponse
     {
-        $this->authorize('cancel', $subscription);
+        $this->authorize('viewSale', $subscription);
 
         return ApiResponse::success(
             new SubscriptionResource($this->subscriptions->cancel($subscription)->load(['storeProduct', 'gateway', 'user'])),

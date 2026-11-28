@@ -85,6 +85,7 @@ import BrandLogo from './BrandLogo.vue';
 import NavIcon from './NavIcon.vue';
 import NavItem from './NavItem.vue';
 import { useRobotsStore } from '../stores/robots';
+import { ADMIN_ONLY_LINKS, SUPER_ADMIN_ONLY_LINKS } from '../utils/adminLinks';
 
 const { isOpen, close } = useSidebar();
 const auth = useAuthStore();
@@ -216,15 +217,6 @@ const menuTree = computed(() => {
 
   return filterLinks(base, auth.isAdmin ? SUPER_ADMIN_ONLY_LINKS : ADMIN_ONLY_LINKS);
 });
-
-const SUPER_ADMIN_ONLY_LINKS = ['/admin/menus', '/admin/empresas'];
-const ADMIN_ONLY_LINKS = [
-  ...SUPER_ADMIN_ONLY_LINKS,
-  '/admin/usuarios',
-  '/admin/tipos-de-usuario',
-  '/admin/vendedores',
-  '/admin/comissoes',
-];
 
 // A platform super admin only manages companies and the global menu config.
 const SUPER_ADMIN_ALLOWED_LINKS = ['/admin/empresas', '/admin/menus', '/perfil', '/configuracoes'];

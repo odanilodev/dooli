@@ -1077,6 +1077,18 @@ onBeforeUnmount(() => {
 }
 .split-methods button.active{border-color:var(--accent);background:var(--accent-soft);}
 .card-brick-wrap{display:flex;flex-direction:column;gap:12px;min-width:0;}
+/* Lista de parcelas do Brick: dá respiro entre as opções e a borda (o Brick vem sem padding). */
+.card-brick-wrap :deep(label:has(input[type="radio"])),
+.card-brick-wrap :deep([role="radiogroup"] > *),
+.card-brick-wrap :deep([class*="nstallment"] li){
+  padding-left:18px;padding-right:18px;
+}
+.card-brick-wrap :deep(label:has(input[type="radio"])),
+.card-brick-wrap :deep([role="radiogroup"] > *){
+  padding-top:16px;padding-bottom:16px;
+}
+.card-brick-wrap :deep(input[type="radio"]){margin-right:12px;}
+.card-brick-wrap :deep([class*="nstallment"]){margin-bottom:6px;}
 .checkout-page-head{display:flex;flex-direction:column;gap:5px;}
 .checkout-page-head h1{
   font-size:clamp(34px,3.6vw,48px);font-weight:800;line-height:1.04;letter-spacing:-.04em;
