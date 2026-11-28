@@ -121,6 +121,45 @@ class DeltaScreenerRobot implements RobotContract
         return ['symbol' => $symbol, 'trades' => $trades];
     }
 
+    /**
+     * Regras de "ativos operáveis": o ativo só passa se cumprir todas as regras ligadas.
+     * Padrão usado pelos alunos: mais de 10 operações, acerto acima de 70%, média acima
+     * de 0,20% por operação e pior perda menor que 4%.
+     */
+    public const ASSET_RULE_KEYS = ['min_trades', 'min_win_rate', 'min_avg_result', 'max_worst_loss'];
+
+    public function defaultSettings(): array
+    {
+        return [
+            'asset_rules' => [
+                'min_trades' => ['enabled' => true, 'value' => 10],
+                'min_win_rate' => ['enabled' => true, 'value' => 70],
+                'min_avg_result' => ['enabled' => true, 'value' => 0.2],
+                'max_worst_loss' => ['enabled' => true, 'value' => 4],
+            ],
+        ];
+    }
+
+    public function settingsRules(): array
+    {
+        $rules = ['asset_rules' => ['required', 'array:'.implode(',', self::ASSET_RULE_KEYS)]];
+        $limits = [
+            'min_trades' => ['integer', 'min:0', 'max:100000'],
+            'min_win_rate' => ['numeric', 'min:0', 'max:100'],
+            'min_avg_result' => ['numeric', 'min:-100', 'max:100'],
+            'max_worst_loss' => ['numeric', 'min:0', 'max:100'],
+        ];
+
+        foreach ($limits as $key => $valueRules) {
+            $rules["asset_rules.{$key}"] = ['required', 'array:enabled,value'];
+            $rules["asset_rules.{$key}.enabled"] = ['required', 'boolean'];
+            // Regra desligada pode vir com o campo vazio: o valor só é obrigatório se ela estiver ligada.
+            $rules["asset_rules.{$key}.value"] = ["required_if_accepted:asset_rules.{$key}.enabled", 'nullable', ...$valueRules];
+        }
+
+        return $rules;
+    }
+
     /** Candles that touched the entry price, within market/period (and optional symbols). */
     private function triggeredCandles(array $params, string $triggered, array $triggeredBindings): Builder
     {

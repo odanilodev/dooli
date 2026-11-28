@@ -98,12 +98,61 @@
         <div class="stat"><span>Operações</span><strong>{{ result.summary.total_trades }}</strong></div>
         <div class="stat"><span>% de acerto geral</span><strong>{{ overallWinRate }}%</strong></div>
         <div class="stat"><span>Resultado líquido</span><strong :class="tone(result.summary.net_result)">{{ signed(result.summary.net_result) }}%</strong></div>
+        <div class="stat" v-if="rules"><span>Ativos operáveis</span><strong class="pos">{{ operableCount }}</strong></div>
+      </div>
+
+      <section class="rules-card" v-if="rules" :class="{ active: filters.onlyOperable }">
+        <div class="rules-head">
+          <div>
+            <h2>Ativos operáveis</h2>
+            <p>Mostra só os ativos que cumprem <strong>todas</strong> as regras abaixo.</p>
+          </div>
+          <div class="rules-actions">
+            <div class="seg view-seg" role="group" aria-label="Quais ativos mostrar">
+              <button type="button" :class="{ on: !filters.onlyOperable }" :aria-pressed="!filters.onlyOperable" @click="filters.onlyOperable = false">
+                Todos os ativos ({{ result.rows.length }})
+              </button>
+              <button type="button" :class="{ on: filters.onlyOperable }" :aria-pressed="filters.onlyOperable" @click="filters.onlyOperable = true">
+                Só operáveis ({{ operableCount }})
+              </button>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" v-if="!editingRules" @click="startEditRules">Editar regras</button>
+          </div>
+        </div>
+
+        <div class="rule-chips" v-if="!editingRules">
+          <span class="rule-chip" v-for="r in activeRuleList" :key="r.key">{{ describeRule(r, rules[r.key].value) }}</span>
+          <span class="rule-chip off" v-if="!activeRuleList.length">Nenhuma regra ligada: todos os ativos passam.</span>
+          <span class="custom-tag" v-if="customRules">Regras personalizadas</span>
+        </div>
+
+        <form class="rules-form" v-else @submit.prevent="saveRules">
+          <div class="rule-line" v-for="r in ASSET_RULES" :key="r.key" :class="{ off: !draftRules[r.key].enabled }">
+            <label class="check">
+              <input v-model="draftRules[r.key].enabled" type="checkbox" />
+              <span class="rule-label">{{ r.label }}</span>
+            </label>
+            <span class="rule-cmp">{{ r.comparison }}</span>
+            <input v-model.number="draftRules[r.key].value" class="num" type="number" :step="r.step" :min="r.min" :max="r.max" :disabled="!draftRules[r.key].enabled" required />
+            <span class="rule-unit">{{ r.unit }}</span>
+          </div>
+          <small class="hint">O ativo precisa cumprir todas as regras marcadas. Desmarque uma regra para ignorá-la.</small>
+          <small class="add-error" v-if="rulesError">{{ rulesError }}</small>
+          <div class="rules-form-actions">
+            <button type="submit" class="btn btn-primary btn-sm" :disabled="savingRules">{{ savingRules ? 'Salvando...' : 'Salvar regras' }}</button>
+            <button type="button" class="btn btn-outline btn-sm" :disabled="savingRules" @click="editingRules = false">Cancelar</button>
+            <button type="button" class="link reset" :disabled="savingRules" @click="resetRules">Restaurar regras padrão</button>
+          </div>
+        </form>
+      </section>
+
+      <div class="filter-note" v-if="rules && filters.onlyOperable">
+        <span>Mostrando só os <strong>{{ operableCount }}</strong> ativos operáveis de {{ result.rows.length }}.</span>
+        <button type="button" class="link" @click="filters.onlyOperable = false">Ver todos os ativos</button>
       </div>
 
       <div class="toolbar">
         <input v-model="filters.search" type="search" placeholder="Buscar ativo..." />
-        <label>Mín. operações <input v-model.number="filters.minTrades" type="number" min="0" /></label>
-        <label>Mín. % acerto <input v-model.number="filters.minWinRate" type="number" min="0" max="100" /></label>
         <label class="check"><input v-model="filters.onlyPositive" type="checkbox" /> Só resultado positivo</label>
         <button type="button" class="btn btn-outline btn-sm" @click="exportCsv" :disabled="!visibleRows.length">Exportar CSV</button>
       </div>
@@ -121,6 +170,10 @@
             <template v-for="row in visibleRows" :key="row.symbol">
               <tr class="row-main" :class="{ open: expanded === row.symbol }" @click="toggleDetail(row.symbol)">
                 <td><strong>{{ row.symbol }}</strong></td>
+                <td v-if="rules">
+                  <span class="badge ok" v-if="row.operable">Sim</span>
+                  <span class="badge no" v-else :title="`Não cumpre: ${row.failed.join(' · ')}`">Não · {{ row.failed.length }} {{ row.failed.length === 1 ? 'regra' : 'regras' }}</span>
+                </td>
                 <td>{{ row.total_trades }}</td>
                 <td>{{ row.gains }}</td>
                 <td>{{ row.losses }}</td>
@@ -159,7 +212,8 @@
       </div>
       <div class="empty-state" v-else>
         <strong>Nenhum ativo para exibir</strong>
-        <span>{{ result.rows.length ? 'Os filtros escondem todos os resultados.' : 'Nenhuma operação disparou. Tente outro período, mercado ou limiar.' }}</span>
+        <span>{{ emptyMessage }}</span>
+        <button type="button" class="btn btn-outline btn-sm" v-if="result.rows.length && filters.onlyOperable" @click="filters.onlyOperable = false">Ver todos os ativos</button>
       </div>
     </template>
   </main>
@@ -169,6 +223,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '../api/http';
+import { ASSET_RULES, activeRules, cloneRules, describeRule, failedRules, sameRules } from '../utils/assetRules';
 
 const route = useRoute();
 const slug = route.params.slug;
@@ -191,8 +246,9 @@ const periods = [
   { label: 'Tudo', months: 0 },
 ];
 
-const columns = [
+const baseColumns = [
   { key: 'symbol', label: 'Ativo' },
+  { key: 'operable', label: 'Operável' },
   { key: 'total_trades', label: 'Operações' },
   { key: 'gains', label: 'Acertos' },
   { key: 'losses', label: 'Erros' },
@@ -206,8 +262,76 @@ const columns = [
 ];
 
 const form = reactive({ market: 'crypto', side: 'buy', threshold: 2, start_date: '', end_date: '' });
-const filters = reactive({ search: '', minTrades: 0, minWinRate: 0, onlyPositive: false });
+const filters = reactive({ search: '', onlyPositive: false, onlyOperable: false });
 const sort = reactive({ key: 'net_result', dir: 'desc' });
+
+// Regras de ativos operáveis: só existem nas ferramentas que as oferecem (DeltaStats).
+const rules = computed(() => robot.value?.settings?.asset_rules ?? null);
+const defaultRules = computed(() => robot.value?.default_settings?.asset_rules ?? null);
+const columns = computed(() => (rules.value ? baseColumns : baseColumns.filter((c) => c.key !== 'operable')));
+const activeRuleList = computed(() => activeRules(rules.value));
+const customRules = computed(() => rules.value && defaultRules.value && !sameRules(rules.value, defaultRules.value));
+
+const editingRules = ref(false);
+const draftRules = ref({});
+const savingRules = ref(false);
+const rulesError = ref('');
+
+function startEditRules() {
+  draftRules.value = cloneRules(rules.value);
+  rulesError.value = '';
+  editingRules.value = true;
+}
+
+function applySettings(settings) {
+  robot.value = { ...robot.value, settings };
+  editingRules.value = false;
+}
+
+async function saveRules() {
+  savingRules.value = true;
+  rulesError.value = '';
+
+  try {
+    const { data } = await api.put(`/me/robots/${slug}/settings`, { asset_rules: draftRules.value });
+    applySettings(data.data.settings);
+    filters.onlyOperable = true;
+  } catch (e) {
+    rulesError.value = e.response?.status === 422
+      ? 'Confira os valores: alguma regra está fora do permitido.'
+      : 'Não foi possível salvar as regras. Tente de novo.';
+  } finally {
+    savingRules.value = false;
+  }
+}
+
+async function resetRules() {
+  savingRules.value = true;
+  rulesError.value = '';
+
+  try {
+    const { data } = await api.delete(`/me/robots/${slug}/settings`);
+    applySettings(data.data.settings);
+  } catch {
+    rulesError.value = 'Não foi possível restaurar o padrão. Tente de novo.';
+  } finally {
+    savingRules.value = false;
+  }
+}
+
+/** Linhas do resultado já marcadas com o que passa (ou não) nas regras. */
+const evaluatedRows = computed(() => (result.value?.rows ?? []).map((r) => {
+  const failed = rules.value ? failedRules(r, rules.value).map((rule) => describeRule(rule, rules.value[rule.key].value)) : [];
+  return { ...r, failed, operable: failed.length === 0 };
+}));
+
+const operableCount = computed(() => evaluatedRows.value.filter((r) => r.operable).length);
+
+const emptyMessage = computed(() => {
+  if (!result.value?.rows.length) return 'Nenhuma operação disparou. Tente outro período, mercado ou limiar.';
+  if (filters.onlyOperable && !operableCount.value) return 'Nenhum ativo cumpre todas as regras neste período. Tente outro período ou ajuste as regras.';
+  return 'Os filtros escondem todos os resultados.';
+});
 
 const markets = computed(() => robot.value?.options?.markets ?? {});
 const market = computed(() => markets.value[form.market] ?? { symbols: [], from: null, to: null });
@@ -268,10 +392,9 @@ const visibleRows = computed(() => {
   if (!result.value) return [];
   const term = filters.search.trim().toUpperCase();
 
-  return result.value.rows
+  return evaluatedRows.value
     .filter((r) => (!term || r.symbol.includes(term))
-      && r.total_trades >= (filters.minTrades || 0)
-      && Number(r.win_rate) >= (filters.minWinRate || 0)
+      && (!filters.onlyOperable || r.operable)
       && (!filters.onlyPositive || Number(r.net_result) > 0))
     .sort((a, b) => {
       const x = sort.key === 'symbol' ? a.symbol : Number(a[sort.key]);
@@ -365,8 +488,9 @@ async function toggleDetail(symbol) {
 }
 
 function exportCsv() {
-  const head = columns.map((c) => c.label).join(';');
-  const lines = visibleRows.value.map((r) => columns.map((c) => r[c.key]).join(';'));
+  const head = columns.value.map((c) => c.label).join(';');
+  const cell = (r, key) => (key === 'operable' ? (r.operable ? 'Sim' : 'Não') : r[key]);
+  const lines = visibleRows.value.map((r) => columns.value.map((c) => cell(r, c.key)).join(';'));
   const blob = new Blob([`﻿${[head, ...lines].join('\n')}`], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -465,6 +589,42 @@ tbody tr + tr td { border-top: 1px solid var(--border); }
 .detail-scroll { max-height: 280px; overflow-y: auto; }
 .mini { font-size: 12px; table-layout: fixed; }
 .mini th { cursor: default; position: sticky; top: 0; z-index: 1; background: var(--bg-card); }
+.rules-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 18px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px; transition: border-color .15s ease; }
+.rules-card.active { border-color: var(--accent); }
+.rules-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.rules-head h2 { margin: 0 0 4px; font-size: 15px; }
+.rules-head p { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+.rules-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.view-seg button { padding: 7px 14px; font-size: 12.5px; }
+.filter-note { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; padding: 9px 14px; border-radius: 10px; background: rgba(34, 197, 94, .08); border: 1px solid rgba(34, 197, 94, .25); font-size: 12.5px; color: var(--text-secondary); }
+.filter-note .link { font-size: 12.5px; font-weight: 700; }
+.rule-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rule-chip { padding: 5px 11px; border-radius: 999px; border: 1.5px solid var(--border); font-size: 12px; color: var(--text-secondary); }
+.rule-chip.off { border-style: dashed; color: var(--text-muted); }
+.custom-tag { font-size: 11px; font-weight: 700; color: var(--accent); }
+.rules-form { gap: 10px; }
+.rule-line { display: grid; grid-template-columns: 210px 70px 84px 14px; justify-content: start; align-items: center; gap: 10px; font-size: 13px; }
+.rule-line.off .rule-label, .rule-line.off .rule-cmp, .rule-line.off .rule-unit { opacity: .45; }
+.rule-line .check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.rule-line .check input { width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--accent); cursor: pointer; }
+.rule-label { font-weight: 600; }
+.rule-cmp { color: var(--text-muted); white-space: nowrap; }
+.rule-line input.num { width: 100%; box-sizing: border-box; }
+.link.reset { margin-left: auto; font-size: 12px; }
+@media (max-width: 560px) {
+  .rule-line { grid-template-columns: minmax(0, 1fr) auto 72px 14px; justify-content: stretch; gap: 8px; font-size: 12.5px; }
+  .rules-actions, .rules-actions .btn, .view-seg { width: 100%; }
+  .view-seg button { flex: 1; padding: 8px 6px; }
+  .link.reset { margin-left: 0; }
+}
+.rule-line input.num:disabled { opacity: .45; }
+.rules-form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.rules-form-actions .btn { align-self: center; }
+.link:disabled { opacity: .5; cursor: wait; }
+.badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.badge.ok { background: rgba(34, 197, 94, .14); color: #22c55e; }
+.badge.no { background: rgba(148, 163, 184, .12); color: var(--text-muted); cursor: help; }
+.empty-state .btn { margin-top: 10px; }
 .pos { color: #22c55e; font-weight: 700; }
 .neg { color: #ef4444; font-weight: 700; }
 </style>
